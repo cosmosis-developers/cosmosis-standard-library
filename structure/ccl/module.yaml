@@ -1,0 +1,729 @@
+name: CCL_comprehensive
+version: '2.0'
+purpose: Comprehensive integration of the Core Cosmology Library (CCL) into CosmoSIS
+url: https://github.com/LSSTDESC/CCL
+interface: cl_with_ccl_modular.py
+attribution: [CCL Development Team, LSST DESC]
+rules: ''
+cite:
+- 'Chisari et al. (2019), arXiv:1812.05995 - CCL Paper'
+- 'https://github.com/LSSTDESC/CCL'
+assumptions:
+- 'Requires pyccl to be installed'
+- 'Compatible with CCL version 3.0+'
+- 'Cosmological parameters must be provided in cosmological_parameters section'
+
+explanation: |
+    "This module provides comprehensive integration of the Core Cosmology Library (CCL)
+    into CosmoSIS, supporting the full range of CCL functionality:
+    
+    - Background quantities (distances, Hubble parameter, age, growth factors)
+    - Linear and non-linear matter power spectra with multiple prescriptions
+    - Comprehensive halo model framework with configurable components
+    - Multiple tracer types: weak lensing, galaxy clustering, CMB lensing, ISW, etc.
+    - Angular power spectra for all tracer combinations
+    - Correlation functions (real-space galaxy clustering and shear)
+    - Modified gravity extensions (μ-Σ parametrization)
+    - Baryonic effects modeling (BaccoEmu, Schneider correction)
+    - Support for emulators and advanced accuracy controls
+    
+    The module is highly configurable and can compute any subset of these quantities
+    based on the configuration parameters."
+
+params:
+    # ===== GENERAL COMPUTATION CONTROL =====
+    compute_background:
+        meaning: Whether to compute background quantities (distances, Hubble parameter, age)
+        type: bool
+        default: true
+    compute_power_spectra:
+        meaning: Whether to compute matter power spectra (linear and non-linear)
+        type: bool
+        default: true
+    compute_growth:
+        meaning: Whether to compute growth factors and growth rate
+        type: bool
+        default: true
+    compute_halo_model:
+        meaning: Whether to compute halo model quantities (mass function, bias)
+        type: bool
+        default: false
+    
+    # ===== ANGULAR POWER SPECTRA =====
+    compute_gc:
+        meaning: Whether to compute galaxy clustering angular power spectra
+        type: bool
+        default: true
+    compute_shear:
+        meaning: Whether to compute weak lensing shear angular power spectra
+        type: bool
+        default: true
+    compute_cross:
+        meaning: Whether to compute galaxy-shear cross angular power spectra
+        type: bool
+        default: true
+    compute_cmb_lensing:
+        meaning: Whether to compute CMB lensing angular power spectra
+        type: bool
+        default: false
+    compute_isw:
+        meaning: Whether to compute ISW angular power spectra
+        type: bool
+        default: false
+    compute_tsz:
+        meaning: Whether to compute thermal SZ angular power spectra
+        type: bool
+        default: false
+    compute_cib:
+        meaning: Whether to compute CIB angular power spectra
+        type: bool
+        default: false
+    
+    # ===== MAGNIFICATION BIAS =====
+    use_magnification:
+        meaning: Enable magnification bias in tracers
+        type: bool
+        default: false
+    magnification_alpha:
+        meaning: Magnification bias parameter alpha (slope of luminosity function)
+        type: real
+        default: 2.5
+    
+    # ===== PERTURBATIVE TRACERS =====
+    use_perturbative_bias:
+        meaning: Use perturbative bias calculators (e.g., BaccoLbiasCalculator)
+        type: bool
+        default: false
+    perturbative_bias_type:
+        meaning: Type of perturbative bias calculator ('bacco_lbias')
+        type: str
+        default: "bacco_lbias"
+    log10k_min_pt:
+        meaning: Minimum log10(k) for perturbative calculations
+        type: real
+        default: -4.0
+    log10k_max_pt:
+        meaning: Maximum log10(k) for perturbative calculations
+        type: real
+        default: 2.0
+    nk_per_decade_pt:
+        meaning: Number of k points per decade for perturbative calculations
+        type: int
+        default: 20
+    
+    # ===== CORRELATION FUNCTIONS =====
+    compute_xi:
+        meaning: Whether to compute angular correlation functions
+        type: bool
+        default: false
+    xi_type:
+        meaning: Type of correlation function (gg+, gg-, ll+, ll-, nn, ng, galaxy_shear, shear+, shear-)
+        type: str
+        default: "gg+"
+    xi_method:
+        meaning: Method for correlation function computation (fftlog, bessel, legendre)
+        type: str
+        default: "fftlog"
+    theta_min:
+        meaning: Minimum angular separation for correlation functions (arcmin)
+        type: real
+        default: 0.1
+    theta_max:
+        meaning: Maximum angular separation for correlation functions (arcmin)
+        type: real
+        default: 300.0
+    n_theta:
+        meaning: Number of angular bins for correlation functions
+        type: int
+        default: 50
+    
+    # ===== 3D CORRELATION FUNCTIONS =====
+    compute_xi_3d:
+        meaning: Whether to compute 3D correlation functions
+        type: bool
+        default: false
+    compute_xi_rsd:
+        meaning: Whether to compute RSD correlation functions
+        type: bool
+        default: false
+    compute_xi_multipoles:
+        meaning: Whether to compute correlation function multipoles
+        type: bool
+        default: false
+    r_min_3d:
+        meaning: Minimum distance for 3D correlation functions (Mpc)
+        type: real
+        default: 0.1
+    r_max_3d:
+        meaning: Maximum distance for 3D correlation functions (Mpc)
+        type: real
+        default: 200.0
+    n_r_3d:
+        meaning: Number of distance bins for 3D correlation functions
+        type: int
+        default: 50
+    z_eval_3d:
+        meaning: Redshift for 3D correlation function evaluation
+        type: real
+        default: 0.5
+    rsd_beta:
+        meaning: RSD parameter beta = f/b (growth rate / bias)
+        type: real
+        default: 0.5
+    multipole_ells:
+        meaning: Space-separated list of multipole ells to compute (e.g. "0 2 4")
+        type: str
+        default: "0 2 4"
+    
+    # ===== CCL COSMOLOGY SETUP =====
+    transfer_function:
+        meaning: Transfer function method ('bbks', 'boltzmann_class', 'boltzmann_camb', 'boltzmann_isitgr')
+        type: str
+        default: "boltzmann_camb"
+    matter_power_spectrum:
+        meaning: Matter power spectrum method ('linear', 'halofit', 'camb')
+        type: str
+        default: "camb"
+    halofit_version:
+        meaning: HaloFit version for CAMB ('mead2020', 'mead2020_feedback')
+        type: str
+        default: "mead2020"
+    camb_kmax:
+        meaning: Maximum k for CAMB calculations (h/Mpc)
+        type: real
+        default:
+    camb_lmax:
+        meaning: Maximum l for CAMB calculations
+        type: int
+        default:
+    
+    # ===== EMULATOR SUPPORT =====
+    use_emulator_pk:
+        meaning: Use emulator for matter power spectrum
+        type: bool
+        default: false
+    emulator_pk_type:
+        meaning: Power spectrum emulator type ('baccoemu', 'euclid_emulator2', 'cosmic_emu')
+        type: str
+        default: "baccoemu"
+    use_emulator_tf:
+        meaning: Use emulator for transfer function
+        type: bool
+        default: false
+    emulator_tf_type:
+        meaning: Transfer function emulator type ('baccoemu')
+        type: str
+        default: "baccoemu"
+    
+    # ===== ADVANCED COSMOLOGY PARAMETERS =====
+    T_ncdm:
+        meaning: Temperature of non-cold dark matter (neutrinos)
+        type: real
+        default: 0.0
+    use_sigma8_cb:
+        meaning: Use sigma8_cb (cold+baryon) instead of total matter sigma8
+        type: bool
+        default: false
+    
+    # ===== BARYONIC EFFECTS =====
+    baryonic_model:
+        meaning: Baryonic effects model ('none', 'baccoemu', 'schneider')
+        type: str
+        default: "none"
+    
+    # ===== MODIFIED GRAVITY =====
+    mg_model:
+        meaning: Modified gravity model ('none', 'mu_sigma')
+        type: str
+        default: "none"
+    
+    # ===== HALO MODEL CONFIGURATION =====
+    halo_mass_function:
+        meaning: Halo mass function ('tinker08', 'tinker10', 'watson13', 'bocquet16')
+        type: str
+        default: "tinker08"
+    halo_bias:
+        meaning: Halo bias model ('tinker10', 'sheth99', 'bhattacharya11')
+        type: str
+        default: "tinker10"
+    halo_concentration:
+        meaning: Concentration-mass relation ('duffy2008', 'bhattacharya13', 'prada12')
+        type: str
+        default: "duffy2008"
+    halo_profile:
+        meaning: Halo profile ('nfw', 'einasto', 'hernquist')
+        type: str
+        default: "nfw"
+    mass_definition:
+        meaning: Mass definition ('200m', '200c', 'vir', '500c')
+        type: str
+        default: "200m"
+    
+    # ===== ELL CONFIGURATION =====
+    ell_min_logspaced:
+        meaning: Minimum ell value for log-spaced grid
+        type: real
+        default: -1.0
+    ell_max_logspaced:
+        meaning: Maximum ell value for log-spaced grid
+        type: real
+        default: -1.0
+    n_ell_logspaced:
+        meaning: Number of ell values for log-spaced grid
+        type: int
+        default: -1
+    ell_values:
+        meaning: Custom ell values (space-separated string)
+        type: str
+        default:
+    
+    # ===== REDSHIFT AND K RANGES =====
+    z_min:
+        meaning: Minimum redshift for power spectra and background quantities
+        type: real
+        default: 0.0
+    z_max:
+        meaning: Maximum redshift for power spectra and background quantities
+        type: real
+        default: 3.0
+    n_z:
+        meaning: Number of redshift points
+        type: int
+        default: 100
+    k_min:
+        meaning: Minimum k value for power spectra (h/Mpc)
+        type: real
+        default: 1.0e-4
+    k_max:
+        meaning: Maximum k value for power spectra (h/Mpc)
+        type: real
+        default: 10.0
+    n_k:
+        meaning: Number of k points for power spectra
+        type: int
+        default: 100
+    
+    # ===== ACCURACY PARAMETERS =====
+    limber_integration:
+        meaning: Whether to use Limber approximation for angular power spectra
+        type: bool
+        default: true
+    non_limber_max_ell:
+        meaning: Maximum ell for non-Limber integration
+        type: int
+        default: 100
+    integration_method:
+        meaning: Integration method for angular_cl ('qag_quad', 'spline', 'riemann')
+        type: str
+        default: "qag_quad"
+    relative_tolerance:
+        meaning: Relative tolerance for integration
+        type: real
+        default: 1.0e-4
+    absolute_tolerance:
+        meaning: Absolute tolerance for integration
+        type: real
+        default: 0.0
+    
+    # ===== ADVANCED ANGULAR_CL OPTIONS =====
+    p_of_k_a:
+        meaning: Power spectrum to use for angular_cl ('delta_matter:delta_matter', etc.)
+        type: str
+        default: "delta_matter:delta_matter"
+    l_logstep:
+        meaning: Logarithmic step size for ell sampling in angular_cl
+        type: real
+        default: 1.15
+    l_linstep:
+        meaning: Linear step size for ell sampling in angular_cl
+        type: real
+        default: 40.0
+    dchi:
+        meaning: Radial step size for integration (Mpc, -1 for automatic)
+        type: real
+        default: -1.0
+    dlnchi:
+        meaning: Logarithmic radial step size for integration (-1 for automatic)
+        type: real
+        default: -1.0
+
+inputs:
+    cosmological_parameters:
+        omega_c:
+            meaning: Cold dark matter density fraction
+            type: real
+        omega_b:
+            meaning: Baryon density fraction
+            type: real
+        h0:
+            meaning: Hubble parameter H0 / (100 km/s/Mpc)
+            type: real
+        n_s:
+            meaning: Scalar spectral index
+            type: real
+        omega_k:
+            meaning: Curvature density fraction
+            type: real
+            default: 0.0
+        nnu:
+            meaning: Effective number of neutrinos
+            type: real
+            default: 3.044
+        w:
+            meaning: Dark energy equation of state parameter w0
+            type: real
+            default: -1.0
+        wa:
+            meaning: Dark energy equation of state parameter wa
+            type: real
+            default: 0.0
+        TCMB:
+            meaning: CMB temperature (K)
+            type: real
+        mnu:
+            meaning: Sum of neutrino masses (eV)
+            type: real
+        a_s:
+            meaning: Amplitude of primordial curvature perturbations (alternative to sigma8)
+            type: real
+            default:
+        sigma_8:
+            meaning: RMS matter fluctuation in 8 Mpc/h spheres at z=0 (alternative to A_s)
+            type: real
+            default:
+        sigma_8_cb:
+            meaning: RMS cold+baryon fluctuation in 8 Mpc/h spheres at z=0 (alternative to sigma_8)
+            type: real
+            default:
+        mass_split:
+            meaning: Neutrino mass splitting ('normal', 'inverted', 'equal', 'single')
+            type: str
+            default:
+    
+    nz_source:
+        nbin:
+            meaning: Number of source redshift bins
+            type: int
+        z:
+            meaning: Redshift values for source bins
+            type: real 1d
+        bin_1, bin_2, ...:
+            meaning: Number density n(z) for each source bin
+            type: real 1d
+    
+    nz_lens:
+        nbin:
+            meaning: Number of lens redshift bins
+            type: int
+        z:
+            meaning: Redshift values for lens bins
+            type: real 1d
+        bin_1, bin_2, ...:
+            meaning: Number density n(z) for each lens bin
+            type: real 1d
+    
+    intrinsic_alignment_parameters:
+        a1:
+            meaning: Intrinsic alignment amplitude
+            type: real
+            default: 0.0
+        z_piv:
+            meaning: Pivot redshift for intrinsic alignment
+            type: real
+            default: 0.3
+        alpha1:
+            meaning: Redshift evolution of intrinsic alignment
+            type: real
+            default: 0.0
+    
+    bin_bias:
+        b1, b2, ...:
+            meaning: Galaxy bias for each lens bin
+            type: real 1d
+
+outputs:
+    distances:
+        z:
+            meaning: Redshift values
+            type: real 1d
+        d_a:
+            meaning: Angular diameter distance
+            type: real 1d
+        d_l:
+            meaning: Luminosity distance
+            type: real 1d
+        d_m:
+            meaning: Comoving transverse distance
+            type: real 1d
+        h:
+            meaning: Hubble parameter H(z)/H0
+            type: real 1d
+        age:
+            meaning: Age of universe
+            type: real 1d
+        rs_drag:
+            meaning: Sound horizon at drag epoch
+            type: real 1d
+    
+    growth_parameters:
+        z:
+            meaning: Redshift values
+            type: real 1d
+        d_z:
+            meaning: Linear growth factor D(z)
+            type: real 1d
+        f_z:
+            meaning: Linear growth rate f(z)
+            type: real 1d
+    
+    matter_power_lin:
+        z:
+            meaning: Redshift values
+            type: real 1d
+        k_h:
+            meaning: Wavenumber k (h/Mpc)
+            type: real 1d
+        p_k:
+            meaning: Linear matter power spectrum P(k,z)
+            type: real 2d
+    
+    matter_power_nl:
+        z:
+            meaning: Redshift values
+            type: real 1d
+        k_h:
+            meaning: Wavenumber k (h/Mpc)
+            type: real 1d
+        p_k:
+            meaning: Non-linear matter power spectrum P(k,z)
+            type: real 2d
+    
+    halo_model_parameters:
+        z:
+            meaning: Redshift values
+            type: real 1d
+        m:
+            meaning: Halo mass values
+            type: real 1d
+        dndm:
+            meaning: Halo mass function dn/dM
+            type: real 2d
+        bias:
+            meaning: Halo bias b(M,z)
+            type: real 2d
+    
+    galaxy_cl:
+        ell:
+            meaning: Multipole values
+            type: real 1d
+        bin_1_1, bin_1_2, ...:
+            meaning: Galaxy clustering angular power spectra C_ell^ij
+            type: real 1d
+        nbin:
+            meaning: Number of redshift bins
+            type: int
+        nbin_a:
+            meaning: Number of bins for first tracer
+            type: int
+        nbin_b:
+            meaning: Number of bins for second tracer
+            type: int
+    
+    shear_cl:
+        ell:
+            meaning: Multipole values
+            type: real 1d
+        bin_1_1, bin_1_2, ...:
+            meaning: Weak lensing shear angular power spectra C_ell^ij
+            type: real 1d
+        nbin:
+            meaning: Number of redshift bins
+            type: int
+        nbin_a:
+            meaning: Number of bins for first tracer
+            type: int
+        nbin_b:
+            meaning: Number of bins for second tracer
+            type: int
+    
+    galaxy_shear_cl:
+        ell:
+            meaning: Multipole values
+            type: real 1d
+        bin_1_1, bin_1_2, ...:
+            meaning: Galaxy-shear cross angular power spectra C_ell^ij
+            type: real 1d
+        nbin_a:
+            meaning: Number of lens bins
+            type: int
+        nbin_b:
+            meaning: Number of source bins
+            type: int
+    
+    galaxy_xi_plus:
+        theta:
+            meaning: Angular separation (arcmin)
+            type: real 1d
+        bin_1_1, bin_1_2, ...:
+            meaning: Galaxy clustering correlation function xi_+(theta)
+            type: real 1d
+        nbin:
+            meaning: Number of redshift bins
+            type: int
+    
+    shear_xi_plus:
+        theta:
+            meaning: Angular separation (arcmin)
+            type: real 1d
+        bin_1_1, bin_1_2, ...:
+            meaning: Shear correlation function xi_+(theta)
+            type: real 1d
+        nbin:
+            meaning: Number of redshift bins
+            type: int
+    
+    shear_xi_minus:
+        theta:
+            meaning: Angular separation (arcmin)
+            type: real 1d
+        bin_1_1, bin_1_2, ...:
+            meaning: Shear correlation function xi_-(theta)
+            type: real 1d
+        nbin:
+            meaning: Number of redshift bins
+            type: int
+    
+    galaxy_shear_xi:
+        theta:
+            meaning: Angular separation (arcmin)
+            type: real 1d
+        bin_1_1, bin_1_2, ...:
+            meaning: Galaxy-shear correlation function (NG type)
+            type: real 1d
+        nbin_a:
+            meaning: Number of lens bins
+            type: int
+        nbin_b:
+            meaning: Number of source bins
+            type: int
+    
+    cmb_galaxy_cl:
+        ell:
+            meaning: Multipole values
+            type: real 1d
+        bin_1_1, bin_1_2, ...:
+            meaning: CMB lensing - galaxy clustering angular power spectra
+            type: real 1d
+        nbin_a:
+            meaning: Number of CMB bins (always 1)
+            type: int
+        nbin_b:
+            meaning: Number of galaxy bins
+            type: int
+    
+    cmb_shear_cl:
+        ell:
+            meaning: Multipole values
+            type: real 1d
+        bin_1_1, bin_1_2, ...:
+            meaning: CMB lensing - cosmic shear angular power spectra
+            type: real 1d
+        nbin_a:
+            meaning: Number of CMB bins (always 1)
+            type: int
+        nbin_b:
+            meaning: Number of shear bins
+            type: int
+    
+    correlation_3d:
+        r:
+            meaning: Distance (Mpc)
+            type: real 1d
+        xi_3d:
+            meaning: 3D correlation function
+            type: real 1d
+        z_eval:
+            meaning: Redshift of evaluation
+            type: real
+    
+    correlation_rsd:
+        r:
+            meaning: Distance (Mpc)
+            type: real 1d
+        xi_rsd_avg:
+            meaning: RSD correlation function averaged over angles
+            type: real 1d
+        z_eval:
+            meaning: Redshift of evaluation
+            type: real
+        beta:
+            meaning: RSD parameter f/b
+            type: real
+    
+    correlation_pi_sigma:
+        pi:
+            meaning: Line-of-sight distance (Mpc)
+            type: real 1d
+        sigma:
+            meaning: Transverse distance (Mpc)
+            type: real 1d
+        xi_pi_sigma:
+            meaning: RSD correlation function in (pi, sigma) space
+            type: real 2d
+        z_eval:
+            meaning: Redshift of evaluation
+            type: real
+        beta:
+            meaning: RSD parameter f/b
+            type: real
+    
+    correlation_multipole_ell_0:
+        r:
+            meaning: Distance (Mpc)
+            type: real 1d
+        xi_0:
+            meaning: Correlation function monopole
+            type: real 1d
+        ell:
+            meaning: Multipole ell (0)
+            type: int
+        z_eval:
+            meaning: Redshift of evaluation
+            type: real
+        beta:
+            meaning: RSD parameter f/b
+            type: real
+    
+    correlation_multipole_ell_2:
+        r:
+            meaning: Distance (Mpc)
+            type: real 1d
+        xi_2:
+            meaning: Correlation function quadrupole
+            type: real 1d
+        ell:
+            meaning: Multipole ell (2)
+            type: int
+        z_eval:
+            meaning: Redshift of evaluation
+            type: real
+        beta:
+            meaning: RSD parameter f/b
+            type: real
+    
+    correlation_multipole_ell_4:
+        r:
+            meaning: Distance (Mpc)
+            type: real 1d
+        xi_4:
+            meaning: Correlation function hexadecapole
+            type: real 1d
+        ell:
+            meaning: Multipole ell (4)
+            type: int
+        z_eval:
+            meaning: Redshift of evaluation
+            type: real
+        beta:
+            meaning: RSD parameter f/b
+            type: real
