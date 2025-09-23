@@ -8,7 +8,7 @@ import os
 import sys
 activate_segfault_handling()
 
-def check_likelihood(capsys, expected, *other_possible):
+def check_likelihood(capsys, expected, *other_possible, tolerance=0.1):
     import re
     
     captured = capsys.readouterr()
@@ -39,26 +39,6 @@ def check_likelihood(capsys, expected, *other_possible):
         else:
             expected_values.append(float(val))
     
-    # Calculate tolerance from differences between expected values
-    if len(expected_values) > 1:
-        diffs = [abs(expected_values[i] - expected_values[j]) 
-                for i in range(len(expected_values)) 
-                for j in range(i+1, len(expected_values))
-                if expected_values[i] != expected_values[j]]
-        if diffs:
-            # Base tolerance on smallest difference, but be more generous for clustering
-            base_tolerance = min(diffs) * 0.1
-            tolerance = max(base_tolerance, 1e-6)  # minimum 1e-6
-            # For clustering, use a percentage of the typical value magnitude
-            typical_magnitude = max(abs(v) for v in expected_values)
-            cluster_tolerance = max(base_tolerance * 50, typical_magnitude * 0.001, 0.5)  # More generous for clustering
-        else:
-            tolerance = 1e-2  # Default tolerance when all expected values are the same
-            cluster_tolerance = 0.5
-    else:
-        tolerance = 1e-2  # Default tolerance for single expected value
-        cluster_tolerance = 0.5
-    
     # Check if any likelihood value matches any expected value within tolerance
     found_match = False
     for actual_val in likelihood_values:
@@ -68,35 +48,6 @@ def check_likelihood(capsys, expected, *other_possible):
                 break
         if found_match:
             break
-    
-    if not found_match:
-        # If no direct match found, try clustering approach for gaps in expected values
-        # Sort expected values and look for gaps
-        sorted_expected = sorted(set(expected_values))
-        clusters = []
-        current_cluster = [sorted_expected[0]]
-        
-        for i in range(1, len(sorted_expected)):
-            # Use a more generous threshold for clustering
-            gap_threshold = max(abs(sorted_expected[i] * 0.01), 1.0)  # 1% of value or 1.0, whichever is larger
-            if sorted_expected[i] - sorted_expected[i-1] <= gap_threshold:
-                current_cluster.append(sorted_expected[i])
-            else:
-                clusters.append(current_cluster)
-                current_cluster = [sorted_expected[i]]
-        clusters.append(current_cluster)
-        
-        # Check if actual value falls within any cluster
-        for actual_val in likelihood_values:
-            for cluster in clusters:
-                min_cluster = min(cluster)
-                max_cluster = max(cluster)
-                # Use cluster_tolerance for matching within clusters
-                if min_cluster - cluster_tolerance <= actual_val <= max_cluster + cluster_tolerance:
-                    found_match = True
-                    break
-            if found_match:
-                break
     
     if not found_match:
         lines_str = "\n".join(lines)
@@ -119,14 +70,14 @@ def test_projection(capsys):
 
 def test_bao(capsys):
     run_cosmosis("examples/bao.ini")
-    check_likelihood(capsys, -157.0, -157.1, -156.9)
+    check_likelihood(capsys, -157.0, -157.1, -156.9, tolerance=0.1)
     check_no_camb_warnings(capsys)
 
 def test_planck(capsys):
     if not os.path.exists("likelihood/planck2018/baseline/plc_3.0/hi_l/plik_lite/plik_lite_v22_TT.clik"):
         pytest.skip("Planck data not found")
     run_cosmosis("examples/planck.ini")
-    check_likelihood(capsys, -1441.14, -1441.30, -1441.46, -502.5)
+    check_likelihood(capsys, -1441.14, -1441.30, -1441.46, -502.5, tolerance=1.0)
     check_no_camb_warnings(capsys)
     
 def test_planck_class(capsys):
@@ -159,10 +110,10 @@ def test_planck_lite(choices, expected, capsys):
         ("planck", "year"): year,
         ("planck", "use_low_ell_bins"): use_low_ell_bins,
     }
-    if isinstance(expected, str):
+    if isinstance(expected, (int, float)):
         expected = [expected]
     run_cosmosis("examples/planck_lite.ini", override=override)
-    check_likelihood(capsys, *expected)
+    check_likelihood(capsys, *expected, tolerance=0.01)
 
 
 
@@ -182,12 +133,12 @@ def test_pantheon_emcee(capsys):
 
 def test_pantheon_plus_shoes(capsys):
     run_cosmosis("examples/pantheon_plus_shoes.ini", override={("runtime","sampler"):"test"})
-    check_likelihood(capsys, -738.23)
+    check_likelihood(capsys, -738.23, tolerance=0.1)
     check_no_camb_warnings(capsys)
 
 def test_des_y1(capsys):
     run_cosmosis("examples/des-y1.ini")
-    check_likelihood(capsys, 5237.3)
+    check_likelihood(capsys, 5237.3, tolerance=0.1)
     check_no_camb_warnings(capsys)
 
 def test_des_y1_cl_to_corr(capsys):
@@ -195,7 +146,7 @@ def test_des_y1_cl_to_corr(capsys):
         ("2pt_shear","file"): "./shear/cl_to_corr/cl_to_corr.py",
         ("2pt_shear","corr_type"): "xi"
         })
-    check_likelihood(capsys, 5237.3)
+    check_likelihood(capsys, 5237.3, tolerance=0.1)
     check_no_camb_warnings(capsys)
 
 def test_des_y3(capsys):
@@ -203,12 +154,12 @@ def test_des_y3(capsys):
         ("pk_to_cl_gg","save_kernels"):"T",
         ("pk_to_cl","save_kernels"):"T"
         })
-    check_likelihood(capsys, 6043.23, 6043.34, 6043.37, 6043.33)
+    check_likelihood(capsys, 6043.23, 6043.34, 6043.37, 6043.33, tolerance=0.1)
     check_no_camb_warnings(capsys)
 
 def test_des_y3_plus_planck(capsys):
     run_cosmosis("examples/des-y3-planck.ini")
-    check_likelihood(capsys, 5679.6, 5679.7)
+    check_likelihood(capsys, 5679.6, 5679.7, tolerance=0.1)
     check_no_camb_warnings(capsys)
 
 
@@ -218,12 +169,12 @@ def test_des_y3_class(capsys):
 
 def test_des_y3_shear(capsys):
     run_cosmosis("examples/des-y3-shear.ini")
-    check_likelihood(capsys, 2957.03, 2957.12, 2957.11, 2957.13)
+    check_likelihood(capsys, 2957.03, 2957.12, 2957.11, 2957.13, tolerance=0.1)
     check_no_camb_warnings(capsys)
 
 def test_des_y3_mira_titan(capsys):
     run_cosmosis("examples/des-y3-mira-titan.ini")
-    check_likelihood(capsys, 6048.0, 6048.1, 6048.2)
+    check_likelihood(capsys, 6048.0, 6048.1, 6048.2, tolerance=0.1)
     check_no_camb_warnings(capsys)
 
 def test_des_y3_mead(capsys):
@@ -231,7 +182,7 @@ def test_des_y3_mead(capsys):
                  override={("camb", "halofit_version"): "mead2020_feedback"},
                  variables={("halo_model_parameters", "logT_AGN"): "8.2"}
                  )
-    check_likelihood(capsys, 6049.94, 6049.00, 6049.03, 6049.04)
+    check_likelihood(capsys, 6049.94, 6049.00, 6049.03, 6049.04, tolerance=1.0)
     check_no_camb_warnings(capsys)
 
 def test_act_dr6_lensing(capsys):
@@ -240,7 +191,7 @@ def test_act_dr6_lensing(capsys):
     except ImportError:
         pytest.skip("ACT likelihood code not found")
     run_cosmosis("examples/act-dr6-lens.ini")
-    check_likelihood(capsys, -9.89, -9.86, -9.90)
+    check_likelihood(capsys, -9.89, -9.86, -9.90, tolerance=0.1)
     check_no_camb_warnings(capsys)
 
 def test_des_y3_5x2pt(capsys):
@@ -269,13 +220,13 @@ def test_theta_warning():
 
 def test_des_kids(capsys):
     run_cosmosis("examples/des-y3_and_kids-1000.ini")
-    check_likelihood(capsys, -199.40, -199.41)
+    check_likelihood(capsys, -199.40, -199.41, tolerance=0.01)
     check_no_camb_warnings(capsys)
 
 
 def test_kids(capsys):
     run_cosmosis("examples/kids-1000.ini")
-    check_likelihood(capsys, -47.6)
+    check_likelihood(capsys, -47.6, tolerance=0.1)
     check_no_camb_warnings(capsys)
 
 def test_bacco():
@@ -310,7 +261,7 @@ def test_hsc_harmonic(capsys):
     except ImportError:
         pytest.skip("Sacc not installed")
     run_cosmosis("examples/hsc-y3-shear.ini")
-    check_likelihood(capsys, -109.0)
+    check_likelihood(capsys, -109.0, tolerance=0.1)
 
 def test_hsc_real(capsys):
     try:
@@ -318,7 +269,7 @@ def test_hsc_real(capsys):
     except ImportError:
         pytest.skip("Sacc not installed")
     run_cosmosis("examples/hsc-y3-shear-real.ini")
-    check_likelihood(capsys, -122.5)
+    check_likelihood(capsys, -122.5, tolerance=0.1)
 
 def test_npipe(capsys):
     try:
@@ -326,16 +277,16 @@ def test_npipe(capsys):
     except ImportError:
         pytest.skip("Planck PR4 lensing likelihood not found")
     run_cosmosis("examples/npipe.ini")
-    check_likelihood(capsys, -4.22, -4.23)
+    check_likelihood(capsys, -4.22, -4.23, tolerance=0.01)
 
 
 def test_desi_dr1(capsys):
     run_cosmosis("examples/desi_dr1.ini")
-    check_likelihood(capsys, -11.25)
+    check_likelihood(capsys, -11.25, tolerance=0.1)
 
 def test_desi_dr2(capsys):
     run_cosmosis("examples/desi_dr2.ini")
-    check_likelihood(capsys, -93.02)
+    check_likelihood(capsys, -93.02, tolerance=0.1)
 
 
 def test_candl(capsys):
@@ -344,7 +295,7 @@ def test_candl(capsys):
     except ImportError:
         pytest.skip("Candl not installed")
     run_cosmosis("examples/candl_test.ini")
-    check_likelihood(capsys, -5.83)
+    check_likelihood(capsys, -5.83, tolerance=0.1)
 
 
 def test_hillipop_lollipop(capsys):
@@ -355,8 +306,8 @@ def test_hillipop_lollipop(capsys):
     except ImportError:
         pytest.skip("Planck 2020 lollipop likelihood not found")
     run_cosmosis("examples/planck-hillipop-lollipop.ini")
-    check_likelihood(capsys, -6476.91, -6476.90)
+    check_likelihood(capsys, -6476.91, -6476.90, tolerance=0.01)
 
 def test_decam(capsys):
     run_cosmosis("examples/decam-13k.ini", override={("runtime","sampler"):"test"})
-    check_likelihood(capsys, 9442.38)
+    check_likelihood(capsys, 9442.38, tolerance=0.1)
