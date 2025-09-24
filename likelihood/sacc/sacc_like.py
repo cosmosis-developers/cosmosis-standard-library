@@ -88,6 +88,8 @@ class SaccClLikelihood(GaussianLikelihood):
         # Check for scale cuts. In general, this is a minimum and maximum angle for
         # each spectrum, for each redshift bin combination. Which is clearly a massive pain...
         # but what can you do?
+        import warnings
+        warnings.filterwarnings("ignore", "empty index selected", category=UserWarning)
 
         for name in self.used_names:
             for t1, t2 in s.get_tracer_combinations(name):
@@ -95,6 +97,7 @@ class SaccClLikelihood(GaussianLikelihood):
                 if self.options.has_value(option_name):
                     r = self.options.get_double_array_1d(option_name)
                     # TODO: Update for theta limits on xi(theta)
+
                     s.remove_selection(name, (t1, t2), ell__lt=r[0])
                     s.remove_selection(name, (t1, t2), ell__gt=r[1])
 
@@ -350,6 +353,7 @@ class SaccClLikelihood(GaussianLikelihood):
             # object (window objects contain weights for a set of ell values,
             # as a matrix), or that none have windows.
             window = None
+
             for d in s.get_data_points(data_type, (b1, b2)):
                 w = d.get_tag('window')
                 if (window is not None) and (w is not window):

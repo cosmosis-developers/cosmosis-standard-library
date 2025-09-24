@@ -135,7 +135,7 @@ jobs:
         shell: bash -l {0}
         run: |
           export COBAYA_PACKAGES_PATH=$PWD/cobaya-data
-          pip install "act_dr6_lenslike>=1.0.2" "git+https://github.com/carronj/planck_PR4_lensing"
+          pip install "act_dr6_lenslike>=1.0.2" "git+https://github.com/carronj/planck_PR4_lensing" cosmopower
           pip install "candl-like==2.*" "git+https://github.com/Lbalkenhol/candl_data.git"
 
       - name: Run Tests

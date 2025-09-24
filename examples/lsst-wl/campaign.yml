@@ -1,0 +1,830 @@
+# This campaign file recreates all of the chains used in the paper
+# Impact and interplay of $\Lambda$CDM analysis choices for LSST cosmic shear
+# by Robertson et al. Note that this paper is entirely forecast data;
+# if this is the future and LSST data is actually available then
+# you probably don't want to be running it.
+
+output_dir: ./output/lsst-wl
+
+runs:
+
+  - name: Y1_uncorrelated_Dz_priors
+    base: examples/lsst-wl/params.ini
+    params:
+      - DEFAULT.COV_Z_FILE = 
+        examples/lsst-wl/redshift-covariance/uncorrelated_Delta_z_covariance_Y1.txt
+
+
+  - name: Y1_no-z-outliers
+    base: ./examples/lsst-wl/params.ini
+    params:
+      - DEFAULT.2PT_FILE = examples/lsst-wl/data/mock-Y1_no_z_outliers.fits
+      - DEFAULT.COV_Z_FILE = 
+        examples/lsst-wl/redshift-covariance/Delta_z_covariance_Y1_no_z_outliers.txt
+
+
+  - name: Y1_unknown-outliers
+    base: ./examples/lsst-wl/params.ini
+    params:
+      - DEFAULT.2PT_FILE = examples/lsst-wl/data/mock-Y1_with_unknown_outliers.fits
+      - DEFAULT.COV_Z_FILE = 
+        examples/lsst-wl/redshift-covariance/Delta_z_covariance_Y1_no_z_outliers.txt
+
+
+  - name: Y10
+    base: ./examples/lsst-wl/params.ini
+    params:
+      - DEFAULT.2PT_FILE = examples/lsst-wl/data/mock-Y10_variant.fits
+      - DEFAULT.COV_Z_FILE = examples/lsst-wl/redshift-covariance/Delta_z_covariance_Y10.txt
+
+
+  - name: Y10-optimistic
+    base: ./examples/lsst-wl/params.ini
+    components:
+    - y10_scale_cuts
+    params:
+      - DEFAULT.2PT_FILE = examples/lsst-wl/data/mock-Y10_variant.fits
+      - DEFAULT.COV_Z_FILE = 
+        examples/lsst-wl/redshift-covariance/Delta_z_covariance_Y10-optimistic.txt
+
+
+  - name: Y10-optimistic-xinform_prior
+    base: ./examples/lsst-wl/params.ini
+    components:
+    - y10_scale_cuts
+    - TAGN_gaussian
+    params:
+      - DEFAULT.2PT_FILE = examples/lsst-wl/data/mock-Y10_variant.fits
+      - DEFAULT.COV_Z_FILE = 
+        examples/lsst-wl/redshift-covariance/Delta_z_covariance_Y10-optimistic.txt
+
+
+  - name: NoCosmoPower
+    base: ./examples/lsst-wl/params.ini
+    pipeline:
+      - replace cosmopower camb
+      - delete astropy
+    params:
+      - camb.file = boltzmann/camb/camb_interface.py
+      - camb.mode = power
+      - camb.lmax = 2500
+      - camb.feedback=0
+      - camb.AccuracyBoost=1.1
+      - camb.do_tensors = T
+      - camb.do_lensing = T
+      - camb.NonLinear = both
+      - camb.halofit_version = mead2020_feedback
+      - camb.zmin_background = 0.
+      - camb.zmax_background = 4.
+      - camb.nz_background = 401
+      - camb.kmin=1e-4
+      - camb.kmax = 50.0
+      - camb.kmax_extrapolate = 500.0
+      - camb.nk=700
+      - camb.nz = 100
+
+
+  - name: Y1_Stage3_cosmo_priors
+    base: ./examples/lsst-wl/params.ini
+    priors:
+      - cosmological_parameters.h0 = uniform 0.64 0.82
+      - cosmological_parameters.ombh2 = uniform 0.019 0.026
+      - cosmological_parameters.n_s = uniform 0.84 1.1
+    values:
+      - cosmological_parameters.h0 = 0.64 0.7 0.82
+      - cosmological_parameters.ombh2 = 0.019 0.02 0.026
+      - cosmological_parameters.n_s = 0.84 0.9 1.1
+
+
+  - name: Y1_As_prior
+    parent: NoCosmoPower
+    priors:
+      - delete cosmological_parameters.sigma_8
+      - cosmological_parameters.A_s = uniform 0.5e-09 5.e-09
+    values:
+      - delete cosmological_parameters.sigma_8
+      - cosmological_parameters.A_s = 0.5e-09 2.19e-9 5.e-09
+
+
+  - name: Y1_Neutrinos
+    parent: NoCosmoPower
+    priors:
+      - cosmological_parameters.mnu = uniform 0.05 0.6
+    values:
+      - cosmological_parameters.mnu = 0.05 0.07 0.6
+
+
+  - name: Y1_DarkEnergy
+    parent: NoCosmoPower
+    priors:
+      - cosmological_parameters.w = uniform -2.0 -0.33
+    values:
+      - cosmological_parameters.w = -2.0 -1.0 -0.33
+
+
+  - name: Y1_fiducial_Planck18_BAO_Riess18_Pantheon_w0wa
+    parent: NoCosmoPower
+    params:
+      - camb.use_ppf_w = T
+    pipeline:
+      - after sacc_like stage3_priors
+    priors:
+      - delete cosmological_parameters.ombh2
+      - cosmological_parameters.omega_m = uniform 0.28 0.32
+      - cosmological_parameters.h0  = uniform 0.69 0.74
+      - cosmological_parameters.omega_b  = uniform 0.04 0.0474
+      - cosmological_parameters.n_s  = uniform 0.95 0.99
+      - cosmological_parameters.sigma_8 = uniform 0.76 0.84
+      - cosmological_parameters.w = uniform -1.3 -0.6
+      - cosmological_parameters.wa = uniform -1.0 0.8
+    values:
+      - delete cosmological_parameters.ombh2
+      - cosmological_parameters.omega_m = 0.28 0.3 0.32
+      - cosmological_parameters.h0 = 0.69   0.715  0.74
+      - cosmological_parameters.omega_b = 0.04 0.0437 0.0474
+      - cosmological_parameters.n_s = 0.95 0.97 0.99
+      - cosmological_parameters.sigma_8 = 0.76 0.8 0.84
+      - cosmological_parameters.w = -1.3 -1.0 -0.6
+      - cosmological_parameters.wa = -1.0 0.0 0.8
+
+
+  - name: Y1_all_scales_Planck18_BAO_Riess18_Pantheon_w0wa
+    parent: Y1_fiducial_Planck18_BAO_Riess18_Pantheon_w0wa
+    components:
+    - no_scale_cuts
+
+
+  - name: Y1_kmax1.0_scalecuts_Planck18_BAO_Riess18_Pantheon_w0wa
+    parent: Y1_fiducial_Planck18_BAO_Riess18_Pantheon_w0wa
+    components:
+    - kmax1.0
+
+
+
+  - name: Y1_xinform_prior_kmax1.0_scalecuts_Planck18_BAO_Riess18_Pantheon_w0wa
+    parent: Y1_kmax1.0_scalecuts_Planck18_BAO_Riess18_Pantheon_w0wa
+    components:
+    - TAGN_gaussian
+
+
+  - name: Multinest
+    base: ./examples/lsst-wl/params.ini
+    params:
+      - sampler = multinest
+      - runtime.resume = T
+      - runtime.sampler = multinest
+      - multinest.max_iterations=50000
+      - multinest.live_points=675
+      - multinest.efficiency=1
+      - multinest.tolerance=0.1
+      - multinest.constant_efficiency=F
+
+
+  - name: Polychord
+    base: ./examples/lsst-wl/params.ini
+    params:
+      - sampler = Polychord
+      - polychord.base_dir = chain_checkpoints
+      - polychord.polychord_outfile_root = poly_%(RUN_NAME)s
+      - runtime.resume = T
+      - runtime.sampler = polychord
+      - polychord.base_dir = output/lsst_wl_polychord
+      - polychord.polychord_outfile_root = lsst_wl_polychord
+      - polychord.fast_fraction = 0.1
+      - polychord.live_points = 250
+      - polychord.num_repeats = 30
+      - polychord.tolerance = 0.1
+
+
+  - name: Y1_SPk
+    base: ./examples/lsst-wl/params.ini
+    pipeline:
+      - replace cosmopower camb spk
+      - delete astropy
+    params:
+      - camb.file = boltzmann/camb/camb_interface.py
+      - camb.mode = power
+      - camb.lmax = 2500
+      - camb.feedback=0
+      - camb.AccuracyBoost=1.1
+      - camb.do_tensors = T
+      - camb.do_lensing = T
+      - camb.NonLinear = both
+      - camb.halofit_version = mead2020
+      - camb.zmax = 3.0
+      - camb.zmin_background = 0.
+      - camb.zmax_background = 4.
+      - camb.nz_background = 401
+      - camb.kmin=1e-4
+      - camb.kmax=11.99
+      - camb.nk=700
+      - camb.nz = 100
+      - spk.file = structure/spk/spk_interface.py
+      - spk.SO=500
+      - spk.verbose=F
+      - spk.astropy_model=FlatLambdaCDM
+    values:
+      - delete halo_model_parameters
+      - spk.epsilon = 0.10 0.42 0.95
+      - spk.alpha = -0.60 -0.38 0.10
+      - spk.beta = -0.20 0.41 0.85
+      - spk.gamma = -0.10 0.17 0.80
+      - spk.m_pivot = 1.0e13
+    priors:
+      - delete halo_model_parameters
+      - spk.epsilon = uniform 0.10 0.95
+      - spk.alpha = uniform -0.60 0.10
+      - spk.beta = uniform -0.20 0.85
+      - spk.gamma = uniform -0.10 0.80
+
+
+  - name: Y1_baryon_variant_mock_strong_SPk
+    parent: Y1_SPk
+    params:
+      - DEFAULT.2PT_FILE = examples/lsst-wl/data/mock-Y1_baryon_variant_strong.fits
+
+
+  - name: Y1_baryon_variant_mock_weak_SPk
+    parent: Y1_SPk
+    params:
+      - DEFAULT.2PT_FILE = examples/lsst-wl/data/mock-Y1_baryon_variant_weak.fits
+
+
+  - name: Y1_SPk_allscales
+    parent: Y1_SPk
+    components:
+    - no_scale_cuts
+
+
+  - name: Y1_baryon_variant_mock_strong_SPk_allscales
+    parent: Y1_baryon_variant_mock_strong_SPk
+    components:
+    - no_scale_cuts
+
+
+  - name: Y1_baryons_uninform_prior
+    base: ./examples/lsst-wl/params.ini
+    components:
+    - TAGN_6.5_9.36
+
+
+  - name: Y1_baryons_xinform_prior
+    base: ./examples/lsst-wl/params.ini
+    components:
+    - TAGN_gaussian
+
+
+  - name: Y1_no_baryons
+    base: ./examples/lsst-wl/params.ini
+    components:
+    - TAGN_6.82
+
+
+  - name: Y1_baryon_variant_mock_strong
+    base: ./examples/lsst-wl/params.ini
+    params:
+      - DEFAULT.2PT_FILE = examples/lsst-wl/data/mock-Y1_baryon_variant_strong.fits
+
+
+  - name: Y1_baryon_variant_mock_weak
+    base: ./examples/lsst-wl/params.ini
+    params:
+      - DEFAULT.2PT_FILE = examples/lsst-wl/data/mock-Y1_baryon_variant_weak.fits
+
+
+  - name: Y1_baryon_variant_mock_strong_uninform_prior
+    base: ./examples/lsst-wl/params.ini
+    params:
+      - DEFAULT.2PT_FILE = examples/lsst-wl/data/mock-Y1_baryon_variant_strong.fits
+    components:
+    - TAGN_6.5_9.36
+
+
+  - name: kmax0.1_scalecuts
+    base: ./examples/lsst-wl/params.ini
+    components:
+    - kmax0.1
+
+
+  - name: kmax0.2_scalecuts
+    base: ./examples/lsst-wl/params.ini
+    components:
+    - kmax0.2
+
+
+
+  - name: kmax0.3_scalecuts
+    base: ./examples/lsst-wl/params.ini
+    components:
+    - kmax0.3
+
+
+  - name: kmax0.4_scalecuts
+    base: ./examples/lsst-wl/params.ini
+    components:
+    - kmax0.4
+
+
+  - name: kmax0.5_scalecuts
+    base: ./examples/lsst-wl/params.ini
+    components:
+    - kmax0.5
+
+
+  - name: kmax1.0_scalecuts
+    base: ./examples/lsst-wl/params.ini
+    components:
+    - kmax1.0
+
+
+  - name: Y1_no_baryons_kmax0.1_scalecuts
+    parent: kmax0.1_scalecuts
+    components:
+    - TAGN_6.82
+
+
+  - name: Y1_no_baryons_kmax0.2_scalecuts
+    parent: kmax0.2_scalecuts
+    components:
+    - TAGN_6.82
+
+
+  - name: Y1_no_baryons_kmax0.3_scalecuts
+    parent: kmax0.3_scalecuts
+    components:
+    - TAGN_6.82
+
+
+  - name: Y1_no_baryons_kmax0.4_scalecuts
+    parent: kmax0.4_scalecuts
+    components:
+    - TAGN_6.82
+
+
+  - name: Y1_no_baryons_kmax0.5_scalecuts
+    parent: kmax0.5_scalecuts
+    components:
+    - TAGN_6.82
+
+
+  - name: Y1_no_baryons_kmax1.0_scalecuts
+    parent: kmax1.0_scalecuts
+    components:
+    - TAGN_6.82
+
+
+  - name: Y1_uninform_prior_kmax0.1_scalecuts
+    parent: kmax0.1_scalecuts
+    components:
+    - TAGN_6.5_9.36
+
+
+  - name: Y1_uninform_prior_kmax0.2_scalecuts
+    parent: kmax0.2_scalecuts
+    components:
+    - TAGN_6.5_9.36
+
+
+  - name: Y1_uninform_prior_kmax0.3_scalecuts
+    parent: kmax0.3_scalecuts
+    components:
+    - TAGN_6.5_9.36
+
+
+  - name: Y1_uninform_prior_kmax0.4_scalecuts
+    parent: kmax0.4_scalecuts
+    components:
+    - TAGN_6.5_9.36
+
+
+  - name: Y1_uninform_prior_kmax0.5_scalecuts
+    parent: kmax0.5_scalecuts
+    components:
+    - TAGN_6.5_9.36
+
+
+  - name: Y1_uninform_prior_kmax1.0_scalecuts
+    parent: kmax1.0_scalecuts
+    components:
+    - TAGN_6.5_9.36
+
+
+  - name: Y1_xinform_prior_kmax0.1_scalecuts
+    parent: kmax0.1_scalecuts
+    components:
+    - TAGN_gaussian
+
+
+  - name: Y1_xinform_prior_kmax0.2_scalecuts
+    parent: kmax0.2_scalecuts
+    components:
+    - TAGN_gaussian
+
+
+  - name: Y1_xinform_prior_kmax0.3_scalecuts
+    parent: kmax0.3_scalecuts
+    components:
+    - TAGN_gaussian
+
+
+  - name: Y1_xinform_prior_kmax0.4_scalecuts
+    parent: kmax0.4_scalecuts
+    components:
+    - TAGN_gaussian
+
+
+  - name: Y1_xinform_prior_kmax0.5_scalecuts
+    parent: kmax0.5_scalecuts
+    components:
+    - TAGN_gaussian
+
+
+  - name: Y1_xinform_prior_kmax1.0_scalecuts
+    parent: kmax1.0_scalecuts
+    components:
+    - TAGN_gaussian
+
+
+  - name: Y1_siminform_prior_kmax0.1_scalecuts
+    parent: kmax0.1_scalecuts
+    components:
+    - TAGN_sim_informed
+
+
+  - name: Y1_siminform_prior_kmax0.2_scalecuts
+    parent: kmax0.2_scalecuts
+    components:
+    - TAGN_sim_informed
+
+
+
+  - name: Y1_siminform_prior_kmax0.3_scalecuts
+    parent: kmax0.3_scalecuts
+    components:
+    - TAGN_sim_informed
+
+
+  - name: Y1_siminform_prior_kmax0.4_scalecuts
+    parent: kmax0.4_scalecuts
+    components:
+    - TAGN_sim_informed
+
+
+  - name: Y1_siminform_prior_kmax0.5_scalecuts
+    parent: kmax0.5_scalecuts
+    components:
+    - TAGN_sim_informed
+
+
+  - name: Y1_siminform_prior_kmax1.0_scalecuts
+    parent: kmax1.0_scalecuts
+    components:
+    - TAGN_sim_informed
+
+
+  - name: Y1_Baseline_prior
+    base: ./examples/lsst-wl/params.ini
+    params:
+      - runtime.sampler = apriori
+      - apriori.nsample = 50000
+
+
+  - name: Y1_IA_TATT
+    base: ./examples/lsst-wl/params.ini
+    values:
+      - intrinsic_alignment_parameters.A1 = -5. 0. 5.
+      - intrinsic_alignment_parameters.alpha1 = -5. 0. 5.
+      - intrinsic_alignment_parameters.A2 = -5. 0. 5.
+      - intrinsic_alignment_parameters.alpha2 = -8. 0. 8.
+      - intrinsic_alignment_parameters.bias_ta = -5. 0. 5.
+    priors:
+      - intrinsic_alignment_parameters.A1 = uniform -5. 5.
+      - intrinsic_alignment_parameters.alpha1 = uniform -5. 5.
+      - intrinsic_alignment_parameters.A2 = uniform -5. 5.
+      - intrinsic_alignment_parameters.alpha2 = uniform -8. 8.
+      - intrinsic_alignment_parameters.bias_ta = uniform -5. 5.
+
+
+  - name: Y1_best_case_scenario
+    base: ./examples/lsst-wl/params.ini
+    components:
+    - no_scale_cuts
+    - TAGN_fixed
+    params:
+      - DEFAULT.COV_Z_FILE = 
+        examples/lsst-wl/redshift-covariance/Delta_z_covariance_Y1_with_Y10_SRD.txt
+
+
+  - name: Y1_best_with_scale_cuts
+    parent: Y1_best_case_scenario
+    components:
+    - kmax0.3
+
+
+  - name: Y1_best_with_baryon_marginalisation
+    parent: Y1_best_case_scenario
+    components:
+    - TAGN_sim_informed
+
+
+  - name: Y1_best_with_SOM_Dz_priors
+    parent: Y1_best_case_scenario
+    params:
+      - DEFAULT.COV_Z_FILE = examples/lsst-wl/redshift-covariance/Delta_z_covariance_Y1.txt
+
+
+  - name: Y1_best_with_xcorr_Dz_priors
+    parent: Y1_best_case_scenario
+    params:
+      - DEFAULT.COV_Z_FILE = examples/lsst-wl/redshift-covariance/Delta_z_covariance_Y10.txt
+
+
+  - name: Y10_best_case_scenario
+    base: ./examples/lsst-wl/params.ini
+    components:
+    - no_scale_cuts
+    - TAGN_fixed
+    params:
+      - DEFAULT.2PT_FILE = examples/lsst-wl/data/mock-Y10_variant.fits
+      - DEFAULT.COV_Z_FILE = 
+        examples/lsst-wl/redshift-covariance/Delta_z_covariance_Y10_with_Y10_SRD.txt
+
+
+  - name: Y10_best_with_scale_cuts
+    parent: Y10_best_case_scenario
+    components:
+    - y10_scale_cuts
+
+
+  - name: Y10_best_with_baryon_marginalisation
+    parent: Y10_best_case_scenario
+    components:
+    - TAGN_sim_informed
+
+  - name: Y10_best_with_SOM_Dz_priors
+    parent: Y10_best_case_scenario
+    params:
+      - DEFAULT.COV_Z_FILE = examples/lsst-wl/redshift-covariance/Delta_z_covariance_Y1.txt
+
+  - name: Y10_best_with_xcorr_Dz_priors
+    parent: Y10_best_case_scenario
+    params:
+      - DEFAULT.COV_Z_FILE = examples/lsst-wl/redshift-covariance/Delta_z_covariance_Y10.txt
+
+
+components:
+  y10_scale_cuts:
+    params:
+    # JAZ - not updated following little h
+    - sacc_like.angle_range_galaxy_shear_cl_ee_source_0_source_0 = 20 289.53314329989263
+    - sacc_like.angle_range_galaxy_shear_cl_ee_source_0_source_1 = 20 289.53314329989263
+    - sacc_like.angle_range_galaxy_shear_cl_ee_source_0_source_2 = 20 289.53314329989263
+    - sacc_like.angle_range_galaxy_shear_cl_ee_source_0_source_3 = 20 289.53314329989263
+    - sacc_like.angle_range_galaxy_shear_cl_ee_source_0_source_4 = 20 289.53314329989263
+    - sacc_like.angle_range_galaxy_shear_cl_ee_source_1_source_0 = 20 289.53314329989263
+    - sacc_like.angle_range_galaxy_shear_cl_ee_source_1_source_1 = 20 411.5445961975991
+    - sacc_like.angle_range_galaxy_shear_cl_ee_source_1_source_2 = 20 411.5445961975991
+    - sacc_like.angle_range_galaxy_shear_cl_ee_source_1_source_3 = 20 411.5445961975991
+    - sacc_like.angle_range_galaxy_shear_cl_ee_source_1_source_4 = 20 411.5445961975991
+    - sacc_like.angle_range_galaxy_shear_cl_ee_source_2_source_0 = 20 289.53314329989263
+    - sacc_like.angle_range_galaxy_shear_cl_ee_source_2_source_1 = 20 411.5445961975991
+    - sacc_like.angle_range_galaxy_shear_cl_ee_source_2_source_2 = 20 477.46741704766833
+    - sacc_like.angle_range_galaxy_shear_cl_ee_source_2_source_3 = 20 477.46741704766833
+    - sacc_like.angle_range_galaxy_shear_cl_ee_source_2_source_4 = 20 477.46741704766833
+    - sacc_like.angle_range_galaxy_shear_cl_ee_source_3_source_0 = 20 289.53314329989263
+    - sacc_like.angle_range_galaxy_shear_cl_ee_source_3_source_1 = 20 411.5445961975991
+    - sacc_like.angle_range_galaxy_shear_cl_ee_source_3_source_2 = 20 477.46741704766833
+    - sacc_like.angle_range_galaxy_shear_cl_ee_source_3_source_3 = 20 515.6341149706305
+    - sacc_like.angle_range_galaxy_shear_cl_ee_source_3_source_4 = 20 515.6341149706305
+    - sacc_like.angle_range_galaxy_shear_cl_ee_source_4_source_0 = 20 289.53314329989263
+    - sacc_like.angle_range_galaxy_shear_cl_ee_source_4_source_1 = 20 411.5445961975991
+    - sacc_like.angle_range_galaxy_shear_cl_ee_source_4_source_2 = 20 477.46741704766833
+    - sacc_like.angle_range_galaxy_shear_cl_ee_source_4_source_3 = 20 515.6341149706305
+    - sacc_like.angle_range_galaxy_shear_cl_ee_source_4_source_4 = 20 518.9498162790724
+
+  no_scale_cuts:
+    params:
+    - delete sacc_like.angle_range_galaxy_shear_cl_ee_source_0_source_0
+    - delete sacc_like.angle_range_galaxy_shear_cl_ee_source_0_source_1
+    - delete sacc_like.angle_range_galaxy_shear_cl_ee_source_0_source_2
+    - delete sacc_like.angle_range_galaxy_shear_cl_ee_source_0_source_3
+    - delete sacc_like.angle_range_galaxy_shear_cl_ee_source_0_source_4
+    - delete sacc_like.angle_range_galaxy_shear_cl_ee_source_1_source_0
+    - delete sacc_like.angle_range_galaxy_shear_cl_ee_source_1_source_1
+    - delete sacc_like.angle_range_galaxy_shear_cl_ee_source_1_source_2
+    - delete sacc_like.angle_range_galaxy_shear_cl_ee_source_1_source_3
+    - delete sacc_like.angle_range_galaxy_shear_cl_ee_source_1_source_4
+    - delete sacc_like.angle_range_galaxy_shear_cl_ee_source_2_source_0
+    - delete sacc_like.angle_range_galaxy_shear_cl_ee_source_2_source_1
+    - delete sacc_like.angle_range_galaxy_shear_cl_ee_source_2_source_2
+    - delete sacc_like.angle_range_galaxy_shear_cl_ee_source_2_source_3
+    - delete sacc_like.angle_range_galaxy_shear_cl_ee_source_2_source_4
+    - delete sacc_like.angle_range_galaxy_shear_cl_ee_source_3_source_0
+    - delete sacc_like.angle_range_galaxy_shear_cl_ee_source_3_source_1
+    - delete sacc_like.angle_range_galaxy_shear_cl_ee_source_3_source_2
+    - delete sacc_like.angle_range_galaxy_shear_cl_ee_source_3_source_3
+    - delete sacc_like.angle_range_galaxy_shear_cl_ee_source_3_source_4
+    - delete sacc_like.angle_range_galaxy_shear_cl_ee_source_4_source_0
+    - delete sacc_like.angle_range_galaxy_shear_cl_ee_source_4_source_1
+    - delete sacc_like.angle_range_galaxy_shear_cl_ee_source_4_source_2
+    - delete sacc_like.angle_range_galaxy_shear_cl_ee_source_4_source_3
+    - delete sacc_like.angle_range_galaxy_shear_cl_ee_source_4_source_4
+
+  TAGN_6.82:
+    values:
+    - halo_model_parameters.logT_AGN = 6.82
+    priors:
+    - delete halo_model_parameters.logT_AGN  
+
+  TAGN_6.5_9.36:
+    values:
+      - halo_model_parameters.logT_AGN = 6.5 7.5 9.36
+    priors:
+      - halo_model_parameters.logT_AGN = uniform 6.5 9.36
+
+  TAGN_gaussian:
+    values:
+      - halo_model_parameters.logT_AGN = 6.5 7. 9.36
+    priors:
+      - halo_model_parameters.logT_AGN = gaussian 7.75 0.007
+
+  TAGN_sim_informed:
+    values:
+    - halo_model_parameters.logT_AGN = 7.5 7.75 8.25
+    priors:
+    - halo_model_parameters.logT_AGN = uniform 7.5 8.25
+
+
+  TAGN_fixed:
+    values:
+    - halo_model_parameters.logT_AGN = 7.75
+    priors:
+    - delete halo_model_parameters.logT_AGN
+
+  kmax0.1:
+    params:
+    - sacc_like.angle_range_galaxy_shear_cl_ee_source_0_source_0 = 20 82.67317196066635
+    - sacc_like.angle_range_galaxy_shear_cl_ee_source_0_source_1 = 20 82.67317196066635
+    - sacc_like.angle_range_galaxy_shear_cl_ee_source_0_source_2 = 20 82.67317196066635
+    - sacc_like.angle_range_galaxy_shear_cl_ee_source_0_source_3 = 20 82.67317196066635
+    - sacc_like.angle_range_galaxy_shear_cl_ee_source_0_source_4 = 20 82.67317196066635
+    - sacc_like.angle_range_galaxy_shear_cl_ee_source_1_source_0 = 20 82.67317196066635
+    - sacc_like.angle_range_galaxy_shear_cl_ee_source_1_source_1 = 20 120.00294047556231
+    - sacc_like.angle_range_galaxy_shear_cl_ee_source_1_source_2 = 20 120.00294047556231
+    - sacc_like.angle_range_galaxy_shear_cl_ee_source_1_source_3 = 20 120.00294047556231
+    - sacc_like.angle_range_galaxy_shear_cl_ee_source_1_source_4 = 20 120.00294047556231
+    - sacc_like.angle_range_galaxy_shear_cl_ee_source_2_source_0 = 20 82.67317196066635
+    - sacc_like.angle_range_galaxy_shear_cl_ee_source_2_source_1 = 20 120.00294047556231
+    - sacc_like.angle_range_galaxy_shear_cl_ee_source_2_source_2 = 20 143.44867361087114
+    - sacc_like.angle_range_galaxy_shear_cl_ee_source_2_source_3 = 20 143.44867361087114
+    - sacc_like.angle_range_galaxy_shear_cl_ee_source_2_source_4 = 20 143.44867361087114
+    - sacc_like.angle_range_galaxy_shear_cl_ee_source_3_source_0 = 20 82.67317196066635
+    - sacc_like.angle_range_galaxy_shear_cl_ee_source_3_source_1 = 20 120.00294047556231
+    - sacc_like.angle_range_galaxy_shear_cl_ee_source_3_source_2 = 20 143.44867361087114
+    - sacc_like.angle_range_galaxy_shear_cl_ee_source_3_source_3 = 20 161.481562706486
+    - sacc_like.angle_range_galaxy_shear_cl_ee_source_3_source_4 = 20 161.481562706486
+    - sacc_like.angle_range_galaxy_shear_cl_ee_source_4_source_0 = 20 82.67317196066635
+    - sacc_like.angle_range_galaxy_shear_cl_ee_source_4_source_1 = 20 120.00294047556231
+    - sacc_like.angle_range_galaxy_shear_cl_ee_source_4_source_2 = 20 143.44867361087114
+    - sacc_like.angle_range_galaxy_shear_cl_ee_source_4_source_3 = 20 161.481562706486
+    - sacc_like.angle_range_galaxy_shear_cl_ee_source_4_source_4 = 20 174.07780784724505
+
+  kmax0.2:
+    params:
+      - sacc_like.angle_range_galaxy_shear_cl_ee_source_0_source_0 = 20 165.3463439213327
+      - sacc_like.angle_range_galaxy_shear_cl_ee_source_0_source_1 = 20 165.3463439213327
+      - sacc_like.angle_range_galaxy_shear_cl_ee_source_0_source_2 = 20 165.3463439213327
+      - sacc_like.angle_range_galaxy_shear_cl_ee_source_0_source_3 = 20 165.3463439213327
+      - sacc_like.angle_range_galaxy_shear_cl_ee_source_0_source_4 = 20 165.3463439213327
+      - sacc_like.angle_range_galaxy_shear_cl_ee_source_1_source_0 = 20 165.3463439213327
+      - sacc_like.angle_range_galaxy_shear_cl_ee_source_1_source_1 = 20 240.00588095112462
+      - sacc_like.angle_range_galaxy_shear_cl_ee_source_1_source_2 = 20 240.00588095112462
+      - sacc_like.angle_range_galaxy_shear_cl_ee_source_1_source_3 = 20 240.00588095112462
+      - sacc_like.angle_range_galaxy_shear_cl_ee_source_1_source_4 = 20 240.00588095112462
+      - sacc_like.angle_range_galaxy_shear_cl_ee_source_2_source_0 = 20 165.3463439213327
+      - sacc_like.angle_range_galaxy_shear_cl_ee_source_2_source_1 = 20 240.00588095112462
+      - sacc_like.angle_range_galaxy_shear_cl_ee_source_2_source_2 = 20 286.8973472217423
+      - sacc_like.angle_range_galaxy_shear_cl_ee_source_2_source_3 = 20 286.8973472217423
+      - sacc_like.angle_range_galaxy_shear_cl_ee_source_2_source_4 = 20 286.8973472217423
+      - sacc_like.angle_range_galaxy_shear_cl_ee_source_3_source_0 = 20 165.3463439213327
+      - sacc_like.angle_range_galaxy_shear_cl_ee_source_3_source_1 = 20 240.00588095112462
+      - sacc_like.angle_range_galaxy_shear_cl_ee_source_3_source_2 = 20 286.8973472217423
+      - sacc_like.angle_range_galaxy_shear_cl_ee_source_3_source_3 = 20 322.963125412972
+      - sacc_like.angle_range_galaxy_shear_cl_ee_source_3_source_4 = 20 322.963125412972
+      - sacc_like.angle_range_galaxy_shear_cl_ee_source_4_source_0 = 20 165.3463439213327
+      - sacc_like.angle_range_galaxy_shear_cl_ee_source_4_source_1 = 20 240.00588095112462
+      - sacc_like.angle_range_galaxy_shear_cl_ee_source_4_source_2 = 20 286.8973472217423
+      - sacc_like.angle_range_galaxy_shear_cl_ee_source_4_source_3 = 20 322.963125412972
+      - sacc_like.angle_range_galaxy_shear_cl_ee_source_4_source_4 = 20 348.1556156944901  
+
+  kmax0.3:
+    params:
+    - sacc_like.angle_range_galaxy_shear_cl_ee_source_0_source_0 = 20 248.019515881999
+    - sacc_like.angle_range_galaxy_shear_cl_ee_source_0_source_1 = 20 248.019515881999
+    - sacc_like.angle_range_galaxy_shear_cl_ee_source_0_source_2 = 20 248.019515881999
+    - sacc_like.angle_range_galaxy_shear_cl_ee_source_0_source_3 = 20 248.019515881999
+    - sacc_like.angle_range_galaxy_shear_cl_ee_source_0_source_4 = 20 248.019515881999
+    - sacc_like.angle_range_galaxy_shear_cl_ee_source_1_source_0 = 20 248.019515881999
+    - sacc_like.angle_range_galaxy_shear_cl_ee_source_1_source_1 = 20 360.0088214266869
+    - sacc_like.angle_range_galaxy_shear_cl_ee_source_1_source_2 = 20 360.0088214266869
+    - sacc_like.angle_range_galaxy_shear_cl_ee_source_1_source_3 = 20 360.0088214266869
+    - sacc_like.angle_range_galaxy_shear_cl_ee_source_1_source_4 = 20 360.0088214266869
+    - sacc_like.angle_range_galaxy_shear_cl_ee_source_2_source_0 = 20 248.019515881999
+    - sacc_like.angle_range_galaxy_shear_cl_ee_source_2_source_1 = 20 360.0088214266869
+    - sacc_like.angle_range_galaxy_shear_cl_ee_source_2_source_2 = 20 430.34602083261336
+    - sacc_like.angle_range_galaxy_shear_cl_ee_source_2_source_3 = 20 430.34602083261336
+    - sacc_like.angle_range_galaxy_shear_cl_ee_source_2_source_4 = 20 430.34602083261336
+    - sacc_like.angle_range_galaxy_shear_cl_ee_source_3_source_0 = 20 248.019515881999
+    - sacc_like.angle_range_galaxy_shear_cl_ee_source_3_source_1 = 20 360.0088214266869
+    - sacc_like.angle_range_galaxy_shear_cl_ee_source_3_source_2 = 20 430.34602083261336
+    - sacc_like.angle_range_galaxy_shear_cl_ee_source_3_source_3 = 20 484.44468811945796
+    - sacc_like.angle_range_galaxy_shear_cl_ee_source_3_source_4 = 20 484.44468811945796
+    - sacc_like.angle_range_galaxy_shear_cl_ee_source_4_source_0 = 20 248.019515881999
+    - sacc_like.angle_range_galaxy_shear_cl_ee_source_4_source_1 = 20 360.0088214266869
+    - sacc_like.angle_range_galaxy_shear_cl_ee_source_4_source_2 = 20 430.34602083261336
+    - sacc_like.angle_range_galaxy_shear_cl_ee_source_4_source_3 = 20 484.44468811945796
+    - sacc_like.angle_range_galaxy_shear_cl_ee_source_4_source_4 = 20 522.2334235417351    
+
+  kmax0.4:
+    params:
+      - sacc_like.angle_range_galaxy_shear_cl_ee_source_0_source_0 = 20 330.6926878426654
+      - sacc_like.angle_range_galaxy_shear_cl_ee_source_0_source_1 = 20 330.6926878426654
+      - sacc_like.angle_range_galaxy_shear_cl_ee_source_0_source_2 = 20 330.6926878426654
+      - sacc_like.angle_range_galaxy_shear_cl_ee_source_0_source_3 = 20 330.6926878426654
+      - sacc_like.angle_range_galaxy_shear_cl_ee_source_0_source_4 = 20 330.6926878426654
+      - sacc_like.angle_range_galaxy_shear_cl_ee_source_1_source_0 = 20 330.6926878426654
+      - sacc_like.angle_range_galaxy_shear_cl_ee_source_1_source_1 = 20 480.01176190224925
+      - sacc_like.angle_range_galaxy_shear_cl_ee_source_1_source_2 = 20 480.01176190224925
+      - sacc_like.angle_range_galaxy_shear_cl_ee_source_1_source_3 = 20 480.01176190224925
+      - sacc_like.angle_range_galaxy_shear_cl_ee_source_1_source_4 = 20 480.01176190224925
+      - sacc_like.angle_range_galaxy_shear_cl_ee_source_2_source_0 = 20 330.6926878426654
+      - sacc_like.angle_range_galaxy_shear_cl_ee_source_2_source_1 = 20 480.01176190224925
+      - sacc_like.angle_range_galaxy_shear_cl_ee_source_2_source_2 = 20 573.7946944434846
+      - sacc_like.angle_range_galaxy_shear_cl_ee_source_2_source_3 = 20 573.7946944434846
+      - sacc_like.angle_range_galaxy_shear_cl_ee_source_2_source_4 = 20 573.7946944434846
+      - sacc_like.angle_range_galaxy_shear_cl_ee_source_3_source_0 = 20 330.6926878426654
+      - sacc_like.angle_range_galaxy_shear_cl_ee_source_3_source_1 = 20 480.01176190224925
+      - sacc_like.angle_range_galaxy_shear_cl_ee_source_3_source_2 = 20 573.7946944434846
+      - sacc_like.angle_range_galaxy_shear_cl_ee_source_3_source_3 = 20 645.926250825944
+      - sacc_like.angle_range_galaxy_shear_cl_ee_source_3_source_4 = 20 645.926250825944
+      - sacc_like.angle_range_galaxy_shear_cl_ee_source_4_source_0 = 20 330.6926878426654
+      - sacc_like.angle_range_galaxy_shear_cl_ee_source_4_source_1 = 20 480.01176190224925
+      - sacc_like.angle_range_galaxy_shear_cl_ee_source_4_source_2 = 20 573.7946944434846
+      - sacc_like.angle_range_galaxy_shear_cl_ee_source_4_source_3 = 20 645.926250825944
+      - sacc_like.angle_range_galaxy_shear_cl_ee_source_4_source_4 = 20 696.3112313889802    
+
+  kmax0.5:
+    params:
+    - sacc_like.angle_range_galaxy_shear_cl_ee_source_0_source_0 = 20 413.3658598033317
+    - sacc_like.angle_range_galaxy_shear_cl_ee_source_0_source_1 = 20 413.3658598033317
+    - sacc_like.angle_range_galaxy_shear_cl_ee_source_0_source_2 = 20 413.3658598033317
+    - sacc_like.angle_range_galaxy_shear_cl_ee_source_0_source_3 = 20 413.3658598033317
+    - sacc_like.angle_range_galaxy_shear_cl_ee_source_0_source_4 = 20 413.3658598033317
+    - sacc_like.angle_range_galaxy_shear_cl_ee_source_1_source_0 = 20 413.3658598033317
+    - sacc_like.angle_range_galaxy_shear_cl_ee_source_1_source_1 = 20 600.0147023778115
+    - sacc_like.angle_range_galaxy_shear_cl_ee_source_1_source_2 = 20 600.0147023778115
+    - sacc_like.angle_range_galaxy_shear_cl_ee_source_1_source_3 = 20 600.0147023778115
+    - sacc_like.angle_range_galaxy_shear_cl_ee_source_1_source_4 = 20 600.0147023778115
+    - sacc_like.angle_range_galaxy_shear_cl_ee_source_2_source_0 = 20 413.3658598033317
+    - sacc_like.angle_range_galaxy_shear_cl_ee_source_2_source_1 = 20 600.0147023778115
+    - sacc_like.angle_range_galaxy_shear_cl_ee_source_2_source_2 = 20 717.2433680543556
+    - sacc_like.angle_range_galaxy_shear_cl_ee_source_2_source_3 = 20 717.2433680543556
+    - sacc_like.angle_range_galaxy_shear_cl_ee_source_2_source_4 = 20 717.2433680543556
+    - sacc_like.angle_range_galaxy_shear_cl_ee_source_3_source_0 = 20 413.3658598033317
+    - sacc_like.angle_range_galaxy_shear_cl_ee_source_3_source_1 = 20 600.0147023778115
+    - sacc_like.angle_range_galaxy_shear_cl_ee_source_3_source_2 = 20 717.2433680543556
+    - sacc_like.angle_range_galaxy_shear_cl_ee_source_3_source_3 = 20 807.4078135324299
+    - sacc_like.angle_range_galaxy_shear_cl_ee_source_3_source_4 = 20 807.4078135324299
+    - sacc_like.angle_range_galaxy_shear_cl_ee_source_4_source_0 = 20 413.3658598033317
+    - sacc_like.angle_range_galaxy_shear_cl_ee_source_4_source_1 = 20 600.0147023778115
+    - sacc_like.angle_range_galaxy_shear_cl_ee_source_4_source_2 = 20 717.2433680543556
+    - sacc_like.angle_range_galaxy_shear_cl_ee_source_4_source_3 = 20 807.4078135324299
+    - sacc_like.angle_range_galaxy_shear_cl_ee_source_4_source_4 = 20 870.3890392362252
+  
+  kmax1.0:
+    params:
+    - sacc_like.angle_range_galaxy_shear_cl_ee_source_0_source_0 = 20 826.7317196066634
+    - sacc_like.angle_range_galaxy_shear_cl_ee_source_0_source_1 = 20 826.7317196066634
+    - sacc_like.angle_range_galaxy_shear_cl_ee_source_0_source_2 = 20 826.7317196066634
+    - sacc_like.angle_range_galaxy_shear_cl_ee_source_0_source_3 = 20 826.7317196066634
+    - sacc_like.angle_range_galaxy_shear_cl_ee_source_0_source_4 = 20 826.7317196066634
+    - sacc_like.angle_range_galaxy_shear_cl_ee_source_1_source_0 = 20 826.7317196066634
+    - sacc_like.angle_range_galaxy_shear_cl_ee_source_1_source_1 = 20 1200.029404755623
+    - sacc_like.angle_range_galaxy_shear_cl_ee_source_1_source_2 = 20 1200.029404755623
+    - sacc_like.angle_range_galaxy_shear_cl_ee_source_1_source_3 = 20 1200.029404755623
+    - sacc_like.angle_range_galaxy_shear_cl_ee_source_1_source_4 = 20 1200.029404755623
+    - sacc_like.angle_range_galaxy_shear_cl_ee_source_2_source_0 = 20 826.7317196066634
+    - sacc_like.angle_range_galaxy_shear_cl_ee_source_2_source_1 = 20 1200.029404755623
+    - sacc_like.angle_range_galaxy_shear_cl_ee_source_2_source_2 = 20 1434.4867361087113
+    - sacc_like.angle_range_galaxy_shear_cl_ee_source_2_source_3 = 20 1434.4867361087113
+    - sacc_like.angle_range_galaxy_shear_cl_ee_source_2_source_4 = 20 1434.4867361087113
+    - sacc_like.angle_range_galaxy_shear_cl_ee_source_3_source_0 = 20 826.7317196066634
+    - sacc_like.angle_range_galaxy_shear_cl_ee_source_3_source_1 = 20 1200.029404755623
+    - sacc_like.angle_range_galaxy_shear_cl_ee_source_3_source_2 = 20 1434.4867361087113
+    - sacc_like.angle_range_galaxy_shear_cl_ee_source_3_source_3 = 20 1614.8156270648599
+    - sacc_like.angle_range_galaxy_shear_cl_ee_source_3_source_4 = 20 1614.8156270648599
+    - sacc_like.angle_range_galaxy_shear_cl_ee_source_4_source_0 = 20 826.7317196066634
+    - sacc_like.angle_range_galaxy_shear_cl_ee_source_4_source_1 = 20 1200.029404755623
+    - sacc_like.angle_range_galaxy_shear_cl_ee_source_4_source_2 = 20 1434.4867361087113
+    - sacc_like.angle_range_galaxy_shear_cl_ee_source_4_source_3 = 20 1614.8156270648599
+    - sacc_like.angle_range_galaxy_shear_cl_ee_source_4_source_4 = 20 1740.7780784724505  

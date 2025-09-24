@@ -2,6 +2,7 @@
 from cosmosis import run_cosmosis
 from cosmosis.postprocessing import run_cosmosis_postprocess
 from cosmosis.runtime.handler import activate_segfault_handling
+from cosmosis.campaign import parse_yaml_run_file, perform_test_run
 
 import pytest
 import os
@@ -260,6 +261,17 @@ def test_candl(capsys):
     run_cosmosis("examples/candl_test.ini")
     check_likelihood(capsys, "-5.83")
 
+def test_lsst_wl(capsys):
+    # skip if running on CI with python 3.9 or 3.10 on macOS
+    if sys.platform == "darwin" and sys.version_info[:2] in [(3, 9), (3, 10), (3, 11)] and os.environ.get("CI"):
+        pytest.skip("Skipping CosmoPower on MacOS with Python 3.9 -- 3.11 when running CI due to illegal instruction")
+
+    run_cosmosis("examples/lsst-wl/params.ini", override={("runtime","sampler"):"test"})
+    check_likelihood(capsys, "-9.32")
+
+    runs, _ = parse_yaml_run_file("examples/lsst-wl/campaign.yml")
+    perform_test_run(runs['Y10_best_case_scenario'])
+    check_likelihood(capsys, "-59.02")
 
 def test_hillipop_lollipop(capsys):
     if os.getenv("GITHUB_ACTIONS"):

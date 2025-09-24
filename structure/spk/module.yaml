@@ -1,0 +1,113 @@
+#This is a template for module description files
+name: "spk"
+version: "v1.8"
+purpose: "A hydrodynamical simulation-based model for the impact of baryon physics on the non-linear matter power spectrum"
+url: "https://github.com/jemme07/pyspk/"
+interface: "spk_interface.py"
+attribution: [Jaime Salcido, Ian McCarthy, Juliana Kwan, Amol Upadhye, Andreea Font]
+rules:
+    Please cite the papers below if you use this code in your research"
+cite:
+    - "https://doi.org/10.1093/mnras/stad1474"
+
+assumptions:
+    - "Requires the external python module pyspk which can be installed using pip"
+    - "e.g: pip install pyspk"
+
+explanation: 
+    py-SP(k) (Salcido et al. 2023) is a python package aimed at predicting the suppression of the 
+    total matter power spectrum due to baryonic physics as a function of the baryon fraction of haloes and redshift.
+
+    py-SP(k) is not restricted to a particular shape of the baryon fraction - halo mass relation. 
+    In order to provide flexibility to the user, there are 4 different methods to provide py-SP(k) 
+    with the required fb-Mhalo relation. 
+
+    1. A power law with 3 parameters, fb_a, fb_pow, fb_pivot and an optional 4th parameter, m_pivot (default 1 M_odot)
+    2. A redshift dependent power law with 3 parameters, alpha, beta, gamma (here m_pivot is fixed to 10^14 M_odot)
+    3. A redshift dependent double power law with 5 parameters, epsilon, alpha, beta, gamma, m_pivot
+    4. A non-parametric table of fb values as a function of redshift and halo mass
+
+    A jupyter notebook with more detailed examples can be found within the pyspk repository at
+    https://github.com/jemme07/pyspk/blob/main/examples/pySPk_Examples.ipynb
+
+    WARNING - if the combination of parameters and your choice for the functional form of the 
+    baryon fraction - halo mass relation goes outside the SP(k) fitting limits, pyspk returns NaN values.
+    This can happen easily at high-z and high-k will return an error to cosmosis.  This SP(k) parameter combination will
+    then be given a likelihood of zero, thus creating a theoretical prior that you should be aware of.
+
+
+params:
+    SO:
+        meaning: The spherical overdensity, which must be 200 or 500. The halo mass then corresponds to the 
+                 mass with a radius where the mean density is 200 or 500 times the critical density of the Universe.
+        type: int
+        default: 500
+    verbose:
+        meaning: Run in verbose mode
+        type: bool
+        default: False
+    fb_table:
+        meaning: Optional for method 4. Name of a file containing the baryon fraction as a function of halo mass and redshift
+                 Format - Redshift, Halo mass [M_odot], Baryon fraction (normalised by the Universal baryon fraction)
+                 The file BAHAMAS_fb_M200.csv provides this data from the BAHAMAS simulations (McCarthy et al. 2017).
+                 If this is not provided one of the other three of methods will be used to determine the fb-Mhalo relationship
+        type: str
+        default: 
+
+
+inputs:
+    fb_a:
+        meaning: method 1 and 4 power law constant.  Do not set for method 2 or 3.
+        type: float
+        default: 
+    fb_pow:
+        meaning: method 1 and 4 power law exponent. Do not set for method 2 or 3.
+        type: float
+        default: 
+    fb_pivot:
+        meaning: method 1 and 4 power law pivot point, Do not set for method 2 or 3.
+        type: float
+        default: 1.0
+    m_pivot:
+        meaning: method 1 and 3 power law pivot mass in M_sun units.  Do not set for method 2 or 4
+        type: float
+        default: 1.0 for method 1 (has a fixed value of 10^14 for method 2)
+    epsilon:
+        meaning: method 3 normalization parameter. Do not set for method 1, 2, or 4.
+        type: float
+        default:
+    alpha:
+        meaning: sets the method 2 power law exponent, or the method 3 power-law slope at low mass. Do not set for method 1 or 4.
+        type: float
+        default:
+    beta:
+        meaning: sets the method 2 power law exponent, or the method 3 power-law slope at high mass. Do not set for method 1 or 4.
+        type: float
+        default:
+    gamma:
+        meaning: method 2 or 3 power law exponent to sets the redshift dependence. Do not set for method 1 or 4.
+        type: float
+        default:
+    matter_power_nl:
+        z:
+            meaning: Redshifts of samples. 
+            type: real 1d
+        k_h:
+            meaning: Wavenumbers k of samples in Mpc/h.
+            type: real 1d
+        P_k:
+            meaning: Non-linear power spectrum at samples in (Mpc/h)^-3, before SP(k) baryon correction.
+            type: real 2d
+
+
+outputs:
+    matter_power_nl:
+        z:
+            meaning: Redshifts of samples. 
+            type: real 1d
+        k_h:
+            meaning: Wavenumbers k of samples in Mpc/h.
+            type: real 1d
+        P_k:
+            meaning: Non-linear power spectrum at samples in (Mpc/h)^-3, including SP(k) baryon correction.
+            type: real 2d
