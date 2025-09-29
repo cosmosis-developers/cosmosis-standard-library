@@ -34,22 +34,18 @@ class CCLTracerManager:
         log10k_max = self.config.get('log10k_max_pt', 2.0)
         nk_per_decade = self.config.get('nk_per_decade_pt', 20)
         
-        try:
-            if calc_type.lower() == 'bacco_lbias':
-                # BaccoLbiasCalculator for perturbative bias
-                calculator = ccl.nl_pt.BaccoLbiasCalculator(
-                    cosmo=cosmo_ccl,
-                    log10k_min=log10k_min,
-                    log10k_max=log10k_max,
-                    nk_per_decade=nk_per_decade
-                )
-                calculator.update_ingredients(cosmo_ccl)
-                return calculator
-            else:
-                warnings.warn(f"Unknown perturbative bias calculator: {calc_type}")
-                return None
-        except Exception as e:
-            warnings.warn(f"Failed to create perturbative calculator: {e}")
+        if calc_type.lower() == 'bacco_lbias':
+            # BaccoLbiasCalculator for perturbative bias
+            calculator = ccl.nl_pt.BaccoLbiasCalculator(
+                cosmo=cosmo_ccl,
+                log10k_min=log10k_min,
+                log10k_max=log10k_max,
+                nk_per_decade=nk_per_decade
+            )
+            calculator.update_ingredients(cosmo_ccl)
+            return calculator
+        else:
+            warnings.warn(f"Unknown perturbative bias calculator: {calc_type}")
             return None
     
     def create_weak_lensing_tracers(self, block: Any, cosmo_ccl: ccl.Cosmology) -> List:
@@ -107,9 +103,7 @@ class CCLTracerManager:
                 # compute the bias at each redshift using the calculator
                 bias_vals = np.ones(len(z)) * 1.5  # Placeholder - would use pt_calculator
             elif block.has_section("bin_bias"):
-                bias_vals = block["bin_bias", f"b{i}"]
-                if len(bias_vals) == 1:
-                    bias_vals = bias_vals * np.ones(len(z))
+                bias_vals = block["bin_bias", f"b{i}"] * np.ones(len(z))
             else:
                 bias_vals = np.ones(len(z))
             

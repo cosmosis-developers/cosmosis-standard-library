@@ -141,28 +141,29 @@ class CCLCosmologyManager:
         z_max = self.config.get('z_max', 3.0)
         n_z = self.config.get('n_z', 100)
         z = np.linspace(0, z_max, n_z)
+        a = 1./(1+z)
+    
+        # Distances
+        d_A = ccl.angular_diameter_distance(self.cosmo_ccl, a)
+        d_L = ccl.luminosity_distance(self.cosmo_ccl, a)
+        d_M = ccl.comoving_angular_distance(self.cosmo_ccl, a)
+        mu = np.zeros_like(d_M)
+        mu[1:] = ccl.distance_modulus(self.cosmo_ccl, a[1:])
+
+        # Hubble parameter and age
+        h_z = ccl.h_over_h0(self.cosmo_ccl, a)
+        age = ccl.age_of_universe(self.cosmo_ccl, a)
+
+        # Store in data block
+        block[distances, "z"] = z
+        block[distances, "a"] = a
+        block[distances, "d_a"] = d_A
+        block[distances, "d_l"] = d_L
+        block[distances, "d_m"] = d_M
+        block[distances, "h"] = h_z
+        block[distances, "age"] = age
+        block[distances, "mu"] = mu
         
-        try:
-            # Distances
-            d_A = ccl.angular_diameter_distance(self.cosmo_ccl, 1./(1+z))
-            d_L = ccl.luminosity_distance(self.cosmo_ccl, 1./(1+z))
-            d_M = ccl.comoving_angular_distance(self.cosmo_ccl, 1./(1+z))
-            
-            # Hubble parameter and age
-            h_z = ccl.h_over_h0(self.cosmo_ccl, 1./(1+z))
-            age = ccl.age(self.cosmo_ccl, 1./(1+z))
-            
-            # Store in data block
-            block[distances, "z"] = z
-            block[distances, "d_a"] = d_A
-            block[distances, "d_l"] = d_L
-            block[distances, "d_m"] = d_M
-            block[distances, "h"] = h_z
-            block[distances, "age"] = age
-            block[distances, "rs_drag"] = ccl.sound_horizon(self.cosmo_ccl, 1./(1+z))
-            
-        except Exception as e:
-            warnings.warn(f"Error computing background quantities: {e}")
     
     def compute_growth_factors(self, block: Any) -> None:
         """Compute and store growth factors using CCL."""
@@ -175,18 +176,16 @@ class CCLCosmologyManager:
         z = np.linspace(0, z_max, n_z)
         a = 1./(1+z)
         
-        try:
-            # Growth factor and growth rate
-            D_z = ccl.growth_factor(self.cosmo_ccl, a)
-            f_z = ccl.growth_rate(self.cosmo_ccl, a)
-            
-            # Store in data block
-            block[growth_parameters, "z"] = z
-            block[growth_parameters, "d_z"] = D_z
-            block[growth_parameters, "f_z"] = f_z
-            
-        except Exception as e:
-            warnings.warn(f"Error computing growth factors: {e}")
+
+        # Growth factor and growth rate
+        D_z = ccl.growth_factor(self.cosmo_ccl, a)
+        f_z = ccl.growth_rate(self.cosmo_ccl, a)
+        
+        # Store in data block
+        block[growth_parameters, "z"] = z
+        block[growth_parameters, "d_z"] = D_z
+        block[growth_parameters, "f_z"] = f_z
+        
     
     def compute_power_spectra(self, block: Any) -> None:
         """Compute and store matter power spectra using CCL."""
@@ -205,62 +204,56 @@ class CCLCosmologyManager:
         z = np.linspace(z_min, z_max, n_z)
         a = 1./(1+z)
         
-        try:
-            # Compute linear and non-linear power spectra
-            P_lin = np.zeros((n_z, n_k))
-            P_nl = np.zeros((n_z, n_k))
+        # Compute linear and non-linear power spectra
+        P_lin = np.zeros((n_z, n_k))
+        P_nl = np.zeros((n_z, n_k))
+        
+        for i, a_val in enumerate(a):
+            P_lin[i, :] = ccl.linear_matter_power(self.cosmo_ccl, k, a_val)
+            P_nl[i, :] = ccl.nonlin_matter_power(self.cosmo_ccl, k, a_val)
+        
+        # Store in data block
+        block[matter_power_lin, "z"] = z
+        block[matter_power_lin, "k_h"] = k
+        block[matter_power_lin, "p_k"] = P_lin
+        
+        block[matter_power_nl, "z"] = z
+        block[matter_power_nl, "k_h"] = k
+        block[matter_power_nl, "p_k"] = P_nl
             
-            for i, a_val in enumerate(a):
-                P_lin[i, :] = ccl.linear_matter_power(self.cosmo_ccl, k, a_val)
-                P_nl[i, :] = ccl.nonlin_matter_power(self.cosmo_ccl, k, a_val)
-            
-            # Store in data block
-            block[matter_power_lin, "z"] = z
-            block[matter_power_lin, "k_h"] = k
-            block[matter_power_lin, "p_k"] = P_lin
-            
-            block[matter_power_nl, "z"] = z
-            block[matter_power_nl, "k_h"] = k
-            block[matter_power_nl, "p_k"] = P_nl
-            
-        except Exception as e:
-            warnings.warn(f"Error computing power spectra: {e}")
     
     def compute_halo_model(self, block: Any) -> None:
         """Compute halo model quantities using CCL."""
         if not self.config['compute_halo_model'] or self.cosmo_ccl is None:
             return
             
-        try:
-            # Mass range
-            log_m_min = 10.0
-            log_m_max = 16.0
-            n_m = 100
-            m = np.logspace(log_m_min, log_m_max, n_m)
+        # Mass range
+        log_m_min = 10.0
+        log_m_max = 16.0
+        n_m = 100
+        m = np.logspace(log_m_min, log_m_max, n_m)
+        
+        # Redshift range
+        z_max = self.config.get('z_max', 3.0)
+        n_z = self.config.get('n_z', 100)
+        z = np.linspace(0, z_max, n_z)
+        a = 1./(1+z)
+        
+        # Set up halo model components
+        mass_function = getattr(ccl, f"halos.MassFuncTinker08", ccl.halos.MassFuncTinker08)()
+        halo_bias = getattr(ccl, f"halos.HaloBiasTinker10", ccl.halos.HaloBiasTinker10)()
+        
+        # Mass function
+        mf = np.zeros((n_z, n_m))
+        bias_hm = np.zeros((n_z, n_m))
+        
+        for i, a_val in enumerate(a):
+            mf[i, :] = mass_function(self.cosmo_ccl, m, a_val)
+            bias_hm[i, :] = halo_bias(self.cosmo_ccl, m, a_val)
+        
+        # Store in data block
+        block[halo_model, "z"] = z
+        block[halo_model, "m"] = m
+        block[halo_model, "dndm"] = mf
+        block[halo_model, "bias"] = bias_hm
             
-            # Redshift range
-            z_max = self.config.get('z_max', 3.0)
-            n_z = self.config.get('n_z', 100)
-            z = np.linspace(0, z_max, n_z)
-            a = 1./(1+z)
-            
-            # Set up halo model components
-            mass_function = getattr(ccl, f"halos.MassFuncTinker08", ccl.halos.MassFuncTinker08)()
-            halo_bias = getattr(ccl, f"halos.HaloBiasTinker10", ccl.halos.HaloBiasTinker10)()
-            
-            # Mass function
-            mf = np.zeros((n_z, n_m))
-            bias_hm = np.zeros((n_z, n_m))
-            
-            for i, a_val in enumerate(a):
-                mf[i, :] = mass_function(self.cosmo_ccl, m, a_val)
-                bias_hm[i, :] = halo_bias(self.cosmo_ccl, m, a_val)
-            
-            # Store in data block
-            block[halo_model, "z"] = z
-            block[halo_model, "m"] = m
-            block[halo_model, "dndm"] = mf
-            block[halo_model, "bias"] = bias_hm
-            
-        except Exception as e:
-            warnings.warn(f"Error computing halo model: {e}")

@@ -18,11 +18,11 @@ from datetime import timedelta
 from typing import Any, Dict
 
 # Import our modular components
-from .ccl_config import CCLConfig
-from .ccl_cosmology import CCLCosmologyManager
-from .ccl_tracers import CCLTracerManager
-from .ccl_angular_cl import CCLAngularPowerSpectra
-from .ccl_correlations import CCLCorrelationFunctions
+from ccl_config import CCLConfig
+from ccl_cosmology import CCLCosmologyManager
+from ccl_tracers import CCLTracerManager
+from ccl_angular_cl import CCLAngularPowerSpectra
+from ccl_correlations import CCLCorrelationFunctions
 
 
 class CCLIntegration:
@@ -53,36 +53,31 @@ class CCLIntegration:
         """
         start_time = timer()
         
-        try:
-            # Step 1: Create CCL cosmology
-            self.cosmo_ccl = self.cosmology_manager.create_cosmology(block)
-            print("✓ CCL cosmology initialized")
-            
-            # Step 2: Compute basic cosmological quantities
-            self._compute_basic_quantities(block)
-            
-            # Step 3: Create tracers
-            self.tracers = self.tracer_manager.create_all_tracers(block, self.cosmo_ccl)
-            print(f"✓ Created tracers: {list(self.tracers.keys())}")
-            
-            # Step 4: Compute angular power spectra
-            self.angular_cl_calculator.compute_all_angular_cl(block, self.cosmo_ccl, self.tracers)
-            print("✓ Angular power spectra computed")
-            
-            # Step 5: Compute correlation functions
-            self.correlation_calculator.compute_all_correlations(block, self.cosmo_ccl, self.tracers)
-            if self.config.get('compute_xi', False) or self.config.get('compute_xi_3d', False):
-                print("✓ Correlation functions computed")
-            
-            elapsed_time = timer() - start_time
-            print(f"✓ CCL computation completed in {timedelta(seconds=elapsed_time)}")
-            
-            return 0
-            
-        except Exception as e:
-            print(f"✗ Error in CCL computation: {e}")
-            warnings.warn(f"CCL computation failed: {e}")
-            return 1
+        # Step 1: Create CCL cosmology
+        self.cosmo_ccl = self.cosmology_manager.create_cosmology(block)
+        # print("✓ CCL cosmology initialized")
+        
+        # Step 2: Compute basic cosmological quantities
+        self._compute_basic_quantities(block)
+        
+        # Step 3: Create tracers
+        self.tracers = self.tracer_manager.create_all_tracers(block, self.cosmo_ccl)
+        # print(f"✓ Created tracers: {list(self.tracers.keys())}")
+        
+        # Step 4: Compute angular power spectra
+        self.angular_cl_calculator.compute_all_angular_cl(block, self.cosmo_ccl, self.tracers)
+        # print("✓ Angular power spectra computed")
+        
+        # Step 5: Compute correlation functions
+        self.correlation_calculator.compute_all_correlations(block, self.cosmo_ccl, self.tracers)
+        # if self.config.get('compute_xi', False) or self.config.get('compute_xi_3d', False):
+        #     print("✓ Correlation functions computed")
+        
+        elapsed_time = timer() - start_time
+        # print(f"✓ CCL computation completed in {timedelta(seconds=elapsed_time)}")
+        
+        return 0
+
     
     def _compute_basic_quantities(self, block: Any) -> None:
         """Compute basic cosmological quantities."""
@@ -104,8 +99,8 @@ class CCLIntegration:
             self.cosmology_manager.compute_halo_model(block)
             quantities_computed.append("halo model")
         
-        if quantities_computed:
-            print(f"✓ Computed: {', '.join(quantities_computed)}")
+        # if quantities_computed:
+        #     print(f"✓ Computed: {', '.join(quantities_computed)}")
 
 
 # ===== CosmoSIS Interface Functions =====
@@ -140,12 +135,8 @@ def execute(block, config):
     Returns:
         0 for success, 1 for failure
     """
-    try:
-        ccl_integration = CCLIntegration(config)
-        return ccl_integration.run_full_calculation(block)
-    except Exception as error:
-        print(f"✗ CCL module failed with error: {error}")
-        return 1
+    ccl_integration = CCLIntegration(config)
+    return ccl_integration.run_full_calculation(block)
 
 
 def cleanup(config):

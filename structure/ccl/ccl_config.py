@@ -159,6 +159,13 @@ class CCLConfig:
             'ell': ell,
             'n_ell': n_ell_logspaced,
         })
+
+        if self.config["compute_background"]:
+            self.config.update({
+                'z_min': self.options.get_double(option_section, "z_min", 0.0),
+                'z_max': self.options.get_double(option_section, "z_max", 3.0),
+                'n_z': self.options.get_int(option_section, "n_z", 100),
+            })
         
         # Power spectra sampling
         if self.config['compute_power_spectra']:
