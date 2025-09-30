@@ -129,6 +129,37 @@ configuration_data * setup(c_datablock * options){
 		printf("Will save each a single total likelihood for all Planck likelihood files\n");
 	}
 
+
+	// typedef struct configuration_data{
+	// 	int ndata, nlensing;
+	// 	bool save_separate_likelihoods;
+	// 	clik_object * clik_data[MAX_NUMBER_LIKES];
+	// 	clik_lensing_object * clik_lensing_data[MAX_NUMBER_LIKES];
+	
+	// } configuration_data;
+	
+
+	// Print required nuisance parameters
+	printf("Required nuisance parameters (may repeat!):\n");
+	for (int i=0;i<config->ndata;i++){
+		int n_nuisance;
+		parname * nuisance_names;
+		n_nuisance = clik_get_extra_parameter_names(config->clik_data[i], &nuisance_names, NULL);
+		for (int j=0; j<n_nuisance; j++){
+			printf("    - %s\n", nuisance_names[j]);
+		}
+	}
+	// same with lensing
+	printf("And for lensing:\n");
+	for (int i=0;i<config->nlensing;i++){
+		int n_nuisance;
+		parname * nuisance_names;
+		n_nuisance = clik_lensing_get_extra_parameter_names(config->clik_lensing_data[i], &nuisance_names, NULL);
+		for (int j=0; j<n_nuisance; j++){
+			printf("    - %s\n", nuisance_names[j]);
+		}
+	}
+
 	return config;
 }
 

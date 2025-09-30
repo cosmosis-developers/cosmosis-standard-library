@@ -117,12 +117,12 @@ def test_des_y3(capsys):
         ("pk_to_cl_gg","save_kernels"):"T",
         ("pk_to_cl","save_kernels"):"T"
         })
-    check_likelihood(capsys, "6043.23", "6043.34", "6043.37", "6043.33")
+    check_likelihood(capsys, "6043.23", "6043.34", "6043.37", "6043.33", "6043.39")
     check_no_camb_warnings(capsys)
 
 def test_des_y3_plus_planck(capsys):
     run_cosmosis("examples/des-y3-planck.ini")
-    check_likelihood(capsys, "5679.6", "5679.7")
+    check_likelihood(capsys, "5679.6", "5679.7", "5675.3")
     check_no_camb_warnings(capsys)
 
 
@@ -145,7 +145,7 @@ def test_des_y3_mead(capsys):
                  override={("camb", "halofit_version"): "mead2020_feedback"},
                  variables={("halo_model_parameters", "logT_AGN"): "8.2"}
                  )
-    check_likelihood(capsys, "6049.94", "6049.00", "6049.03", "6049.04")
+    check_likelihood(capsys, "6049.94", "6049.00", "6049.03", "6049.04", "6049.06")
     check_no_camb_warnings(capsys)
 
 def test_act_dr6_lensing(capsys):

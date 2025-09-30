@@ -1,13 +1,14 @@
 name: BBN-Consistency
-version: '0705.0290'
+version: '1801.08023'
 purpose: Compute consistent Helium fraction from baryon density given BBN
-url: http://parthenope.na.infn.it/
+url: https://www2.iap.fr/users/pitrou/primat.htm
 interface: bbn_consistency.py
 attribution: [CosmoSIS Team]
 rules: []
-cite: ['Comp.Phys.Commun.178:956-971,2008']
+cite: ['Phys Reports 04, (2018) 005']
 assumptions:
 -   Standard Big Bang Nucleosynthesis
+-   PRIMAT calculations
 -   ombh2 within the range of the input data
 
 explanation: |
@@ -22,6 +23,9 @@ explanation: |
 
     This module should go into the pipeline after consistency and
     before any physics modules. It's effectively an optional consistency module.
+
+    This version is updated to use the newer PRIMAT calculations by default, but changing
+    the data parameter to the path to helium.dat will revert to the older Parthenope calculations.
 
     "
 params:
