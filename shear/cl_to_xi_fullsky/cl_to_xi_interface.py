@@ -351,6 +351,12 @@ def execute(block, config):
         if theta_edges is not None:
             block[o, "theta_edges"] = theta_edges
             block.put_metadata(o, "theta_edges", "unit", "radians")
+
+        
+        print("COMPUTING SHEAR CL TO XI")
+        print('output section: ', o)
+        print('theta: ', thetas)
+    
     return 0
 
 def cleanup(config):

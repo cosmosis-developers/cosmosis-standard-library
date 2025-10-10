@@ -34,29 +34,24 @@ class CCLTracerManager:
         log10k_max = self.config.get('log10k_max_pt', 2.0)
         nk_per_decade = self.config.get('nk_per_decade_pt', 20)
         
-        try:
-            if calc_type.lower() == 'bacco_lbias':
-                # BaccoLbiasCalculator for perturbative bias
-                calculator = ccl.nl_pt.BaccoLbiasCalculator(
-                    cosmo=cosmo_ccl,
-                    log10k_min=log10k_min,
-                    log10k_max=log10k_max,
-                    nk_per_decade=nk_per_decade
-                )
-                calculator.update_ingredients(cosmo_ccl)
-                return calculator
-            else:
-                warnings.warn(f"Unknown perturbative bias calculator: {calc_type}")
-                return None
-        except Exception as e:
-            warnings.warn(f"Failed to create perturbative calculator: {e}")
+        if calc_type.lower() == 'bacco_lbias':
+            # BaccoLbiasCalculator for perturbative bias
+            calculator = ccl.nl_pt.BaccoLbiasCalculator(
+                cosmo=cosmo_ccl,
+                log10k_min=log10k_min,
+                log10k_max=log10k_max,
+                nk_per_decade=nk_per_decade
+            )
+            calculator.update_ingredients(cosmo_ccl)
+            return calculator
+        else:
+            warnings.warn(f"Unknown perturbative bias calculator: {calc_type}")
             return None
-    
+
     def create_weak_lensing_tracers(self, block: Any, cosmo_ccl: ccl.Cosmology) -> List:
         """Create weak lensing tracers."""
         if not self.config['compute_shear'] or not block.has_section("nz_source"):
             return []
-        
         section_name = "nz_source"
         nbin_source = block[section_name, "nbin"]
         z = block[section_name, "z"]
@@ -67,23 +62,13 @@ class CCLTracerManager:
         else:
             bias_ia = np.zeros_like(z)
         
-        # Magnification bias for sources (if enabled)
-        mag_bias = None
-        if self.config.get('use_magnification', False):
-            alpha = self.config.get('magnification_alpha', 2.5)
-            mag_bias = (alpha - 1.0) * np.ones_like(z)
-        
         sources = []
         for i in range(1, nbin_source + 1):
             tracer_kwargs = {
                 'dndz': (z, block[section_name, f"bin_{i}"]),
                 'ia_bias': (z, bias_ia)
             }
-            
-            # Add magnification bias if specified
-            if mag_bias is not None:
-                tracer_kwargs['mag_bias'] = (z, mag_bias)
-            
+                        
             tracer = ccl.WeakLensingTracer(cosmo_ccl, **tracer_kwargs)
             sources.append(tracer)
         
@@ -106,21 +91,19 @@ class CCLTracerManager:
                 # Note: This is a simplified example - in practice you'd need to 
                 # compute the bias at each redshift using the calculator
                 bias_vals = np.ones(len(z)) * 1.5  # Placeholder - would use pt_calculator
-            elif block.has_section("bin_bias"):
-                bias_vals = block["bin_bias", f"b{i}"]
-                if len(bias_vals) == 1:
-                    bias_vals = bias_vals * np.ones(len(z))
+            elif block.has_section("bias_lens"):
+                bias_vals = block["bias_lens", f"b{i}"] * np.ones(len(z))
             else:
                 bias_vals = np.ones(len(z))
             
             # Magnification bias for lenses (if enabled)
             mag_bias = None
-            if self.config.get('use_magnification', False):
-                alpha = self.config.get('magnification_alpha', 2.5)
+            if block.has_section("mag_alpha_lens"):
+                alpha = block["mag_alpha_lens", f"alpha_{i}"] 
                 mag_bias = (alpha - 1.0) * np.ones_like(z)
             
             tracer_kwargs = {
-                'has_rsd': False,
+                'has_rsd': self.config.get('do_rsd', False),
                 'dndz': (z, block[section_name, f"bin_{i}"]),
                 'bias': (z, bias_vals)
             }

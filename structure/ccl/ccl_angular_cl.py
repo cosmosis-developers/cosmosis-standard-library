@@ -110,10 +110,13 @@ class CCLAngularPowerSpectra:
         
         for i in range(nbin_source):
             for j in range(i, nbin_source):
-                cl_ll[i, j] = self._compute_cl_safely(cosmo_ccl, sources[i], sources[j], ell, angular_cl_kwargs)
-                if i != j:
-                    cl_ll[j, i] = cl_ll[i, j]  # Symmetry
+                cl_ll[i, j] = self._compute_cl_safely(cosmo_ccl, sources[i], sources[j], ell, angular_cl_kwargs) # Symmetry
                 block['shear_cl', f'bin_{i+1}_{j+1}'] = cl_ll[i, j]
+                if i != j:
+                    #cl_ll[j, i] = cl_ll[i, j] 
+                    block['shear_cl', f'bin_{j+1}_{i+1}'] = cl_ll[i, j]
+
+
         
         # Store metadata
         self._store_cl_metadata(block, 'shear_cl', ell, nbin_source, nbin_source)
@@ -177,6 +180,14 @@ class CCLAngularPowerSpectra:
         block[section_name, 'save_name'] = section_name
         block[section_name, 'is_auto'] = False
         block[section_name, 'sep_name'] = "ell"
+
+        if section_name == 'galaxy_cl':
+            block[section_name, 'sample_a'] = "lens"
+            block[section_name, 'sample_b'] = "lens"
+        elif section_name == 'shear_cl':
+            block[section_name, 'sample_a'] = "source"
+            block[section_name, 'sample_b'] = "source"
+    
     
     def _store_cross_cl_metadata(self, block: Any, section_name: str, ell: np.ndarray, 
                                 nbin_a: int, nbin_b: int) -> None:
@@ -187,6 +198,12 @@ class CCLAngularPowerSpectra:
         block[section_name, 'save_name'] = section_name
         block[section_name, 'is_auto'] = False
         block[section_name, 'sep_name'] = "ell"
+        if section_name == 'galaxy_shear_cl':
+            block[section_name, 'sample_a'] = "lens"
+            block[section_name, 'sample_b'] = "source"
+        elif section_name == 'cmb_galaxy_cl':
+            block[section_name, 'sample_a'] = "cmb_lensing"
+            block[section_name, 'sample_b'] = "lens"
     
     def compute_all_angular_cl(self, block: Any, cosmo_ccl: ccl.Cosmology, tracers: Dict) -> None:
         """Compute all angular power spectra."""

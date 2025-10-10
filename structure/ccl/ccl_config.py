@@ -5,7 +5,7 @@ Handles all configuration parsing and setup for the CCL integration.
 """
 
 import numpy as np
-from typing import Dict, Any
+from typing import Dict, Any, List
 from cosmosis.datablock import option_section
 
 
@@ -53,7 +53,7 @@ class CCLConfig:
         self.config.update({
             # Angular correlations
             'compute_xi': self.options.get_bool(option_section, "compute_xi", False),
-            'xi_type': self.options.get_string(option_section, "xi_type", "gg+"),
+            'xi_types': self._parse_xi_types(option_section),
             'xi_method': self.options.get_string(option_section, "xi_method", "fftlog"),
             'theta_min': self.options.get_double(option_section, "theta_min", 0.1),
             'theta_max': self.options.get_double(option_section, "theta_max", 300.0),
@@ -159,6 +159,13 @@ class CCLConfig:
             'ell': ell,
             'n_ell': n_ell_logspaced,
         })
+
+        if self.config["compute_background"]:
+            self.config.update({
+                'z_min': self.options.get_double(option_section, "z_min", 0.0),
+                'z_max': self.options.get_double(option_section, "z_max", 3.0),
+                'n_z': self.options.get_int(option_section, "n_z", 100),
+            })
         
         # Power spectra sampling
         if self.config['compute_power_spectra']:
@@ -188,6 +195,25 @@ class CCLConfig:
     def get(self, key: str, default=None):
         """Get configuration value."""
         return self.config.get(key, default)
+    
+    def _parse_xi_types(self, option_section: str) -> List[str]:
+        """Parse xi_types configuration option."""
+        # Try to get xi_types as a list first
+        try:
+            xi_types_str = self.options.get_string(option_section, "xi_types", "")
+            if xi_types_str:
+                # Split by comma and strip whitespace
+                xi_types = [t.strip() for t in xi_types_str.split(',')]
+                return xi_types
+        except:
+            pass
+        
+        # Fallback to single xi_type for backward compatibility
+        try:
+            xi_type = self.options.get_string(option_section, "xi_type", "gg+")
+            return [xi_type]
+        except:
+            return ["gg+"]
     
     def __getitem__(self, key: str):
         """Get configuration value with dict-like access."""

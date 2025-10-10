@@ -313,6 +313,7 @@ def execute(block, config):
         else:
             angle_units = None
 
+        print("kernels: ", kernel_name_a, kernel_name_b, output_extension)
         spec_meas_list.append( 
             theory_spec.to_twopoint_object(config['angle_mids_userunits'], 
             (kernel_name_a, kernel_name_b), output_extension, 
@@ -417,6 +418,8 @@ def execute(block, config):
     elif copy_covariance:
         parent_file = twopoint.TwoPointFile.from_fits(copy_covariance)
         # check that covariances match
+        for s1, s2 in zip(spec_meas_list, parent_file.spectra):
+            print("s1, s2",len(s1), len(s2), "name", s1.name, s2.name)
         for s1, s2 in zip(spec_meas_list, parent_file.spectra):
             if s1.name != s2.name:
                 raise ValueError("Different spectrum order in parent file")

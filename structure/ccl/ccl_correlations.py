@@ -22,28 +22,32 @@ class CCLCorrelationFunctions:
         """Compute angular correlation functions with all CCL correlation types and methods."""
         if not self.config.get('compute_xi', False):
             return
-        
+        # must be in degrees for ccl
         theta_min = self.config.get('theta_min', 0.1)
-        theta_max = self.config.get('theta_max', 300.0) 
+        theta_max = self.config.get('theta_max', 300.0)
         n_theta = self.config.get('n_theta', 50)
         theta = np.logspace(np.log10(theta_min), np.log10(theta_max), n_theta)
         
-        xi_type = self.config.get('xi_type', 'gg+')
+        xi_types = self.config.get('xi_types', ['gg+'])
         xi_method = self.config.get('xi_method', 'fftlog')
         ell = self.config['ell']
+
         
         try:
-            # Galaxy-galaxy correlation functions (NN type)
-            if xi_type in ["gg+", "gg-", "nn"] and 'number_counts' in tracers:
-                self._compute_galaxy_correlations(block, cosmo_ccl, tracers, ell, theta, xi_type, xi_method)
-            
-            # Shear correlation functions (GG+ and GG- types)
-            elif xi_type in ["ll+", "ll-", "shear+", "shear-"] and 'weak_lensing' in tracers:
-                self._compute_shear_correlations(block, cosmo_ccl, tracers, ell, theta, xi_type, xi_method)
-            
-            # Galaxy-shear correlation functions (NG type)
-            elif xi_type in ["ng", "galaxy_shear"] and 'number_counts' in tracers and 'weak_lensing' in tracers:
-                self._compute_galaxy_shear_correlations(block, cosmo_ccl, tracers, ell, theta, xi_method)
+            # Process each correlation type in the array
+            for xi_type in xi_types:
+                print(f'compute_angular_correlation_functions: {xi_type}')
+                # Galaxy-galaxy correlation functions (NN type)
+                if xi_type in ["gg", "nn"] and 'number_counts' in tracers:
+                    self._compute_galaxy_correlations(block, cosmo_ccl, tracers, ell, theta, xi_type, xi_method)
+                
+                # Shear correlation functions (LL+ and LL- types)
+                elif xi_type in ["ll+", "ll-", "shear+", "shear-"] and 'weak_lensing' in tracers:
+                    self._compute_shear_correlations(block, cosmo_ccl, tracers, ell, theta, xi_type, xi_method)
+                   
+                # Galaxy-shear correlation functions (NG type)
+                elif xi_type in ["ng", "galaxy_shear"] and 'number_counts' in tracers and 'weak_lensing' in tracers:
+                    self._compute_galaxy_shear_correlations(block, cosmo_ccl, tracers, ell, theta, xi_method)
                 
         except Exception as e:
             warnings.warn(f"Error computing angular correlation functions: {e}")
@@ -57,40 +61,44 @@ class CCLCorrelationFunctions:
         for i in range(nbin_lens):
             for j in range(i, nbin_lens):
                 # Compute angular power spectrum first
-                cl_gg = ccl.angular_cl(cosmo_ccl, lenses[i], lenses[j], ell)
+                #cl_gg = ccl.angular_cl(cosmo_ccl, lenses[i], lenses[j], ell)
+                cl_gg = block['galaxy_cl', f'bin_{i+1}_{j+1}']
                 
                 # Convert to correlation function
-                corr_type = 'NN' if xi_type == 'nn' else ('GG+' if xi_type == 'gg+' else 'GG-')
+                corr_type = 'NN' 
                 xi_gg = ccl.correlation(cosmo_ccl, ell=ell, C_ell=cl_gg, theta=theta, 
                                       type=corr_type, method=xi_method)
                 
-                section_name = 'galaxy_xi_plus' if xi_type in ['gg+', 'nn'] else 'galaxy_xi_minus'
-                block[section_name, f'bin_{i+1}_{j+1}'] = xi_gg
+                block['galaxy_xi', f'bin_{i+1}_{j+1}'] = xi_gg
         
-        section_name = 'galaxy_xi_plus' if xi_type in ['gg+', 'nn'] else 'galaxy_xi_minus'
-        self._store_xi_metadata(block, section_name, theta, nbin_lens, nbin_lens)
+        section_name = 'galaxy_xi' 
+        self._store_xi_metadata(block, section_name, np.radians(theta), nbin_lens, nbin_lens)
     
     def _compute_shear_correlations(self, block: Any, cosmo_ccl: ccl.Cosmology, tracers: Dict,
                                   ell: np.ndarray, theta: np.ndarray, xi_type: str, xi_method: str) -> None:
         """Compute shear correlation functions."""
         sources = tracers['weak_lensing']
         nbin_source = len(sources)
-        
+        print(xi_type)
         for i in range(nbin_source):
-            for j in range(i, nbin_source):
+            #for j in range(i, nbin_source):
+            for j in range(nbin_source):    
                 # Compute angular power spectrum first
-                cl_ll = ccl.angular_cl(cosmo_ccl, sources[i], sources[j], ell)
+                #cl_ll = ccl.angular_cl(cosmo_ccl, sources[i], sources[j], ell)
+                cl_ll = block['shear_cl', f'bin_{i+1}_{j+1}']
                 
                 # Convert to correlation function
                 corr_type = 'GG+' if xi_type in ['ll+', 'shear+'] else 'GG-'
-                xi_ll = ccl.correlation(cosmo_ccl, ell=ell, C_ell=cl_ll, theta=theta,
+                xi_ll = ccl.correlation(cosmo_ccl, ell=ell, C_ell=cl_ll, theta=theta, #in degrees
                                       type=corr_type, method=xi_method)
                 
                 section_name = 'shear_xi_plus' if xi_type in ['ll+', 'shear+'] else 'shear_xi_minus'
+                #print(f'bin_{i+1}_{j+1}')
                 block[section_name, f'bin_{i+1}_{j+1}'] = xi_ll
         
         section_name = 'shear_xi_plus' if xi_type in ['ll+', 'shear+'] else 'shear_xi_minus'
-        self._store_xi_metadata(block, section_name, theta, nbin_source, nbin_source)
+        self._store_xi_metadata(block, section_name, np.radians(theta), nbin_source, nbin_source)
+    
     
     def _compute_galaxy_shear_correlations(self, block: Any, cosmo_ccl: ccl.Cosmology, tracers: Dict,
                                          ell: np.ndarray, theta: np.ndarray, xi_method: str) -> None:
@@ -103,7 +111,8 @@ class CCLCorrelationFunctions:
         for i in range(nbin_lens):
             for j in range(nbin_source):
                 # Compute angular power spectrum first
-                cl_ng = ccl.angular_cl(cosmo_ccl, lenses[i], sources[j], ell)
+                #cl_ng = ccl.angular_cl(cosmo_ccl, lenses[i], sources[j], ell)
+                cl_ng = block['galaxy_shear_cl', f'bin_{i+1}_{j+1}']
                 
                 # Convert to correlation function
                 xi_ng = ccl.correlation(cosmo_ccl, ell=ell, C_ell=cl_ng, theta=theta,
@@ -111,7 +120,7 @@ class CCLCorrelationFunctions:
                 
                 block['galaxy_shear_xi', f'bin_{i+1}_{j+1}'] = xi_ng
         
-        self._store_cross_xi_metadata(block, 'galaxy_shear_xi', theta, nbin_lens, nbin_source)
+        self._store_cross_xi_metadata(block, 'galaxy_shear_xi', np.radians(theta), nbin_lens, nbin_source)
     
     def compute_3d_correlation_functions(self, block: Any, cosmo_ccl: ccl.Cosmology) -> None:
         """Compute 3D correlation functions."""
@@ -245,19 +254,31 @@ class CCLCorrelationFunctions:
     def _store_xi_metadata(self, block: Any, section_name: str, theta: np.ndarray, 
                           nbin_a: int, nbin_b: int) -> None:
         """Store metadata for auto-correlation functions."""
-        block[section_name, 'theta'] = theta
+        block[section_name, 'theta'] = theta # in radians
         block[section_name, 'nbin'] = nbin_a
         block[section_name, 'save_name'] = section_name
         block[section_name, 'sep_name'] = 'theta'
+        block[section_name, 'is_auto'] = True
+        if section_name == 'shear_xi_plus' or section_name == 'shear_xi_minus':
+            block[section_name, 'sample_a'] = "source"
+            block[section_name, 'sample_b'] = "source"
+        elif section_name == 'galaxy_xi' or section_name == 'galaxy_xi_minus':
+            block[section_name, 'sample_a'] = "lens"
+            block[section_name, 'sample_b'] = "lens"
+
     
     def _store_cross_xi_metadata(self, block: Any, section_name: str, theta: np.ndarray, 
                                 nbin_a: int, nbin_b: int) -> None:
         """Store metadata for cross-correlation functions."""
-        block[section_name, 'theta'] = theta
+        block[section_name, 'theta'] = theta # in radians
         block[section_name, 'nbin_a'] = nbin_a
         block[section_name, 'nbin_b'] = nbin_b
         block[section_name, 'save_name'] = section_name
         block[section_name, 'sep_name'] = 'theta'
+        block[section_name, 'is_auto'] = False
+        if section_name == 'galaxy_shear_xi':
+            block[section_name, 'sample_a'] = "lens"
+            block[section_name, 'sample_b'] = "source"
     
     def compute_all_correlations(self, block: Any, cosmo_ccl: ccl.Cosmology, tracers: Dict) -> None:
         """Compute all correlation functions."""
