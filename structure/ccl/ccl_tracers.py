@@ -62,15 +62,8 @@ class CCLTracerManager:
         else:
             bias_ia = np.zeros_like(z)
         
-        sources = []
-        for i in range(1, nbin_source + 1):
-            tracer_kwargs = {
-                'dndz': (z, block[section_name, f"bin_{i}"]),
-                'ia_bias': (z, bias_ia)
-            }
-                        
-            tracer = ccl.WeakLensingTracer(cosmo_ccl, **tracer_kwargs)
-            sources.append(tracer)
+        sources = [ccl.WeakLensingTracer(cosmo_ccl, dndz=(z, block[section_name, "bin_%d"%i]),
+                                    ia_bias=(z, bias_ia)) for i in range(1, nbin_source+1)]
         
         return sources
     
@@ -91,30 +84,35 @@ class CCLTracerManager:
                 # Note: This is a simplified example - in practice you'd need to 
                 # compute the bias at each redshift using the calculator
                 bias_vals = np.ones(len(z)) * 1.5  # Placeholder - would use pt_calculator
-            elif block.has_section("bias_lens"):
-                bias_vals = block["bias_lens", f"b{i}"] * np.ones(len(z))
+            elif block.has_section("bias_lens"): #or block["bin_bias", "b1"] is not None
+                bias_vals = block["bias_lens", "b%d"%i]*np.ones(len(z)) 
+            elif block.has_section("bin_bias"):
+                bias_vals = block["bin_bias", "b%d"%i]*np.ones(len(z)) 
             else:
                 bias_vals = np.ones(len(z))
-            
+        
             # Magnification bias for lenses (if enabled)
             mag_bias = None
             if block.has_section("mag_alpha_lens"):
                 alpha = block["mag_alpha_lens", f"alpha_{i}"] 
-                mag_bias = (alpha - 1.0) * np.ones_like(z)
+                mag_bias =  alpha /2.5 * np.ones_like(z)
+
             
             tracer_kwargs = {
                 'has_rsd': self.config.get('do_rsd', False),
-                'dndz': (z, block[section_name, f"bin_{i}"]),
+                'dndz': (z, block[section_name, "bin_%d"%i]),
                 'bias': (z, bias_vals)
             }
             
             # Add magnification bias if specified
             if mag_bias is not None:
                 tracer_kwargs['mag_bias'] = (z, mag_bias)
-            
+
+                
             tracer = ccl.NumberCountsTracer(cosmo_ccl, **tracer_kwargs)
             lenses.append(tracer)
         
+
         return lenses
     
     def create_cmb_lensing_tracers(self, cosmo_ccl: ccl.Cosmology) -> List:

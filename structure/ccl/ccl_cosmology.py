@@ -204,18 +204,18 @@ class CCLCosmologyManager:
         z_min = self.config.get('z_min', 0.0)
         z_max = self.config.get('z_max', 3.0)
         n_z = self.config.get('n_z', 100)
+        h = self.cosmo_ccl['h']
         
-        k = np.logspace(np.log10(k_min), np.log10(k_max), n_k)
+        k = np.logspace(np.log10(k_min), np.log10(k_max), n_k) # logspace is in h/Mpc
         z = np.linspace(z_min, z_max, n_z)
         a = 1./(1+z)
         
         # Compute linear and non-linear power spectra
         P_lin = np.zeros((n_z, n_k))
         P_nl = np.zeros((n_z, n_k))
-            
         for i, a_val in enumerate(a):
-            P_lin[i, :] = ccl.linear_matter_power(self.cosmo_ccl, k, a_val)
-            P_nl[i, :] = ccl.nonlin_matter_power(self.cosmo_ccl, k, a_val)
+            P_lin[i, :] = ccl.linear_matter_power(self.cosmo_ccl, k*h, a_val)*h**3 #in (Mpc/h)^3
+            P_nl[i, :] = ccl.nonlin_matter_power(self.cosmo_ccl, k*h, a_val)*h**3 #in (Mpc/h)^3
         
         # Store in data block
         block[matter_power_lin, "z"] = z
@@ -231,7 +231,6 @@ class CCLCosmologyManager:
 
         # sigma12 and S_8 - other variants of sigma_8
         # Note: ccl.sigma8 uses Mpc/h convention, so we use the same for sigma12
-        h = self.cosmo_ccl['h']
         sigma12 = self.cosmo_ccl.sigmaR(R=12.0/h, a=1.0)
         block[cosmo, "sigma_12"] = sigma12
         block[cosmo, "S_8"] = sigma_8*np.sqrt(block.get_double(cosmo, "omega_m")/0.3)

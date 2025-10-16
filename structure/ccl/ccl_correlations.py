@@ -36,7 +36,7 @@ class CCLCorrelationFunctions:
         try:
             # Process each correlation type in the array
             for xi_type in xi_types:
-                print(f'compute_angular_correlation_functions: {xi_type}')
+                #print(f'compute_angular_correlation_functions: {xi_type}')
                 # Galaxy-galaxy correlation functions (NN type)
                 if xi_type in ["gg", "nn"] and 'number_counts' in tracers:
                     self._compute_galaxy_correlations(block, cosmo_ccl, tracers, ell, theta, xi_type, xi_method)
@@ -79,7 +79,7 @@ class CCLCorrelationFunctions:
         """Compute shear correlation functions."""
         sources = tracers['weak_lensing']
         nbin_source = len(sources)
-        print(xi_type)
+
         for i in range(nbin_source):
             #for j in range(i, nbin_source):
             for j in range(nbin_source):    

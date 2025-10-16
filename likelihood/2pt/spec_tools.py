@@ -73,7 +73,7 @@ class TheorySpectrum(object):
     """
     def __init__(self, name, types, nbin_a, nbin_b, angles, spectra, is_auto,
         noise_var_per_mode=None, auto_only = False,  bin_pairs=None):
-        print('n_bins: ', nbin_a, nbin_b)
+        #print('n_bins: ', nbin_a, nbin_b)
 
         self.name = name
         self.types = types
@@ -83,8 +83,8 @@ class TheorySpectrum(object):
         self.nbin_b = nbin_b
         self.auto_only = auto_only
         self.spectra = spectra
-        print(is_auto)
-        print(auto_only)
+        #print(is_auto)
+        #print(auto_only)
 
         if self.auto_only and not self.is_auto:
             raise ValueError("A spectrum cannot be specified as auto_only without is_auto")
@@ -241,7 +241,7 @@ class TheorySpectrum(object):
             angles = angle_vals_out_rad
 
 
-        print("bin_pairs: ", self.bin_pairs)
+        #print("bin_pairs: ", self.bin_pairs)
         # Bin pairs. Varies depending on auto-correlation
         for (i,j) in self.bin_pairs:
             spec_sample = [self.get_spectrum_value(i, j, a)[0] for a in angles]

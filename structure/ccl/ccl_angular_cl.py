@@ -22,44 +22,42 @@ class CCLAngularPowerSpectra:
         """Prepare advanced angular_cl keyword arguments."""
         angular_cl_kwargs = {}
         
-        # Limber integration control
-        if not self.config.get('limber_integration', True):
-            angular_cl_kwargs['limber_integration'] = False
-            if self.config.get('non_limber_max_ell', 100) > 0:
-                angular_cl_kwargs['non_limber_max_ell'] = self.config['non_limber_max_ell']
+        # Limber integration control      
+        limber_max_error = self.config.get('limber_max_error', 0.01)
+        if limber_max_error != 0.01:
+            angular_cl_kwargs['limber_max_error'] = limber_max_error
         
-        # Integration method and tolerances
-        integration_method = self.config.get('integration_method', 'qag_quad')
-        if integration_method != 'qag_quad':
-            angular_cl_kwargs['integration_method'] = integration_method
+        # Integration methods
+        limber_integration_method = self.config.get('limber_integration_method', 'qag_quad')
+        if limber_integration_method != 'qag_quad':
+            angular_cl_kwargs['limber_integration_method'] = limber_integration_method
         
-        rel_tol = self.config.get('relative_tolerance', 1e-4)
-        abs_tol = self.config.get('absolute_tolerance', 0.0)
-        if rel_tol != 1e-4:
-            angular_cl_kwargs['rtol'] = rel_tol
-        if abs_tol != 0.0:
-            angular_cl_kwargs['atol'] = abs_tol
+        non_limber_integration_method = self.config.get('non_limber_integration_method', 'FKEM')
+        if non_limber_integration_method != 'FKEM':
+            angular_cl_kwargs['non_limber_integration_method'] = non_limber_integration_method
+        
+        # FKEM parameters
+        fkem_chi_min = self.config.get('fkem_chi_min', None)
+        if fkem_chi_min is not None:
+            angular_cl_kwargs['fkem_chi_min'] = fkem_chi_min
+        
+        fkem_Nchi = self.config.get('fkem_Nchi', None)
+        if fkem_Nchi is not None:
+            angular_cl_kwargs['fkem_Nchi'] = fkem_Nchi
         
         # Power spectrum specification
         p_of_k_a = self.config.get('p_of_k_a', 'delta_matter:delta_matter')
         if p_of_k_a != 'delta_matter:delta_matter':
             angular_cl_kwargs['p_of_k_a'] = p_of_k_a
         
-        # Sampling parameters
-        l_logstep = self.config.get('l_logstep', 1.15)
-        l_linstep = self.config.get('l_linstep', 40.0)
-        if l_logstep != 1.15:
-            angular_cl_kwargs['l_logstep'] = l_logstep
-        if l_linstep != 40.0:
-            angular_cl_kwargs['l_linstep'] = l_linstep
+        p_of_k_a_lin = self.config.get('p_of_k_a_lin', 'delta_matter:delta_matter')
+        if p_of_k_a_lin != 'delta_matter:delta_matter':
+            angular_cl_kwargs['p_of_k_a_lin'] = p_of_k_a_lin
         
-        # Radial sampling
-        dchi = self.config.get('dchi', -1.0)
-        dlnchi = self.config.get('dlnchi', -1.0)
-        if dchi > 0:
-            angular_cl_kwargs['dchi'] = dchi
-        if dlnchi > 0:
-            angular_cl_kwargs['dlnchi'] = dlnchi
+        # Return metadata flag
+        return_meta = self.config.get('return_meta', False)
+        if return_meta:
+            angular_cl_kwargs['return_meta'] = return_meta
         
         return angular_cl_kwargs
     
@@ -82,16 +80,16 @@ class CCLAngularPowerSpectra:
         ell = self.config['ell']
         n_ell = self.config['n_ell']
         angular_cl_kwargs = self._prepare_angular_cl_kwargs()
+        angular_cl_kwargs['l_limber'] = self.config.get('l_limber_gc', -1) 
+        #print('angular_cl_kwargs (galaxy) ', angular_cl_kwargs)
         
         cl_gg = np.zeros((nbin_lens, nbin_lens, n_ell))
         
         for i in range(nbin_lens):
-            for j in range(i, nbin_lens):
-                cl_gg[i, j] = self._compute_cl_safely(cosmo_ccl, lenses[i], lenses[j], ell, angular_cl_kwargs)
-                if i != j:
-                    cl_gg[j, i] = cl_gg[i, j]  # Symmetry
-                block['galaxy_cl', f'bin_{i+1}_{j+1}'] = cl_gg[i, j]
-        
+            for j in range(nbin_lens):
+                cl_gg[i,j] = self._compute_cl_safely(cosmo_ccl, lenses[i], lenses[j], ell, angular_cl_kwargs) 
+                block['galaxy_cl', f'bin_{i+1}_{j+1}'] = cl_gg[i,j]
+
         # Store metadata
         self._store_cl_metadata(block, 'galaxy_cl', ell, nbin_lens, nbin_lens)
     
@@ -105,6 +103,8 @@ class CCLAngularPowerSpectra:
         ell = self.config['ell']
         n_ell = self.config['n_ell']
         angular_cl_kwargs = self._prepare_angular_cl_kwargs()
+        angular_cl_kwargs['l_limber'] = self.config.get('l_limber_shear', -1) 
+        #print('angular_cl_kwargs (shear) ', angular_cl_kwargs)
         
         cl_ll = np.zeros((nbin_source, nbin_source, n_ell))
         
@@ -116,8 +116,6 @@ class CCLAngularPowerSpectra:
                     #cl_ll[j, i] = cl_ll[i, j] 
                     block['shear_cl', f'bin_{j+1}_{i+1}'] = cl_ll[i, j]
 
-
-        
         # Store metadata
         self._store_cl_metadata(block, 'shear_cl', ell, nbin_source, nbin_source)
     
@@ -132,6 +130,8 @@ class CCLAngularPowerSpectra:
         nbin_source = len(sources)
         ell = self.config['ell']
         angular_cl_kwargs = self._prepare_angular_cl_kwargs()
+        angular_cl_kwargs['l_limber'] = self.config.get('l_limber_cross', -1) 
+        #print('angular_cl_kwargs (galaxy-shear) ', angular_cl_kwargs)
         
         for i in range(nbin_lens):
             for j in range(nbin_source):

@@ -178,7 +178,7 @@ params:
         meaning: Upper padding fraction in chi for non-limber calculation
         type: float
         default: 2.0
-    chi_pad_upper:
+    chi_pad_lower:
         meaning: Lower padding fraction in chi for non-limber calculation
         type: float
         default: 2.0

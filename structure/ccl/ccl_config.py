@@ -43,6 +43,7 @@ class CCLConfig:
             'compute_shear': self.options.get_bool(option_section, "compute_shear", True),
             'compute_cross': self.options.get_bool(option_section, "compute_cross", True),
             'compute_cmb_lensing': self.options.get_bool(option_section, "compute_cmb_lensing", False),
+            'do_rsd': self.options.get_bool(option_section, "do_rsd", False),
             'compute_isw': self.options.get_bool(option_section, "compute_isw", False),
             'compute_tsz': self.options.get_bool(option_section, "compute_tsz", False),
             'compute_cib': self.options.get_bool(option_section, "compute_cib", False),
@@ -180,16 +181,17 @@ class CCLConfig:
         
         # Accuracy parameters
         self.config.update({
-            'limber_integration': self.options.get_bool(option_section, "limber_integration", True),
-            'non_limber_max_ell': self.options.get_int(option_section, "non_limber_max_ell", 100),
-            'integration_method': self.options.get_string(option_section, "integration_method", "qag_quad"),
-            'relative_tolerance': self.options.get_double(option_section, "relative_tolerance", 1e-4),
-            'absolute_tolerance': self.options.get_double(option_section, "absolute_tolerance", 0.0),
+            'l_limber_shear': self.options.get_int(option_section, "l_limber_shear", -1),
+            'l_limber_cross': self.options.get_int(option_section, "l_limber_cross", -1),
+            'l_limber_gc': self.options.get_int(option_section, "l_limber_gc", -1),
+            'limber_max_error': self.options.get_double(option_section, "limber_max_error", 0.01),
+            'limber_integration_method': self.options.get_string(option_section, "limber_integration_method", "qag_quad"),
+            'non_limber_integration_method': self.options.get_string(option_section, "non_limber_integration_method", "FKEM"),
+            'fkem_chi_min': self.options.get_double(option_section, "fkem_chi_min") if self.options.has_value(option_section, "fkem_chi_min") else None,
+            'fkem_Nchi': self.options.get_int(option_section, "fkem_Nchi") if self.options.has_value(option_section, "fkem_Nchi") else None,
             'p_of_k_a': self.options.get_string(option_section, "p_of_k_a", "delta_matter:delta_matter"),
-            'l_logstep': self.options.get_double(option_section, "l_logstep", 1.15),
-            'l_linstep': self.options.get_double(option_section, "l_linstep", 40.0),
-            'dchi': self.options.get_double(option_section, "dchi", -1.0),
-            'dlnchi': self.options.get_double(option_section, "dlnchi", -1.0),
+            'p_of_k_a_lin': self.options.get_string(option_section, "p_of_k_a_lin", "delta_matter:delta_matter"),
+            'return_meta': self.options.get_bool(option_section, "return_meta", False),
         })
     
     def get(self, key: str, default=None):
