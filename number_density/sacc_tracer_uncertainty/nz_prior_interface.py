@@ -7,14 +7,22 @@ def setup(options):
     # Load the SACC file specified
     sacc_file = options.get_string(option_section, "sacc_file")    
     section_names = options.get_string(option_section, "section_names").split()
-    sacc_data = sacc.SACC.load_fits(sacc_file)
+    values_section = options.get_string(option_section, "values_section", default="nz_uncertainty")
+    uncertainty_name = options.get_string(option_section, "uncertainty_name", default="")
+    sacc_data = sacc.Sacc.load_fits(sacc_file)
 
+    found_uncertainties = list(sacc_data.tracer_uncertainties.keys())
     # Read all the tracer uncertainty objects from the SACC file.
     # There should only be one.
-    n_uncertainty = len(sacc_data.tracer_uncertainties)
-    if n_uncertainty != 1:
-        raise ValueError("Only one tracer uncertainty is supported currently")
-    tracer_uncertainty = list(sacc_data.tracer_uncertainties.values())[0]
+    if uncertainty_name:
+        if uncertainty_name not in sacc_data.tracer_uncertainties:
+            raise ValueError(f"Requested tracer uncertainty {uncertainty_name} not found in SACC file {sacc_file}, available uncertainties: {found_uncertainties}")
+        tracer_uncertainty = sacc_data.tracer_uncertainties[uncertainty_name]
+    else:
+        n_uncertainty = len(sacc_data.tracer_uncertainties)
+        if n_uncertainty != 1:
+            raise ValueError(f"Only one tracer uncertainty is supported currently, found {n_uncertainty}, called: {found_uncertainties}. Set uncertainty_name option to select one.")
+        tracer_uncertainty = list(sacc_data.tracer_uncertainties.values())[0]
 
 
     # check what type of uncertainty we have - this determmines how we change the n(z).
@@ -26,8 +34,14 @@ def setup(options):
         mode = "linear_combination"
     else:
         raise ValueError("Unsupported tracer uncertainty type")
+    
+    print("Uncertainty is expecting to apply to tracers:")
+    print(tracer_uncertainty.tracer_names)
+    print("mean = ", tracer_uncertainty.mean)
+    print("linear transformation shape = ", tracer_uncertainty.linear_transformation.shape)
+
         
-    return {"mode": mode, "section_names": section_names, "tracer_uncertainty": tracer_uncertainty}
+    return {"mode": mode, "section_names": section_names, "tracer_uncertainty": tracer_uncertainty, "values_section": values_section}
 
 def read_nzs(block, section_names):
     # We don't have any way to check that the user specified the section names
@@ -41,7 +55,7 @@ def read_nzs(block, section_names):
         # CosmoSIS bin numbers start at one.
         # Read all the n(z) bins for this section.
         i = 1
-        while block.has_key(section_name, f"bin_{i}"):
+        while block.has_value(section_name, f"bin_{i}"):
             nz = block[section_name, f"bin_{i}"]
             zs.append(z)
             nzs.append(nz)
@@ -71,11 +85,12 @@ def update_nzs(zs, nzs, tracer_uncertainty, alpha, mode):
             # values.
             params = mu + M @ alpha
             shifts = params[0::2]
-            width = 1 + params[1::2]
+            width = params[1::2]
         new_nzs = []
 
         # In either of these cases we apply the shift/width model to each n(z)
         for i, (z, nz) in enumerate(zip(zs, nzs)):
+            print("Applying shift =", shifts[i], "width =", width[i], " to bin ", i)
             new_nz = shift_and_width_model(z, nz, shifts[i], width[i])
             new_nzs.append(new_nz)
 
@@ -86,7 +101,7 @@ def replace_nzs(block, section_names, new_nzs):
     i = 0
     for section_name in section_names:
         j = 1
-        while block.has_key(section_name, f"bin_{j}"):
+        while block.has_value(section_name, f"bin_{j}"):
             block[section_name, f"bin_{j}"] = new_nzs[i]
             j += 1
             i += 1
@@ -96,20 +111,21 @@ def execute(block, config):
     mode = config["mode"]
     tracer_uncertainty = config["tracer_uncertainty"]
     section_names = config["section_names"]
+    values_section = config["values_section"]
 
     # Work out number of parameters that we need
     ntracer = len(tracer_uncertainty.tracer_names)
     zs, nzs = read_nzs(block, section_names)
 
     if len(nzs) != ntracer:
-        raise ValueError("Number of tracers in SACC file does not match number of bins in datablock")
+        raise ValueError(f"Number of tracers in SACC file ({ntracer}) does not match number of bins in datablock ({len(nzs)})")
 
     # Read the alpha parameters from the datablock.
     # We start these at zero instead of one to match SACC convention
     nparam = ntracer * tracer_uncertainty.nparams
     alpha = np.zeros(nparam)
     for i in range(nparam):
-        alpha[i] = block[option_section, f"alpha_{i}"]
+        alpha[i] = block[values_section, f"alpha_{i}"]
 
     # Get the new n(z)s, depending on the specific method
     new_nzs = update_nzs(zs, nzs, tracer_uncertainty, alpha, mode)
