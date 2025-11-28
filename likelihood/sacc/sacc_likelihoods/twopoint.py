@@ -2,6 +2,7 @@ import numpy as np
 from cosmosis.datablock import BlockError
 import pathlib
 import sys
+import warnings
 
 # Get the SpectrumInterp class from the spec_tools module.
 # Should really put this somewhere else!
@@ -81,6 +82,19 @@ def extract_spectrum_prediction(sacc_data, block, data_type, section, **kwargs):
                 x_nominal = d['ell']
             elif category == "real":
                 x_nominal = d['theta']
+                unit = d.get_tag('theta_unit')
+                if unit is None:
+                    unit = "arcmin"
+                    warnings.warn("Assuming that sacc file theta values are in arcmin")
+                if unit == "arcmin":
+                    x_nominal = np.radians(x_nominal / 60.)
+                elif unit in ["degrees", "degree", "deg"]:
+                    x_nominal = np.radians(x_nominal)
+                elif unit in ["radians", "radian", "rad"]:
+                    pass
+                else:
+                    raise ValueError(f"Unknown theta unit {unit} in sacc file")
+
             #TO-DO: Decide on final nomenclature for cosebis and psi-stats!
             # Given current cosebis module in standard library, the x_nominal should be simply n
             elif category == "cosebis":
