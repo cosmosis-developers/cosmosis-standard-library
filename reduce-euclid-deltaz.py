@@ -2,7 +2,8 @@ import sacc
 import numpy as np
 import matplotlib.pyplot as plt
 
-infile = "/Users/jzuntz/src/euclid/txpipe/TXPipe/data/euclid-rr2/outputs-2_1/summary_statistics_fourier.sacc"
+infile = "/Users/jzuntz/src/euclid/txpipe/TXPipe/data/euclid-rr2/outputs-2_1/summary_statistics_real.sacc"
+outfile = "reduced_euclid_rr2_2.1_summary_statistics_real.sacc"
 r = 5
 
 
@@ -37,4 +38,4 @@ plt.ylabel("n(z)")
 plt.legend()
 plt.show()
 
-s.save_fits("reduced_euclid_rr2_2.1_summary_statistics_fourier.sacc")
+s.save_fits(outfile)
