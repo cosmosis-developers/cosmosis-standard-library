@@ -14,7 +14,7 @@ sys.path.insert(0, twopoint_path)
 import twopoint
 import warnings
 
-def read_theta(filename, xi_type_2pt, theta_type = 'centers', desired_units = 'arcmin'):
+def read_theta_fits(filename, xi_type_2pt, theta_type = 'centers', desired_units = 'arcmin'):
     """
     Short function to read in theta values from a specified fits file.
     Desired angle units in 'rad', 'arcmin', 'arcsec', 'deg
@@ -42,6 +42,31 @@ def read_theta(filename, xi_type_2pt, theta_type = 'centers', desired_units = 'a
     else:
         raise ValueError("Unknown theta_type in read_theta")
 
+def read_theta_sacc(filename, xi_type_2pt, theta_type = 'centers', desired_units = 'arcmin'):
+    import sacc
+    s = sacc.Sacc.load_fits(filename)
+    if theta_type != "centers":
+        raise ValueError("Only coded up reading theta centers from sacc files")
+
+    type_map = {
+        "xip": "galaxy_shear_xi_plus",
+        "xim": "galaxy_shear_xi_minus",
+        "gammat": "galaxy_shearDensity_gamma_t",
+        "wtheta": "galaxy_density_xi",
+    }
+    theta = np.unique(s.get_tag("theta", type_map[xi_type_2pt]))
+    print("Read these theta values from sacc file:", theta)
+    print(f"Hopefully they are in {desired_units}. Please check it looks sensible, ")
+    print("as we are not currently converting units when reading from sacc files.")
+    return theta
+
+def read_theta(filename, xi_type_2pt, theta_type = 'centers', desired_units = 'arcmin'):
+    if filename.endswith('.fits') or filename.endswith('.fit'):
+        return read_theta_fits(filename, xi_type_2pt, theta_type, desired_units)
+    elif filename.endswith('.sacc') or filename.endswith('.sacc.gz'):
+        return read_theta_sacc(filename, xi_type_2pt, theta_type, desired_units)
+    else:
+        raise ValueError("Unknown file type for reading theta values")
 
 
 def setup(options):
