@@ -62,7 +62,7 @@ def setup(options):
 
 def execute(block, config):
     data_sets = config
-    for name, (z, nz) in list(config.items()):
+    for name, (z, nz) in list(data_sets.items()):
         nbin = len(nz)
         ns = len(z)
         block[name, "nbin"] = nbin

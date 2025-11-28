@@ -15,7 +15,27 @@ explanation: |
     accounting for the fact that C_GI != C_IG for two bins
 
     It may be replaced at some point with changes to the shear computation modules.
-params: {}
+params:
+    shear-shear:
+        meaning: Whether to add IA into shear-shear spectra
+        type: bool
+        default: true
+    position-shear:
+        meaning: Whether to add IA into position-shear (GI) spectra
+        type: bool
+        default: true
+    shear-cmbkappa:
+        meaning: Whether to add IA into shear-CMBkappa spectra
+        type: bool
+        default: false
+    perbin:
+        meaning: Whether to use an IA amplitude parameter per tomographic bin instead of a global output_section_name
+        type: bool
+        default: false
+    suffix:
+        meaning: Suffix to add to output section name
+        type: str
+        default: ''
 inputs:
     shear_cl_gg:
         nbin:
