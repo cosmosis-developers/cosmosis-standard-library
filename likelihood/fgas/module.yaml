@@ -83,7 +83,7 @@ inputs:
             meaning: Hubble parameter
             type: real 1d
             default:
-    fgas:
+    fgas_parameters:
         U_gas_0:
             meaning: Redshift-zero value of fgas, normalized to the cosmic baryon
                 fraction

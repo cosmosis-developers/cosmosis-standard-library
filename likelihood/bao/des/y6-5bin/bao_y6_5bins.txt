@@ -1,0 +1,5 @@
+0.752   17.18   DM_over_rs
+0.850   19.66   DM_over_rs
+0.947   22.05   DM_over_rs
+1.043   22.57   DM_over_rs
+1.142   26.62   DM_over_rs

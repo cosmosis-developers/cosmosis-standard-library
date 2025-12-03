@@ -1,4 +1,3 @@
-#This is a template for module description files
 name: gaussian_window
 version: 1
 purpose: Compute Gaussian n(z) window functions for weak lensing bins

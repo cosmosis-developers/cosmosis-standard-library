@@ -1,4 +1,3 @@
-#This is a template for module description files
 name: "planck_py"
 version: "1.0"
 purpose: "Lightweight python-based Planck likelihood code"
@@ -36,6 +35,18 @@ params:
         meaning: "Whether to include ell < 30 data points"
         type: bool
         default:
+    ell_max_tt:
+        meaning: "Maximum ell for TT spectrum"
+        type: int
+        default: 2509
+    ell_max_te:
+        meaning: "Maximum ell for TE spectrum"
+        type: int
+        default: 1997
+    ell_max_ee:
+        meaning: "Maximum ell for EE spectrum"
+        type: int
+        default: 1997
     data_directory:
         meaning: "Directory to search for data"
         type: "[module dir]/data"

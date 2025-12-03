@@ -17,6 +17,10 @@ explanation: |
 
     This is a first version of a general code using the SACC format developed for DESC.
     See github.com/LSSTDESC/sacc for more details
+
+    Note a recent change: by default we now do not renormalize any bandpower weights,
+    whereas before we did.  This is to allow for non-unit-sum weights such as those
+    produced by NaMaster.
     "
 params:
     data_file:

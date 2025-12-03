@@ -1,4 +1,3 @@
-#This is a template for module description files
 name: photoz_bias
 version: 1
 purpose: Modify a set of loaded n(z) distributions with a multiplicative or additive

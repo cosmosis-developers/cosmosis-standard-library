@@ -1,0 +1,107 @@
+name: flexible_grid
+version: 1
+purpose: Flexible intrinsic alignment implementation using grid-based bias model
+url: ''
+interface: bias_JB_interface.py
+attribution: [Jonathan Blazek]
+rules: []
+cite: []
+assumptions:
+-   Bias model with flexible grid implementation
+
+explanation: |
+    "This module implements a flexible grid-based approach for intrinsic
+    alignment modeling. It provides a more flexible framework for IA
+    calculations that can accommodate various bias models and galaxy
+    populations using grid-based interpolation methods."
+
+params:
+    nknodes:
+        meaning: Number of k-nodes in the grid
+        type: int
+        default:
+    nznodes:
+        meaning: Number of z-nodes in the grid
+        type: int
+        default:
+    intrinsic_alignments:
+        meaning: Whether to calculate intrinsic alignment bias
+        type: bool
+        default:
+    galaxy_bias:
+        meaning: Whether to calculate galaxy bias
+        type: bool
+        default:
+
+inputs:
+    intrinsic_alignment_parameters:
+        node_{i}_{j}:
+            meaning: Grid node values for intrinsic alignment bias
+            type: real
+            default:
+        A:
+            meaning: Free amplitude parameter for intrinsic alignments
+            type: real
+            default:
+        z:
+            meaning: Redshift values for fiducial bias
+            type: real 1d
+            default:
+        k_h:
+            meaning: Wavenumber values for fiducial bias (h/Mpc)
+            type: real 1d
+            default:
+        b_I:
+            meaning: Fiducial intrinsic alignment bias systematic term
+            type: real 2d
+            default:
+        r_I:
+            meaning: Fiducial intrinsic alignment bias stochastic term
+            type: real 2d
+            default:
+    bias_parameters:
+        node_{i}_{j}:
+            meaning: Grid node values for galaxy bias
+            type: real
+            default:
+        A:
+            meaning: Free amplitude parameter for galaxy bias
+            type: real
+            default:
+        z:
+            meaning: Redshift values for fiducial bias
+            type: real 1d
+            default:
+        k_h:
+            meaning: Wavenumber values for fiducial bias (h/Mpc)
+            type: real 1d
+            default:
+        b_g:
+            meaning: Fiducial galaxy bias systematic term
+            type: real 2d
+            default:
+        r_g:
+            meaning: Fiducial galaxy bias stochastic term
+            type: real 2d
+            default:
+
+outputs:
+    intrinsic_alignments_parameters:
+        z:
+            meaning: Output redshift values
+            type: real 1d
+        k_h:
+            meaning: Output wavenumber values (h/Mpc)
+            type: real 1d
+        b_I:
+            meaning: Interpolated intrinsic alignment bias systematic term
+            type: real 2d
+        r_I:
+            meaning: Interpolated intrinsic alignment bias stochastic term
+            type: real 2d
+        b_g:
+            meaning: Interpolated galaxy bias systematic term
+            type: real 2d
+        r_g:
+            meaning: Interpolated galaxy bias stochastic term
+            type: real 2d

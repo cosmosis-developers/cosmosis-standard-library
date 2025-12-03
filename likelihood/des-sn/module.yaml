@@ -1,0 +1,96 @@
+name: des-y5-sn
+version: '1.0'
+purpose: Compute the likelihood of DES Y5 Supernova data
+url: ''
+interface: des_y5_sn_likelihood.py
+attribution: [DES Collaboration]
+rules: ''
+cite:
+-   "DES Collaboration: T. M. C. Abbott et al 2024 ApJL 973 L14"
+
+assumptions:
+-   Supernova modelling
+-   FLRW metric and D_A, D_L relation
+
+explanation: |
+    This module gives a likelihood of the distance modulus of the DES Y5 supernovae.
+    It marginalizes over the supernova absolute magnitude so there is no need
+    to vary that parameter.
+
+    The module starts from the angular diameter distance so it can apply the
+    heliocentric correction, rather than reading the computed mu(z) values.
+
+params:
+    data_file:
+        meaning: Optional. File containing supernova measurements
+        type: str
+        default: module_dir/DES-SN5YR_HD.csv
+    covmat_file:
+        meaning: Optional. File containing supernova measurements
+        type: str
+        default: module_dir/STAT+SYS.txt.gz
+    x_section:
+        meaning: Datablock section for input theory redshift
+        type: str
+        default: distances
+    x_name:
+        meaning: Datablock name for input theory redshift
+        type: str
+        default: z
+    y_section:
+        meaning: Datablock section for input theory angular diameter distance
+        type: str
+        default: distances
+    y_name:
+        meaning: Datablock name for input theory angular diameter distance
+        type: str
+        default: D_A
+    like_name:
+        meaning: Named for the saved output likelihood
+        type: str
+        default: desy5sn
+    likelihood_only:
+        meaning: >
+            Skip saving everything except the likelihood.  This prevents
+            you from using e.g. the Fisher matrix sampler but can be faster for quick
+            likelihoods
+        type: bool
+        default: false
+    include_norm:
+        meaning: Include the normalizing constant at the start of the likelihood.  May be needed when comparing models.
+        type: bool
+        default: false
+inputs:
+    distances:
+        z:
+            meaning: Redshifts of calculated theory D_A(z)
+            type: real 1d
+            default:
+        D_A:
+            meaning: Angular diameter distance D_A(z) at given redshifts
+            type: real 1d
+            default:
+
+outputs:
+    likelihoods:
+        desy5sn_like:
+            meaning: Gaussian likelihood value of supplied theory D_A(z)
+            type: real
+    data_vector:
+        desy5sn_covariance:
+            meaning: Fixed covariance matrix, only if likelihood_only=F
+            type: real 2d
+        desy5sn_data:
+            meaning: Fixed data vector mu_obs, only if likelihood_only=F
+            type: real 1d
+        desy5sn_simulation:
+            meaning: Simulated data vector including simulated noise
+                for e.g. ABC, only if likelihood_only=F
+            type: real 1d
+        desy5sn_theory:
+            meaning: Predicted theory values mu_theory(z_obs) only
+                if likelihood_only=F
+            type: real 1d
+        desy5sn_chi2:
+            meaning: chi^2 value, only if likelihood_only=F
+            type: real

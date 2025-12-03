@@ -1,4 +1,3 @@
-#This is a template for module description files
 name: "bacco_emulator"
 version: "7e0ca8b556da6ad8e11168026078b1d29920adcf"
 purpose: "Emulate the non-linear, baryonified, matter power spectrum"

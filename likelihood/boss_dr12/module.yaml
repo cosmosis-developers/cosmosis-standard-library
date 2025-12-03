@@ -1,4 +1,3 @@
-#This is a template for module description files
 name: boss_dr12
 version: 1607.03155v1
 purpose: Compute the likelihood of the supplied expansion and growth history against

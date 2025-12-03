@@ -39,18 +39,26 @@ explanation: |4
     The CosmoSIS team packaged this module into cosmosis form so any issues
     running it here please ask us first.
 params:
+    version:
+        meaning: Version of CLASS to use
+        type: str
+        default: "3.2.5"
     lmax:
         meaning: Max angular frequency ell to use for cmb calculation
         type: int
         default: 2000
     kmax:
         meaning: The max wavenumber k to use for P(k,z) calculation
-        type: int
-        default: 50.0
+        type: real
+        default: 10.0
     zmax:
         meaning: Max redshift to save P(k,z) and distances
         type: real
-        default: 4.0
+        default: 3.0
+    nk:
+        meaning: Number of k values to use for P(k,z) calculation
+        type: int
+        default: 100
     cmb:
         meaning: Whether to compute CMB spectra
         type: bool
@@ -59,12 +67,24 @@ params:
         meaning: Whether to compute matter power spectra
         type: bool
         default: True
-    cmb:
+    lensing:
         meaning: Whether to lens the output CMB power spectra
         type: bool
         default: True
+    background_only:
+        meaning: Run the class module on background only mode. If set to true, it will not calculate any perturbations.
+        type: bool
+        default: False
     debug:
         meaning: Whether to give a fuller traceback on errors
+        type: bool
+        default: False
+    save_matter_power_lin:
+        meaning: Whether to save linear matter power spectrum
+        type: bool
+        default: True
+    save_cdm_baryon_power_lin:
+        meaning: Whether to save linear CDM-baryon power spectrum
         type: bool
         default: False
 inputs:
@@ -101,6 +121,10 @@ inputs:
             meaning: The CMB temperature today in Kelvin
             type: real
             default: 2.726
+        N_ur:
+            meaning: Number of ultra-relativistic species. If not given, calculates it from `num_massive_neutrinos` and `nnu` based on the values suggest by CLASS such that N_eff = 3.044.
+            type: real
+            default: get_N_ur()
 outputs:
     cosmological_parameters:
         sigma_8:
@@ -122,6 +146,12 @@ outputs:
             type: real 1d
         d_l:
             meaning: Luminosity distance in Mpc
+            type: real 1d
+        d_c: 
+            meaning: Comoving Distance in Mpc 
+            type: real 1d
+        d_v: 
+            meaning: Angular average of comoving angular diameter and line of sight distance
             type: real 1d
         age:
             meaning: Age of universe in GYr
@@ -158,4 +188,10 @@ outputs:
         te:
             meaning: ell * (ell+1) C_ell^TE / 2 pi in mu K^2. Only if mode=cmb or
                 all
+            type: real 1d
+        pp:
+            meaning: ell*(ell+1) C_ell^PhiPhi / 2pi. The CMB lensing power spectra. Only if lensing=True.
+            type: real 1d
+        tp:
+            meaning: ell*(ell+1) C_ell^PhiT / 2pi. CMB Lensing cross-correlations with temperature. Only if lensing=True.
             type: real 1d

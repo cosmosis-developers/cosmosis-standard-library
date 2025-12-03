@@ -1,4 +1,3 @@
-#This is a template for module description files
 name: load_nz_fits
 version: 1
 purpose: Load a number density n(z) from a FITS file
@@ -44,7 +43,10 @@ params:
         default:
     data_sets:
         meaning: Space separated names of the extensions from the FITS files to load
-            and save to the block
+        type: str
+        default:
+    data_sets_output:
+        meaning: Space separated names to use to save the nz to the block
         type: str
         default:
     prefix_extension:

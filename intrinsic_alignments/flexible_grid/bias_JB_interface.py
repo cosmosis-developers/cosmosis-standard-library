@@ -1,10 +1,8 @@
-from __future__ import print_function
 from cosmosis.datablock import names, option_section
 import bias_grid as functions
 
 import numpy as np
 import matplotlib.pyplot as plt
-import pdb
 
 
 def setup(options):
@@ -33,9 +31,6 @@ def execute(block, config):
     grid.setup_grid_nodes(block)
     grid.interpolate_grid()
     grid.evaluate_and_save_bias(block)
-    pdb.set_trace()
-
-    print('Done.')
     return 0
 
 

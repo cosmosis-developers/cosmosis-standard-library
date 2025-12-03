@@ -1,4 +1,3 @@
-#This is a template for module description files
 name: WiggleZBao
 version: 1401.0358v2
 purpose: Compute the likelihood of the supplied expansion history against WiggleZ

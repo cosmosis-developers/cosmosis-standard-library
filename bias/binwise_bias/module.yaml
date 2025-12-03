@@ -1,0 +1,44 @@
+name: binwise_bias
+version: 1
+purpose: Apply galaxy bias on a per-bin basis to galaxy power spectra
+url: ''
+interface: binwise_bias.py
+attribution: [CosmoSIS Team]
+rules: []
+cite: []
+assumptions:
+-   Galaxy bias is specified per redshift bin
+-   Bias values are independent for each bin
+
+explanation: |
+    "This module applies galaxy bias on a per-bin basis to galaxy power spectra.
+    It reads bias values for each redshift bin and applies them to the appropriate
+    auto- and cross-power spectra. Note that it only affects the galaxy_cl spectra
+    not any galaxy-matter spectra.
+    
+    For each pair of bins (i,j), the power spectrum is multiplied by b_i * b_j
+    where b_i and b_j are the bias values for bins i and j respectively."
+
+params: {}
+
+inputs:
+    bin_bias:
+        b_{i}:
+            meaning: Galaxy bias value for bin i (b_1, b_2, ...)
+            type: real
+            default:
+    galaxy_cl:
+        nbin:
+            meaning: Number of redshift bins
+            type: int
+            default:
+        bin_{i}_{j}:
+            meaning: Galaxy power spectrum for bins i and j
+            type: real 1d
+            default:
+
+outputs:
+    galaxy_cl:
+        bin_{i}_{j}:
+            meaning: Biased galaxy power spectrum for bins i and j
+            type: real 1d

@@ -1,0 +1,137 @@
+name: add_gammat_point_mass
+version: 1
+purpose: Add point mass contributions to galaxy-galaxy lensing (gamma_t) signal
+url: ''
+interface: add_gammat_point_mass.py
+attribution: [Shivam Pandey]
+rules: []
+cite: [https://doi.org/10.1093/mnras/stz2761]
+assumptions:
+-   Point mass contributions follow 1/theta^2 angular dependence
+-   Critical surface density can be computed from geometry or fiducial cosmology
+
+explanation: |
+    "This module adds point mass contributions to the galaxy-galaxy lensing 
+    tangential shear signal gamma_t. Point masses around lenses contribute 
+    a 1/theta^2 term to the lensing signal.
+    
+    The module computes the critical surface density inverse (sigma_crit^-1)
+    for each lens-source bin combination and uses bias parameters to scale
+    the point mass contribution. It can use either the cosmological parameters
+    from the pipeline or a fiducial cosmology for distance calculations."
+
+params:
+    bias_section:
+        meaning: Section name containing point mass bias parameters
+        type: str
+        default: add_pm
+    bias_prefix:
+        meaning: Prefix for bias parameter names
+        type: str
+        default: b_
+    add_togammat:
+        meaning: Whether to add point mass term to existing gamma_t
+        type: bool
+        default: false
+    use_fiducial:
+        meaning: Whether to use fiducial cosmology for distance calculations
+        type: bool
+        default: false
+    Omega_m_fid:
+        meaning: Fiducial matter density parameter
+        type: real
+        default: 0.3
+    H0_fid:
+        meaning: Fiducial Hubble parameter in km/s/Mpc
+        type: real
+        default: 69.0
+    lens_nz_section:
+        meaning: Section name for lens n(z) data
+        type: str
+        default: nz_lens
+    source_nz_section:
+        meaning: Section name for source n(z) data
+        type: str
+        default: nz_source
+    gammat_section:
+        meaning: Section name for gamma_t measurements
+        type: str
+        default: galaxy_shear_xi
+    sigcrit_inv_section:
+        meaning: Section name for critical surface density inverse output
+        type: str
+        default: sigma_crit_inv_lens_source
+
+inputs:
+    bias_section:
+        bias_parameter:
+            meaning: Point mass bias parameter for lens bins
+            type: real
+            default:
+    lens_nz_section:
+        nbin:
+            meaning: Number of lens redshift bins
+            type: int
+            default:
+        z:
+            meaning: Redshift sample values for lenses
+            type: real 1d
+            default:
+        bin_i:
+            meaning: Lens n(z) for bin i
+            type: real 1d
+            default:
+    source_nz_section:
+        nbin:
+            meaning: Number of source redshift bins
+            type: int
+            default:
+        z:
+            meaning: Redshift sample values for sources
+            type: real 1d
+            default:
+        bin_i:
+            meaning: Source n(z) for bin i
+            type: real 1d
+            default:
+    gammat_section:
+        theta:
+            meaning: Angular separation values (if add_togammat=true)
+            type: real 1d
+            default:
+        bin_i_j:
+            meaning: Galaxy-galaxy lensing signal for lens bin i, source bin j
+            type: real 1d
+            default:
+    cosmological_parameters:
+        hubble:
+            meaning: Hubble parameter H0 in km/s/Mpc (if use_fiducial=false)
+            type: real
+            default:
+        omega_m:
+            meaning: Matter density parameter (if use_fiducial=false)
+            type: real
+            default:
+    distances:
+        z:
+            meaning: Redshift values for distance measurements (if use_fiducial=false)
+            type: real 1d
+            default:
+        d_m:
+            meaning: Comoving distance in Mpc (if use_fiducial=false)
+            type: real 1d
+            default:
+
+outputs:
+    gammat_section:
+        bin_i_j:
+            meaning: Modified gamma_t with point mass contribution (if add_togammat=true)
+            type: real 1d
+    point_mass:
+        bin_i_j:
+            meaning: Point mass contribution coefficient for lens bin i, source bin j
+            type: real
+    sigcrit_inv_section:
+        sigma_crit_inv_i_j:
+            meaning: Critical surface density inverse for lens bin i, source bin j
+            type: real

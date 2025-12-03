@@ -1,4 +1,8 @@
-'''
+"""
+This is a rewrite by JZ of the Prince & Dunkeley python version of the Planck likelihood code,
+to make it a little simpler to apply ell cuts to the data, and to make the data files
+more self-descriptive.
+
 Python version of Planck's plik-lite likelihood with the option to include
 the low-ell temperature as two Gaussian bins
 
@@ -11,287 +15,278 @@ The covariance matrix treatment is based on Zack Li's ACT likelihood code
 available at: https://github.com/xzackli/actpols2_like_py
 
 planck calibration is set to 1 by default but this can easily be modified
-'''
+"""
+
 import numpy as np
-from scipy.io import FortranFile
+from astropy.table import Table
 import scipy.linalg
 
+
 def main():
-    TTTEEE2018=PlanckLitePy(year=2018, spectra='TTTEEE', use_low_ell_bins=False)
+    TTTEEE2018 = PlanckLitePy(year=2018, spectra="TTTEEE", use_low_ell_bins=False)
     TTTEEE2018.test()
 
-    TTTEEE2018_lowTTbins=PlanckLitePy(year=2018, spectra='TTTEEE', use_low_ell_bins=True)
+    TTTEEE2018_lowTTbins = PlanckLitePy(year=2018, spectra="TTTEEE", use_low_ell_bins=True)
     TTTEEE2018_lowTTbins.test()
 
-    TT2018=PlanckLitePy(year=2018, spectra='TT', use_low_ell_bins=False)
+    TT2018 = PlanckLitePy(year=2018, spectra="TT", use_low_ell_bins=False)
     TT2018.test()
 
-    TT2018_lowTTbins=PlanckLitePy(year=2018, spectra='TT', use_low_ell_bins=True)
+    TT2018_lowTTbins = PlanckLitePy(year=2018, spectra="TT", use_low_ell_bins=True)
     TT2018_lowTTbins.test()
 
 
 class PlanckLitePy:
-    def __init__(self, data_directory='data', year=2018, spectra='TT', use_low_ell_bins=False):
-        '''
-        data_directory = path from where you are running this to the folder
-          containing the planck2015/8_low_ell and planck2015/8_plik_lite data
-        year = 2015 or 2018
-        spectra = TT for just temperature or TTTEEE for temperature (TT),
-          E mode (EE) and cross (TE) spectra
-        use_low_ell_bins = True to use 2 low ell bins for the TT 2<=ell<30 data
-          or False to only use ell>=30
-        '''
-        self.year=year
-        self.spectra=spectra
-        self.use_low_ell_bins=use_low_ell_bins #False matches Plik_lite - just l>=30
+    def __init__(
+        self,
+        data_directory="data",
+        year=2018,
+        spectra="TT",
+        use_low_ell_bins=False,
+        ell_max_tt=None,
+        ell_max_te=None,
+        ell_max_ee=None,
+    ):
+        if str(year) == "2018":
+            version = "22"
+        elif str(year) == "2015":
+            version = "18"
+        else:
+            raise ValueError("Year must be either 2018 or 2015")
+
+        self.cov = np.load(f"{data_directory}/{year}/planck_lite_{year}_v{version}_cov.npz")["cov"]
+        self.data = Table.read(f"{data_directory}/{year}/planck_lite_{year}_v{version}.dat", format="ascii.commented_header")
+        self.weight = np.loadtxt(f"{data_directory}/{year}/planck_lite_{year}_v{version}_weights.dat")
+
+        if spectra == "TT":
+            mask = self.data["spectrum"] == "TT"
+            self.data = self.data[mask]
+            self.cov = self.cov[mask][:, mask]
+        elif spectra != "TTTEEE":
+            # I'm doing this to match the original code, but it would be possible here
+            # to do any other combination, but I don't know if it makes sense given the data.
+            raise NotImplementedError("Only TT and TTTEEE spectra are implemented")
+
+        # Assume here that no one wants an ell_max that will affect the low ell bins,
+        # but we check for it below.
+        self._apply_ell_max("TT", ell_max_tt)
+        self._apply_ell_max("TE", ell_max_te)
+        self._apply_ell_max("EE", ell_max_ee)
+
+        if use_low_ell_bins:
+            # Should do this properly and concatenate the data tables,
+            # but that would involve re-indexing the weights for the high ell bit and I'm tired.
+            cov_low_ell = np.load(f"{data_directory}/{year}_low_ell/planck_lite_{year}_v{version}_cov.npz")["cov"]
+            self.data_low_ell = Table.read(
+                f"{data_directory}/{year}_low_ell/planck_lite_{year}_v{version}.dat", format="ascii.commented_header"
+            )
+            self.weight_low_ell = np.loadtxt(f"{data_directory}/{year}_low_ell/planck_lite_{year}_v{version}_weights.dat")
+
+            # Check that the ell_max for TT is not too low, otherwise we can't use the low ell bins.
+            if not ((ell_max_tt is None) or (ell_max_tt > self.data_low_ell["band_ell_max"].max())):
+                raise ValueError("Ell max for TT must be greater than 30 if using low ell bins")
+
+            # we do have to put the covariances together
+            self.cov = scipy.linalg.block_diag(cov_low_ell, self.cov)
+
+        # Generate the inverse covariance matrix (precision matrix), following the original code
+        # to ensure identical results.
+        self.fisher = scipy.linalg.cho_solve(scipy.linalg.cho_factor(self.cov), np.identity(len(self.cov))).transpose()
+
+        # Record this so we know later to include the low ell bins in the log likelihood.
+        self.use_low_ell_bins = use_low_ell_bins
+
+        # these will get constructed when the property is accessed
+        self._data_vector = None
+        self._effective_ell = None
+        self._spectra = None
+
+    def _apply_ell_max(self, spectrum, ell_max):
+        if ell_max is None:
+            return
+
+        # get rid of anything where the lower end of the bandpass is above the ell_max
+        bad = (self.data["band_ell_min"] > ell_max) & (self.data["spectrum"] == spectrum)
+        good = ~bad
+        self.data = self.data[good]
+        self.cov = self.cov[good][:, good]
+
+    def make_mean_vector(self, Dltt, Dlte, Dlee, ellmin=2, calPlanck=1.0):
+        """
+        Take the model Dltt, Dlte, Dlee (i.e. the ell(ell+1) Cl / 2 pi values)
+        and bin them with the appropriate weights to get a predicted theory vector.
+
+        Parameters
+        ----------
+        Dltt, Dlte, Dlee : array_like
+            The model Dl values for TT, TE and EE.
+        ellmin : int
+            The minimum ell value that the supplied Dls start from.
+        calPlanck : float
+            A calibration factor for the Planck data, default is 1.0.
+        """
+        # convert model Dl's to Cls then bin them
+        ls = np.arange(len(Dltt)) + ellmin
+        fac = ls * (ls + 1) / (2 * np.pi)
+
+        # Avoid an annoying division by zero warning.
+        if ellmin == 0:
+            fac[0] = 1.0
+
+        # Recale the Dl's to Cl's
+        Cltt = Dltt / fac
+        Clte = Dlte / fac
+        Clee = Dlee / fac
+
+        Cls = {"TT": Cltt, "TE": Clte, "EE": Clee}
+
+        # Extract the mean vector for the main (high ell) bandpowers
+        mu = self._get_mean_for_data(self.data, ellmin, Cls, self.weight)
+
+        # If we are using low ell bins, we need to get the mean for those as well
+        # and combine them
+        if self.use_low_ell_bins:
+            mu_low_ell = self._get_mean_for_data(self.data_low_ell, ellmin, Cls, self.weight_low_ell)
+            mu = np.concatenate([mu_low_ell, mu])
+
+        return mu / calPlanck**2
+
+    def _get_mean_for_data(self, data, ellmin, Cls, weight):
+        """
+        Loop through the rows in the table "data" and calculate the mean vector
+        for the bandpowers using the provided Cls and weight vectors.
+
+        We separate this into another function so that we can call it again for the low ell bins
+        without duplicating code.
+        """
+        mu = np.zeros(len(data))
+        s = data["spectrum"]
+        for i, row in enumerate(data):
+            b1 = row["band_ell_min"] - ellmin
+            b2 = row["band_ell_max"] - ellmin
+            w1 = row["weight_row_min"]
+            w2 = row["weight_row_max"]
+            s = row["spectrum"]
+            cl = Cls[s]
+            mu[i] = cl[b1:b2] @ weight[w1:w2]
+        return mu
+
+    @property
+    def effective_ells(self):
+        """
+        Return the nominal ell values for the bandpowers, mainly useful for plotting.
+        """
+        if self._effective_ell is not None:
+            return self._effective_ell
+
+        self._effective_ell = np.array(self.data["band_ell_nominal"])
 
         if self.use_low_ell_bins:
-            self.nbintt_low_ell=2
-            self.plmin_TT=2
-        else:
-            self.nbintt_low_ell=0
-            self.plmin_TT=30
-        self.plmin=30
-        self.plmax=2508
-        self.calPlanck=1
+            self._effective_ell = np.concatenate([self.data_low_ell["band_ell_nominal"], self._effective_ell])
 
-        if year==2015:
-            self.data_dir=data_directory+'/planck2015_plik_lite/'
-            version=18
-        elif year==2018:
-            self.data_dir=data_directory+'/planck2018_plik_lite/'
-            version=22
-        else:
-            print('Year must be 2015 or 2018')
-            return 1
+        return self._effective_ell
 
-        if spectra=='TT':
-            self.use_tt=True
-            self.use_ee=False
-            self.use_te=False
-        elif spectra=='TTTEEE':
-            self.use_tt=True
-            self.use_ee=True
-            self.use_te=True
-        else:
-            print('Spectra must be TT or TTTEEE')
-            return 1
+    @property
+    def data_vector(self):
+        """
+        Return the data vector, which is the bandpower values, depending on the
+        choice of spectra and whether low ell bins are used.
+        """
+        if self._data_vector is not None:
+            return self._data_vector
 
-        self.nbintt_hi = 215 #30-2508   #used when getting covariance matrix
-        self.nbinte = 199 #30-1996
-        self.nbinee = 199 #30-1996
-        self.nbin_hi=self.nbintt_hi+self.nbinte+self.nbinee
+        d = self.data["bandpower"]
 
-        self.nbintt=self.nbintt_hi+self.nbintt_low_ell #mostly want this if using low ell
-        self.nbin_tot=self.nbintt+self.nbinte+self.nbinee
+        # append the low-ell bit if used
+        if self.use_low_ell_bins:
+            d = np.concatenate([self.data_low_ell["bandpower"], d])
+        
+        # store so next time this is just returned directly
+        self._data_vector = np.array(d)
+        return self._data_vector
 
-        self.like_file = self.data_dir+'cl_cmb_plik_v'+str(version)+'.dat'
-        self.cov_file  = self.data_dir+'c_matrix_plik_v'+str(version)+'.dat'
-        self.blmin_file = self.data_dir+'blmin.dat'
-        self.blmax_file = self.data_dir+'blmax.dat'
-        self.binw_file = self.data_dir+'bweight.dat'
+    @property
+    def spectra(self):
+        """
+        Return the spectra names for the data vector, which is useful for seeing which bits
+        of data are which.
+        """
+        if self._spectra is not None:
+            return self._spectra
 
-        # read in binned ell value, C(l) TT, TE and EE and errors
-        # use_tt etc to select relevant parts
-        self.bval, self.X_data, self.X_sig=np.genfromtxt(self.like_file, unpack=True)
-        self.blmin=np.loadtxt(self.blmin_file).astype(int)
-        self.blmax=np.loadtxt(self.blmax_file).astype(int)
-        self.bin_w=np.loadtxt(self.binw_file)
+        d = self.data["spectrum"]
 
         if self.use_low_ell_bins:
-            self.data_dir_low_ell=data_directory+'/planck'+str(year)+'_low_ell/'
-            self.bval_low_ell, self.X_data_low_ell, self.X_sig_low_ell=np.genfromtxt(self.data_dir_low_ell+'CTT_bin_low_ell_'+str(year)+'.dat', unpack=True)
-            self.blmin_low_ell=np.loadtxt(self.data_dir_low_ell+'blmin_low_ell.dat').astype(int)
-            self.blmax_low_ell=np.loadtxt(self.data_dir_low_ell+'blmax_low_ell.dat').astype(int)
-            self.bin_w_low_ell=np.loadtxt(self.data_dir_low_ell+'bweight_low_ell.dat')
+            d = np.concatenate([self.data_low_ell["spectrum"], d])
 
-            self.bval=np.concatenate((self.bval_low_ell, self.bval))
-            self.X_data=np.concatenate((self.X_data_low_ell, self.X_data))
-            self.X_sig=np.concatenate((self.X_sig_low_ell, self.X_sig))
-
-            self.blmin_TT=np.concatenate((self.blmin_low_ell, self.blmin+len(self.bin_w_low_ell)))
-            self.blmax_TT=np.concatenate((self.blmax_low_ell, self.blmax+len(self.bin_w_low_ell)))
-            self.bin_w_TT=np.concatenate((self.bin_w_low_ell, self.bin_w))
-
-        else:
-            self.blmin_TT=self.blmin
-            self.blmax_TT=self.blmax
-            self.bin_w_TT=self.bin_w
-
-        self.mu = self._cut_vector(self.X_data)
-        self.fisher=self.get_inverse_covmat()
-
-    def get_inverse_covmat(self):
-        #read full covmat
-        f = FortranFile(self.cov_file, 'r')
-        covmat = f.read_reals(dtype=float).reshape((self.nbin_hi,self.nbin_hi))
-        for i in range(self.nbin_hi):
-            for j in range(i,self.nbin_hi):
-                covmat[i,j] = covmat[j,i]
-
-        #select relevant covmat
-        if self.use_tt and not(self.use_ee) and not(self.use_te):
-            #just tt
-            bin_no=self.nbintt_hi
-            start=0
-            end=start+bin_no
-            cov=covmat[start:end, start:end]
-        elif not(self.use_tt) and not(self.use_ee) and self.use_te:
-            #just te
-            bin_no=self.nbinte
-            start=self.nbintt_hi
-            end=start+bin_no
-            cov=covmat[start:end, start:end]
-        elif not(self.use_tt) and self.use_ee and not(self.use_te):
-            #just ee
-            bin_no=self.nbinee
-            start=self.nbintt_hi+self.nbinte
-            end=start+bin_no
-            cov=covmat[start:end, start:end]
-        elif self.use_tt and self.use_ee and self.use_te:
-            #use all
-            bin_no=self.nbin_hi
-            cov=covmat
-        else:
-            raise NotImplementedError("Specified combination of tt, te, ee is not implemented")
-
-        #invert high ell covariance matrix (cholesky decomposition should be faster)
-        fisher=scipy.linalg.cho_solve(scipy.linalg.cho_factor(cov), np.identity(bin_no))
-        fisher=fisher.transpose()
+        self._spectra = np.array(d)
+        return self._spectra
 
 
-        if self.use_low_ell_bins:
-            bin_no += self.nbintt_low_ell
-            inv_covmat_with_lo=np.zeros(shape=(bin_no, bin_no))
-            inv_covmat_with_lo[0:2, 0:2]=np.diag(1./self.X_sig_low_ell**2)
-            inv_covmat_with_lo[2:,2:]= fisher
-            fisher=inv_covmat_with_lo
-            fullcov=np.zeros(shape=(bin_no, bin_no))
-            fullcov[0:2,0:2] = np.diag(self.X_sig_low_ell**2)
-            fullcov[2:,2:] = cov
-            cov = fullcov
+    def loglike(self, Dltt, Dlte, Dlee, ellmin=2, calPlanck=1.0):
+        """
+        Compute the log-likelihood of the data chosen when creating this object, given
+        the model Dltt, Dlte, Dlee (i.e. the ell(ell+1) Cl / 2 pi values).
 
-        self.cov = cov
+        The ellmin parameter specifies the minimum value that the supplied Dls start from.
 
-        return fisher
+        Returns the log-likelihood value, without the normalizing |C| factor.
 
-    def make_mean_vector(self, Dltt, Dlte, Dlee, ellmin=2):
-        #convert model Dl's to Cls then bin them
-        ls=np.arange(len(Dltt))+ellmin
-        fac=ls*(ls+1)/(2*np.pi)
-        Cltt=Dltt/fac
-        Clte=Dlte/fac
-        Clee=Dlee/fac
+        This isn't used directly in CosmoSIS - instead we get the mean vector directly.
 
+        """
+        mu = self.make_mean_vector(Dltt, Dlte, Dlee, ellmin=ellmin, calPlanck=calPlanck)
+        data = self.data_vector
 
-        # Fortran to python slicing: a:b becomes a-1:b
-        # need to subtract 1 to use 0 indexing for cl,
-        # then add one for weights because fortran includes top value
-        Cltt_bin=np.zeros(self.nbintt)
-        for i in range(self.nbintt):
-            Cltt_bin[i]=np.sum(Cltt[self.blmin_TT[i]+self.plmin_TT-ellmin:self.blmax_TT[i]+self.plmin_TT+1-ellmin]*self.bin_w_TT[self.blmin_TT[i]:self.blmax_TT[i]+1])
-
-        # bin widths and weights are the same for TT, TE and EE
-        Clte_bin=np.zeros(self.nbinte)
-        for i in range(self.nbinte):
-            Clte_bin[i]=np.sum(Clte[self.blmin[i]+self.plmin-ellmin:self.blmax[i]+self.plmin+1-ellmin]*self.bin_w[self.blmin[i]:self.blmax[i]+1])
-
-        # bin widths and weights are the same for TT, TE and EE
-        Clee_bin=np.zeros(self.nbinee)
-        for i in range(self.nbinee):
-            Clee_bin[i]=np.sum(Clee[self.blmin[i]+self.plmin-ellmin:self.blmax[i]+self.plmin+1-ellmin]*self.bin_w[self.blmin[i]:self.blmax[i]+1])
-
-        X_model=np.zeros(self.nbin_tot)
-        X_model[:self.nbintt]=Cltt_bin/self.calPlanck**2
-        X_model[self.nbintt:self.nbintt+self.nbinte]=Clte_bin/self.calPlanck**2
-        X_model[self.nbintt+self.nbinte:]=Clee_bin/self.calPlanck**2
-
-        return X_model
-
-    def _cut_vector(self, Y):
-        #choose relevant bits based on whether using TT, TE, EE
-        if self.use_tt and not(self.use_ee) and not(self.use_te):
-            #just tt
-            bin_no=self.nbintt
-            start=0
-            end=start+bin_no
-            v=Y[start:end]
-        elif not(self.use_tt) and not(self.use_ee) and self.use_te:
-            #just te
-            bin_no=self.nbinte
-            start=self.nbintt
-            end=start+bin_no
-            v=Y[start:end]
-        elif not(self.use_tt) and self.use_ee and not(self.use_te):
-            #just ee
-            bin_no=self.nbinee
-            start=self.nbintt+self.nbinte
-            end=start+bin_no
-            v=Y[start:end]
-        elif self.use_tt and self.use_ee and self.use_te:
-            #use all
-            bin_no=self.nbin_tot
-            v=Y
-        else:
-            raise NotImplementedError("Specified combination of tt, te, ee is not implemented")
-        return v
-
-    def loglike(self, Dltt, Dlte, Dlee, ellmin=2):
-
-        X_model = self.make_mean_vector(Dltt, Dlte, Dlee, ellmin=ellmin)
-
-        Y=self.X_data - X_model
-
-        diff_vec = self._cut_vector(Y)
-
-        return -0.5*diff_vec.dot(self.fisher.dot(diff_vec))
-
+        d = data - mu
+        like = -0.5 * d @ self.fisher @ d
+        return like
 
     def test(self):
-        ls, Dltt, Dlte, Dlee = np.genfromtxt('data/Dl_planck2015fit.dat', unpack=True)
-        ellmin=int(ls[0])
-        loglikelihood=self.loglike(Dltt, Dlte, Dlee, ellmin)
+        ls, Dltt, Dlte, Dlee = np.genfromtxt("data/Dl_planck2015fit.dat", unpack=True)
+        ellmin = int(ls[0])
+        loglikelihood = self.loglike(Dltt, Dlte, Dlee, ellmin)
 
-        if self.year==2018 and self.spectra=='TTTEEE' and not self.use_low_ell_bins:
-            print('Log likelihood for 2018 high-l TT, TE and EE:')
+        if self.year == 2018 and self.spectra == "TTTEEE" and not self.use_low_ell_bins:
+            print("Log likelihood for 2018 high-l TT, TE and EE:")
             expected = -291.33481235418026
             # Plik-lite within cobaya gives  -291.33481235418003
-        elif self.year==2018 and self.spectra=='TTTEEE' and self.use_low_ell_bins:
-            print('Log likelihood for 2018 high-l TT, TE and EE + low-l TT bins:')
+        elif self.year == 2018 and self.spectra == "TTTEEE" and self.use_low_ell_bins:
+            print("Log likelihood for 2018 high-l TT, TE and EE + low-l TT bins:")
             expected = -293.95586501795134
-        elif self.year==2018 and self.spectra=='TT' and not self.use_low_ell_bins:
-            print('Log likelihood for 2018 high-l TT:')
+        elif self.year == 2018 and self.spectra == "TT" and not self.use_low_ell_bins:
+            print("Log likelihood for 2018 high-l TT:")
             expected = -101.58123068722583
-            #Plik-lite within cobaya gives -101.58123068722568
-        elif self.year==2018 and self.spectra=='TT' and self.use_low_ell_bins:
-            print('Log likelihood for 2018 high-l TT + low-l TT bins:')
+            # Plik-lite within cobaya gives -101.58123068722568
+        elif self.year == 2018 and self.spectra == "TT" and self.use_low_ell_bins:
+            print("Log likelihood for 2018 high-l TT + low-l TT bins:")
             expected = -104.20228335099686
 
-        elif self.year==2015 and self.spectra=='TTTEEE' and not self.use_low_ell_bins:
-            print('NB: Don\'t use 2015 polarization!')
-            print('Log likelihood for 2015 high-l TT, TE and EE:')
+        elif self.year == 2015 and self.spectra == "TTTEEE" and not self.use_low_ell_bins:
+            print("NB: Don't use 2015 polarization!")
+            print("Log likelihood for 2015 high-l TT, TE and EE:")
             expected = -280.9388125627618
             # Plik-lite within cobaya gives  -291.33481235418003
-        elif self.year==2015 and self.spectra=='TTTEEE' and self.use_low_ell_bins:
-            print('NB: Don\'t use 2015 polarization!')
-            print('Log likelihood for 2015 high-l TT, TE and EE + low-l TT bins:')
+        elif self.year == 2015 and self.spectra == "TTTEEE" and self.use_low_ell_bins:
+            print("NB: Don't use 2015 polarization!")
+            print("Log likelihood for 2015 high-l TT, TE and EE + low-l TT bins:")
             expected = -283.1905700256343
-        elif self.year==2015 and self.spectra=='TT' and not self.use_low_ell_bins:
-            print('Log likelihood for 2015 high-l TT:')
+        elif self.year == 2015 and self.spectra == "TT" and not self.use_low_ell_bins:
+            print("Log likelihood for 2015 high-l TT:")
             expected = -102.34403873289027
-            #Plik-lite within cobaya gives -101.58123068722568
-        elif self.year==2015 and self.spectra=='TT' and self.use_low_ell_bins:
-            print('Log likelihood for 2015 high-l TT + low-l TT bins:')
+            # Plik-lite within cobaya gives -101.58123068722568
+        elif self.year == 2015 and self.spectra == "TT" and self.use_low_ell_bins:
+            print("Log likelihood for 2015 high-l TT + low-l TT bins:")
             expected = -104.59579619576277
         else:
-            expected=None
+            expected = None
 
-        print('Planck-lite-py:',loglikelihood)
-        if(expected):
-            print('expected:', expected)
-            print('difference:', loglikelihood-expected, '\n')
+        print("Planck-lite-py:", loglikelihood)
+        if expected:
+            print("expected:", expected)
+            print("difference:", loglikelihood - expected, "\n")
+            assert np.isclose(loglikelihood, expected, rtol=1e-5), "Log likelihood does not match expected value"
 
 
-
-if __name__=='__main__':
+if __name__ == "__main__":
     main()

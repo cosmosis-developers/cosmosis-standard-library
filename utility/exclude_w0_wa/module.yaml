@@ -1,4 +1,3 @@
-#This is a template for module description files
 name: w0wa_sum_prior
 version: '1.0'
 purpose: Skip parameter sample without failing if w0+wa>0.

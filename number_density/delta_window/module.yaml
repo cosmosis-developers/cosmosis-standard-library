@@ -1,0 +1,52 @@
+#This is a template for module description files
+name: delta_window
+version: 1
+purpose: Compute Delta n(z) window functions for weak lensing bins
+url: ''
+interface: delta_window.py
+attribution: [CosmoSIS Team, Andrej Dvornik]
+rules: You can do what you want with this file
+cite: []
+assumptions:
+-   Delta function window in redshift
+
+explanation: |
+    "This very simple module sets up fixed redshift n(z) bins for weak lensing.
+     We should probably upgrade it to take the redshift from the 
+     sampling instead of the ini file."
+params:
+    z:
+        meaning: Redshift(s) of the position of te delta function(s). If multiple values are given, they will be used for multiple bins.
+        type: real or real 1d
+        default:
+    zmin:
+        meaning: Minimum redshift
+        type: real
+        default: 0.0
+    zmax:
+        meaning: Maximum redshift
+        type: real
+        default: 3.0
+    dz:
+        meaning: Width of the bins
+        type: real
+        default: 0.01
+    output_section:
+        meaning: Section name in the block to store the output
+        type: string
+        default: wl_number_density
+inputs: {}
+outputs:
+    wl_number_density:
+        nz:
+            meaning: Number of redshift samples
+            type: int
+        nbin:
+            meaning: Number of bins
+            type: int
+        z:
+            meaning: Redshift sample values
+            type: real 1d
+        bin_{i}:
+            meaning: n(z) at redshift sample values.  bin_1, bin_2, ...
+            type: real 1d

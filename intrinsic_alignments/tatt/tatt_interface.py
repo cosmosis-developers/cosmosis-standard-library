@@ -236,6 +236,7 @@ def setup(options):
     sub_lowk = options.get_bool(option_section, "sub_lowk", False)
     ia_model = options.get_string(option_section, "ia_model", "nla")
     name = options.get_string(option_section, "name", default="").lower()
+    param_name = options.get_string(option_section, "param_name", default="").lower()
     do_galaxy_intrinsic = options.get_bool(option_section, "do_galaxy_intrinsic", False)
     no_IA_E = options.get_bool(option_section, "no_IA_E", False)
     no_IA_B = options.get_bool(option_section, "no_IA_B", False)
@@ -244,10 +245,16 @@ def setup(options):
         suffix = "_" + name
     else:
         suffix = ""
+
+    if param_name:
+        param_name = '_' + param_name
+    else:
+        param_name = ""
     return (
         sub_lowk,
         ia_model,
         suffix,
+        param_name,
         do_galaxy_intrinsic,
         no_IA_E,
         no_IA_B,
@@ -259,6 +266,7 @@ def execute(block, config):
         sub_lowk,
         ia_model,
         suffix,
+        param_name,
         do_galaxy_intrinsic,
         no_IA_E,
         no_IA_B,
@@ -287,7 +295,7 @@ def execute(block, config):
     E_factor = 0 if no_IA_E else 1
     B_factor = 0 if no_IA_B else 1
 
-    ia_section = "intrinsic_alignment_parameters"
+    ia_section = "intrinsic_alignment_parameters" + param_name
 
     # check for deprecated parameters
     if (ia_section, "C1") in block:

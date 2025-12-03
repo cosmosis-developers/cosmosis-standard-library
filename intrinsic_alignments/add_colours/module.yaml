@@ -1,0 +1,91 @@
+name: add_colours
+version: 1
+purpose: Combine red and blue galaxy intrinsic alignment signals based on color fractions
+url: ''
+interface: add_colours.py
+attribution: [Simon Samuroff]
+rules: []
+cite: []
+assumptions:
+-   Separate IA signals computed for red and blue galaxy populations
+-   Galaxy sample has known red/blue fractions and amplitude/evolution parameters
+
+explanation: |
+    "This module combines intrinsic alignment signals from red and blue galaxy
+    populations to compute the total IA signal for a galaxy sample with mixed
+    colors. It assumes that separate IA power spectra have been computed for
+    red and blue galaxies.
+    
+    The module uses color fractions and separate amplitude/evolution parameters
+    for red and blue populations to linearly combine the II and GI power spectra.
+    Cross-terms between red and blue populations are included assuming they
+    follow the geometric mean of the individual population spectra."
+
+params:
+    catalogue:
+        meaning: Section name containing galaxy color fraction information
+        type: str
+        default:
+
+inputs:
+    catalogue_section:
+        red_fraction:
+            meaning: Fraction of red galaxies in the sample
+            type: real
+            default:
+    intrinsic_alignment_parameters:
+        A_red:
+            meaning: IA amplitude for red galaxies
+            type: real
+            default:
+        A_blue:
+            meaning: IA amplitude for blue galaxies
+            type: real
+            default:
+        alpha_red:
+            meaning: Redshift evolution parameter for red galaxies
+            type: real
+            default:
+        alpha_blue:
+            meaning: Redshift evolution parameter for blue galaxies
+            type: real
+            default:
+        z:
+            meaning: Redshift values for IA power spectra
+            type: real 1d
+            default:
+        k_h:
+            meaning: Wavenumber values in h/Mpc
+            type: real 1d
+            default:
+        P_II_red:
+            meaning: Intrinsic-intrinsic power spectrum for red galaxies
+            type: real 2d
+            default:
+        P_II_blue:
+            meaning: Intrinsic-intrinsic power spectrum for blue galaxies
+            type: real 2d
+            default:
+        P_GI_red:
+            meaning: Galaxy-intrinsic cross power spectrum for red galaxies
+            type: real 2d
+            default:
+        P_GI_blue:
+            meaning: Galaxy-intrinsic cross power spectrum for blue galaxies
+            type: real 2d
+            default:
+
+outputs:
+    intrinsic_alignment_parameters:
+        z:
+            meaning: Redshift values for combined IA power spectra
+            type: real 1d
+        k_h:
+            meaning: Wavenumber values in h/Mpc
+            type: real 1d
+        P_II:
+            meaning: Combined intrinsic-intrinsic power spectrum
+            type: real 2d
+        P_GI:
+            meaning: Combined galaxy-intrinsic cross power spectrum
+            type: real 2d

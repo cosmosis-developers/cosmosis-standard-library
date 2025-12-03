@@ -1,0 +1,94 @@
+#This is a template for module description files
+name: project_1d
+version: 1.0
+purpose: Predict 1pt observable functions to the final n(z) convolved form
+url: ''
+interface: project_1d.py
+attribution: [CosmoSIS Team]
+rules: []
+cite: []
+assumptions: ["SDDD"]
+
+explanation: |
+  This module combines tomographic / stellar mass bins of the individually calculated observables
+  It produces the theoretical prediction for the observable for the full survey. 
+  The number of bins and the mass range can be different to what is calculated in the hod_interface.py module.
+
+# List of parameters that can go in the params.ini file in the section for this module    
+params:
+    input_section_name:
+        meaning: Input section name to get the observable values from (this is and optional output of the hod section)
+        type: str
+        default: stellar_mass_function
+    output_section_name:
+        meaning: Output section name to save the observable values to
+        type: str
+        default: smf
+    observable_type:
+        meaning: Type of observable (either mass or luminosity).
+        type: str
+        default: mass
+    correct_cosmo:
+        meaning: To correct for fixed imput cosmology at which observable function was estiamted
+        type: bool
+        default: False
+    sample:
+        meaning: (optional) if nzs are given, look for the redshift distribution 
+                  of the observables in this section. 
+        type: str
+        default: 
+    zmin:
+        meaning: minimum redshift value{s} for the observable in each bin. Used for cosmology correction.
+        type: real
+        default:
+    zmax:
+        meaning: maximum redshift value{s} for the observable in each bin. Used for cosmology correction.
+        type: real
+        default:
+    cosmo_kwargs:
+        meaning: A string of a dictionary of input cosmology values
+        type: str
+        default: "{'H0':70.0, 'Om0':0.3, 'Ode0':0.7}"
+    astropy_cosmology_class:
+        meaning: A astropy cosmology class which was used to calculate input cosmology at
+        type: str
+        default: "LambdaCDM"
+inputs:
+    input_section_name:
+        obs_val_{i}:
+            meaning: The value of the observable for bin {i}. This is taken from the HOD-pbservable output section.
+                     i is an integer.
+            type: real 1D
+        obs_func_{i}:
+            meaning: The value of the observable function for bin {i}. This is taken from the HOD-pbservable output section.
+                     i is an integer. 
+            type: real 1D (no redshift rependence) or 2D if z_bin_{i} exists
+        z_bin_{i}:
+            meaning: redshift distribution of the galaxies in the observable-redshift bin {i}. This will be read if it exists. 
+                    If the median redshift is used to get the observable function then it is not used. If it exists then the
+                    observable function is defined as the weighted average of the observable function over redshift
+                    \int dz n(z) x (observable function).
+            type: real 1D
+    sample:
+        z:
+          meaning: Redshift values in the input sample corresponding to the galaxies in the observable-redshift bins. 
+                    This should be read using a read_nz module. 
+          type: real 1D
+        bin_{i}: 
+          meaning: Redshift distribution of the galaxies in the observable-redshift bins. The number of bins should be 
+                  This should be read using a read_nz module. 
+          type: real 1D
+outputs:
+    output_section_name:
+        bin_{i}:
+          meaning: The value of observable function, for the observable-redshift bin {i}
+          type: real 1D
+        obs_{i}:
+          meaning: The value of observable, for the observable-redshift bin {i}, either mass or luminosity
+          type: real 1D
+        nbin:
+          meaning: Number of observable-redshift bins, it is 1 if suffixes is not given
+          type: int
+        sample:
+          meaning: The sample name for the redshift distribution of the observables, this is only saved if suffixes are given.
+          type: str

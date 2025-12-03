@@ -1,0 +1,241 @@
+name: tatt
+version: 1
+purpose: Compute intrinsic alignment power spectra using Tidal Alignment + Tidal Torquing model
+url: ''
+interface: tatt_interface.py
+attribution: [Jonathan Blazek]
+rules: []
+cite: [https://journals.aps.org/prd/abstract/10.1103/PhysRevD.100.103506]
+assumptions:
+-   TATT model for intrinsic alignments
+
+explanation: |
+    "This module implements the Tidal Alignment + Tidal Torquing (TATT) model
+    for intrinsic alignments of galaxies. It computes intrinsic alignment power
+    spectra using perturbation theory terms calculated by FastPT.
+    
+    The model includes:
+    - Linear/Non-linear alignment (NLA) terms
+    - Tidal alignment (TA) contributions  
+    - Tidal torquing (TT) contributions
+    - Mixed TA-TT cross terms
+    
+    The module supports several sub-models: 'lin', 'nla', 'ta', 'tt', 'tatt', and 'mixed_only'."
+
+params:
+    sub_lowk:
+        meaning: Whether to subtract the lowest k value of the spectrum from the rest
+        type: bool
+        default: false
+    ia_model:
+        meaning: IA model to use ('lin', 'nla', 'ta', 'tt', 'tatt', 'mixed_only')
+        type: str
+        default: nla
+    name:
+        meaning: Suffix to add to output section names
+        type: str
+        default: ""
+    param_name:
+        meaning: Suffix to use when searching for ia parameters
+        type: str
+        default: ""
+    do_galaxy_intrinsic:
+        meaning: Whether to compute galaxy-intrinsic cross power
+        type: bool
+        default: false
+    no_IA_E:
+        meaning: Whether to turn off E-mode intrinsic alignments
+        type: bool
+        default: false
+    no_IA_B:
+        meaning: Whether to turn off B-mode intrinsic alignments
+        type: bool
+        default: false
+
+inputs:
+    intrinsic_alignment_parameters:
+        A1:
+            meaning: Linear alignment amplitude (NLA)
+            type: real
+            default: 1.0
+        A2:
+            meaning: Tidal torquing amplitude
+            type: real
+            default: 1.0
+        Adel:
+            meaning: Tidal alignment amplitude (alternative to bias_ta*A1)
+            type: real
+            default:
+        bias_ta:
+            meaning: Tidal alignment bias parameter
+            type: real
+            default: 1.0
+        bias_tt:
+            meaning: Tidal torquing bias parameter  
+            type: real
+            default: 1.0
+        alpha1:
+            meaning: Redshift evolution of A1
+            type: real
+            default: 0.0
+        alpha2:
+            meaning: Redshift evolution of A2
+            type: real
+            default: 0.0
+        alphadel:
+            meaning: Redshift evolution of Adel
+            type: real
+            default: alpha1
+        z_piv:
+            meaning: Pivot redshift for evolution
+            type: real
+            default: 0.0
+    cosmological_parameters:
+        omega_m:
+            meaning: Matter density parameter
+            type: real
+            default:
+    matter_power_lin:
+        z:
+            meaning: Redshift values for linear power
+            type: real 1d
+            default:
+        k_h:
+            meaning: Wavenumber values in h/Mpc
+            type: real 1d
+            default:
+        p_k:
+            meaning: Linear matter power spectrum
+            type: real 2d
+            default:
+    matter_power_nl:
+        z:
+            meaning: Redshift values for nonlinear power
+            type: real 1d
+            default:
+        k_h:
+            meaning: Wavenumber values in h/Mpc
+            type: real 1d
+            default:
+        p_k:
+            meaning: Nonlinear matter power spectrum
+            type: real 2d
+            default:
+    fastpt:
+        z:
+            meaning: Redshift grid for FastPT calculations
+            type: real 1d
+            default:
+        k_h:
+            meaning: Wavenumber grid for FastPT calculations  
+            type: real 1d
+            default:
+        P_tt_EE:
+            meaning: Tidal torquing E-mode power spectrum from FastPT
+            type: real 2d
+            default:
+        P_tt_BB:
+            meaning: Tidal torquing B-mode power spectrum from FastPT
+            type: real 2d
+            default:
+        P_ta_dE1:
+            meaning: Tidal alignment delta-E1 term from FastPT
+            type: real 2d
+            default:
+        P_ta_dE2:
+            meaning: Tidal alignment delta-E2 term from FastPT
+            type: real 2d
+            default:
+        P_ta_EE:
+            meaning: Tidal alignment E-mode power spectrum from FastPT
+            type: real 2d
+            default:
+        P_ta_BB:
+            meaning: Tidal alignment B-mode power spectrum from FastPT
+            type: real 2d
+            default:
+        P_mix_A:
+            meaning: Mixed TA-TT term A from FastPT
+            type: real 2d
+            default:
+        P_mix_B:
+            meaning: Mixed TA-TT term B from FastPT
+            type: real 2d
+            default:
+        P_mix_D_EE:
+            meaning: Mixed TA-TT E-mode term D from FastPT
+            type: real 2d
+            default:
+        P_mix_D_BB:
+            meaning: Mixed TA-TT B-mode term D from FastPT
+            type: real 2d
+            default:
+        Plin:
+            meaning: Linear power spectrum from FastPT
+            type: real 2d
+            default:
+    matter_galaxy_power:
+        z:
+            meaning: Redshift values for matter-galaxy power (if do_galaxy_intrinsic=true)
+            type: real 1d
+            default:
+        k_h:
+            meaning: Wavenumber values (if do_galaxy_intrinsic=true)
+            type: real 1d
+            default:
+        p_k:
+            meaning: Matter-galaxy cross power (if do_galaxy_intrinsic=true)
+            type: real 2d
+            default:
+
+outputs:
+    intrinsic_power_ee:
+        z:
+            meaning: Redshift values for intrinsic E-mode power
+            type: real 1d
+        k_h:
+            meaning: Wavenumber values in h/Mpc
+            type: real 1d
+        p_k:
+            meaning: Intrinsic E-mode power spectrum
+            type: real 2d
+    intrinsic_power_bb:
+        z:
+            meaning: Redshift values for intrinsic B-mode power
+            type: real 1d
+        k_h:
+            meaning: Wavenumber values in h/Mpc
+            type: real 1d
+        p_k:
+            meaning: Intrinsic B-mode power spectrum
+            type: real 2d
+    intrinsic_power:
+        z:
+            meaning: Redshift values for intrinsic power (copy of EE)
+            type: real 1d
+        k_h:
+            meaning: Wavenumber values in h/Mpc
+            type: real 1d
+        p_k:
+            meaning: Intrinsic power spectrum (copy of EE for consistency)
+            type: real 2d
+    matter_intrinsic_power:
+        z:
+            meaning: Redshift values for matter-intrinsic cross power
+            type: real 1d
+        k_h:
+            meaning: Wavenumber values in h/Mpc
+            type: real 1d
+        p_k:
+            meaning: Matter-intrinsic cross power spectrum
+            type: real 2d
+    galaxy_intrinsic_power:
+        z:
+            meaning: Redshift values for galaxy-intrinsic power (if do_galaxy_intrinsic=true)
+            type: real 1d
+        k_h:
+            meaning: Wavenumber values in h/Mpc
+            type: real 1d
+        p_k:
+            meaning: Galaxy-intrinsic cross power spectrum (if do_galaxy_intrinsic=true)
+            type: real 2d

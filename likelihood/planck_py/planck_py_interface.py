@@ -21,8 +21,19 @@ class PlanckPythonLikelihood(GaussianLikelihood):
         data_directory = os.path.join(dirname, 'data')
         data_directory = self.options.get_string('data_directory', data_directory)
 
+        ell_max_tt = self.options.get_int('ell_max_tt', -1)
+        ell_max_te = self.options.get_int('ell_max_te', -1)
+        ell_max_ee = self.options.get_int('ell_max_ee', -1)
+        if ell_max_tt == -1:
+            ell_max_tt = None
+        if ell_max_te == -1:
+            ell_max_te = None
+        if ell_max_ee == -1:
+            ell_max_ee = None
+
         self.calculator = planck_lite_py.PlanckLitePy(year=year, spectra=spectra, 
-            use_low_ell_bins=use_low_ell_bins, data_directory=data_directory)
+            use_low_ell_bins=use_low_ell_bins, data_directory=data_directory,
+            ell_max_tt=ell_max_tt, ell_max_te=ell_max_te, ell_max_ee=ell_max_ee)
         x = None
 
         #We optionally allow the user to provide a cosmosis
@@ -37,8 +48,12 @@ class PlanckPythonLikelihood(GaussianLikelihood):
             print("using cmb data from %s"%use_data_from_test)
             y = self.get_data_points_from_test_output(use_data_from_test)
         else:
-            y = self.calculator.mu
+            y = self.calculator.data_vector
+
+        self.effective_ell = self.calculator.effective_ells
+        self.spectra = self.calculator.spectra
         return x, y
+
 
     def get_data_points_from_test_output(self, test_output_dir):
         cmb_dir = os.path.join(test_output_dir, "cmb_cl")
@@ -48,7 +63,6 @@ class PlanckPythonLikelihood(GaussianLikelihood):
         ee = np.loadtxt(os.path.join(cmb_dir, 'ee.txt'))
 
         y = self.calculator.make_mean_vector(tt, te, ee, ellmin=ell.min())
-        y = self.calculator._cut_vector(y)
         return y
 
     def build_covariance(self):
@@ -69,7 +83,9 @@ class PlanckPythonLikelihood(GaussianLikelihood):
             y = self.calculator.make_mean_vector(Dltt, Dlte, Dlee, ellmin=ellmin)
         except ValueError:
             raise ValueError("CMB spectra not calculated to high enough ell for chosen Planck settings")
-        y = self.calculator._cut_vector(y)
+
+        block["data_vector", self.like_name + "_ell"] = self.effective_ell
+        block["data_vector", self.like_name + "_spectra"] = self.spectra
 
         return y
 

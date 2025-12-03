@@ -13,6 +13,10 @@ import numpy as np
 import scipy.integrate
 import astropy.units as u
 import astropy.constants as const
+try:
+    from scipy.integrate import simpson
+except ImportError:
+    from scipy.integrate import simps as simpson
 
 sigcrit_inv_fac = (4 * np.pi * const.G)/(const.c**2)
 sigcrit_inv_fac_Mpc_Msun = (sigcrit_inv_fac.to(u.Mpc/u.M_sun)).value
@@ -110,7 +114,7 @@ def execute(block, config):
                 nz_source = block[config['source_nz_section'], "bin_%d" % (j2 + 1)][1:]
 
                 ng_array_source_rep = np.tile(nz_source.reshape(1, len(z_source)), (len(z_lens), 1))
-                int_sourcez = sp.integrate.simps(ng_array_source_rep * (num / chi_smat), z_source)
+                int_sourcez = simpson(ng_array_source_rep * (num / chi_smat), x=z_source)
 
                 coeff_ints = sigcrit_inv_fac_Mpc_Msun
 
@@ -120,7 +124,7 @@ def execute(block, config):
                 # Since gamma_t is a scalar it should be same in both physical and comoving coordinates
                 # It is just easier to match the expressions in comoving coordinates to the ones on methods paper.
                 
-                betaj1j2_pm = sp.integrate.simps(nz_lens * Is * (1./chi_lens**2), z_lens)
+                betaj1j2_pm = simpson(nz_lens * Is * (1./chi_lens**2), x=z_lens)
                 if (config['use_fiducial']):
                     config['betaj1j2'][str(j1) + '_' + str(j2)] = betaj1j2_pm
             else:

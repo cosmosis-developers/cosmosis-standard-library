@@ -1578,16 +1578,19 @@ def _smeared_bao_pk(k_lin=None, pk_lin=None, k_emu=None, pk_lin_emu=None, pk_nw=
     :return: smeared BAO pk computed at k_emu
     :rtype: array_like
     """
-    from scipy.integrate import trapz
+    try:
+        from scipy.integrate import trapezoid
+    except ImportError:
+        from scipy.integrate import trapz as trapezoid
 
     if grid is None:
-        sigma_star_2 = trapz(k_lin * pk_lin, x=np.log(k_lin)) / (3 * np.pi**2)
+        sigma_star_2 = trapezoid(k_lin * pk_lin, x=np.log(k_lin)) / (3 * np.pi**2)
         k_star_2 = 1 / sigma_star_2
         G = np.exp(-0.5 * (k_emu**2 / k_star_2))
         if pk_nw is None:
             pk_nw = _nowiggles_pk(k_lin=k_lin, pk_lin=pk_lin, k_emu=k_emu)
     else:
-        sigma_star_2 = trapz(k_lin[None,:] * pk_lin, x=np.log(k_lin[None:,]), axis=1) / (3 * np.pi**2)
+        sigma_star_2 = trapezoid(k_lin[None,:] * pk_lin, x=np.log(k_lin[None:,]), axis=1) / (3 * np.pi**2)
         k_star_2 = 1 / sigma_star_2
         G = np.exp(-0.5 * (k_emu**2 / k_star_2[:,None]))
         if pk_nw is None:

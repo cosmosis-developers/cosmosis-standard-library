@@ -1,0 +1,136 @@
+name: "hillipop"
+version: "1.0"
+purpose: "Likelihood of the Planck high-ell data from the NPIPE re-analysis, using the Hillipop likelihood code."
+url: "github.com/planck-npipe/hillipop/"
+interface: "github.com/planck-npipe/hillipop/"
+attribution: []
+rules:
+    "Please cite the paper below"
+cite:
+    - "https://doi.org/10.1051/0004-6361/202348015"
+
+assumptions:
+    - "Hillipop foreground model as specified at URL"
+
+explanation: |
+    "Hillipop is a multifrequency CMB likelihood for Planck data. 
+    The likelihood is a spectrum-based Gaussian approximation for cross-correlation spectra 
+    from Planck 100, 143 and 217GHz split-frequency maps, with semi-analytic estimates of the 
+    Cl covariance matrix based on the data. The cross-spectra are debiased from the effects of 
+    the mask and the beam leakage using Xpol (a generalization to polarization of the algorithm 
+    presented in Tristram et al. 2005) before being compared to the model, which includes 
+    CMB and foreground residuals. They cover the multipoles from ell=30 to ell=2500."
+
+params:
+    mode:
+        meaning: "Choice of data mode, TT, TE, EE, or TTTEEE"
+        type: str
+        default: TTTEEE
+
+inputs:
+    cmb_cl:
+        tt:
+            meaning: E polarization power spectrum C_ell^TT
+            type: real 1d
+        te:
+            meaning: B polarization power spectrum C_ell^TE
+            type: real 1d
+        ee:
+            meaning: E polarization power spectrum C_ell^EE
+            type: real 1d
+        bb:
+            meaning: B polarization power spectrum C_ell^BB
+            type: real 1d
+
+    planck:
+        Aradio:
+            meaning: "Amplitude of the radio foreground"
+            type: real
+        beta_radio:
+            meaning: "Spectral index of the radio foreground"
+            type: real
+        Adusty:
+            meaning: "Amplitude of the dusty foreground"
+            type: real
+        AdustT:
+            meaning: "Temperature spectral index of the dusty foreground"
+            type: real
+        beta_dusty:
+            meaning: "Spectral index of the dusty foreground"
+            type: real
+        beta_dustT:
+            meaning: "Temperature spectral index of the dusty foreground"
+            type: real
+        AsyncT:
+            meaning: "Temperature spectral index of the synchrotron foreground"
+            type: real
+        Acib:
+            meaning: "Amplitude of the CIB foreground"
+            type: real
+        beta_cib:
+            meaning: "Spectral index of the CIB foreground"
+            type: real
+        Atsz:
+            meaning: "Amplitude of the thermal Sunyaev-Zel'dovich foreground"
+            type: real
+        Aksz:
+            meaning: "Amplitude of the kinetic Sunyaev-Zel'dovich foreground"
+            type: real
+        xi:
+            meaning: "Cross-correlation coefficient"
+            type: real
+        AdustP:
+            meaning: "Polarization amplitude of the dusty foreground"
+            type: real
+        beta_dustP:
+            meaning: "Spectral index of the dusty polarization foreground"
+            type: real
+        AsyncP:
+            meaning: "Polarization spectral index of the synchrotron foreground"
+            type: real
+        A_planck:
+            meaning: "Overall Planck calibration"
+            type: real
+        cal100A:
+            meaning: "Calibration for 100 GHz channel A"
+            type: real
+        cal100B:
+            meaning: "Calibration for 100 GHz channel B"
+            type: real
+        cal143A:
+            meaning: "Calibration for 143 GHz channel A"
+            type: real
+        cal143B:
+            meaning: "Calibration for 143 GHz channel B"
+            type: real
+        cal217A:
+            meaning: "Calibration for 217 GHz channel A"
+            type: real
+        cal217B:
+            meaning: "Calibration for 217 GHz channel B"
+            type: real
+        pe100A:
+            meaning: "Polarization efficiency for 100 GHz channel A"
+            type: real
+        pe100B:
+            meaning: "Polarization efficiency for 100 GHz channel B"
+            type: real
+        pe143A:
+            meaning: "Polarization efficiency for 143 GHz channel A"
+            type: real
+        pe143B:
+            meaning: "Polarization efficiency for 143 GHz channel B"
+            type: real
+        pe217A:
+            meaning: "Polarization efficiency for 217 GHz channel A"
+            type: real
+        pe217B:
+            meaning: "Polarization efficiency for 217 GHz channel B"
+            type: real
+
+outputs:
+    likelihoods:
+        hillipop_like:
+            meaning: Hillipop likelihood
+            type: real
+

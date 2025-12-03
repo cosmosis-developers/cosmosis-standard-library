@@ -1,0 +1,51 @@
+name: load_nz_sacc
+version: 1
+purpose: Load number density n(z) from a SACC file for weak lensing
+url: ''
+interface: load_nz_sacc.py
+attribution: [CosmoSIS Team]
+rules: []
+cite: []
+assumptions:
+-   SACC file contains n(z) tracer data
+-   All bins have the same redshift grid
+
+explanation: |
+    "This module loads number density n(z) distributions from a SACC (Save All 
+    Correlations and Covariances) file format. SACC is a standard format for storing
+    cosmological survey data including n(z) information.
+    
+    The module searches for tracers matching the specified data set names and
+    extracts their redshift distributions. It validates that all bins use the
+    same redshift grid and outputs the data in CosmoSIS format."
+
+params:
+    nz_file:
+        meaning: Path to the SACC file containing n(z) data
+        type: str
+        default:
+    data_sets:
+        meaning: Space-separated list of tracer names to search for in SACC file
+        type: str
+        default:
+    prefix_section:
+        meaning: Whether to prefix output section names with 'nz_'
+        type: bool
+        default: true
+
+inputs: {}
+
+outputs:
+    nz_{data_set}:
+        nbin:
+            meaning: Number of redshift bins
+            type: int
+        nz:
+            meaning: Number of redshift samples
+            type: int
+        z:
+            meaning: Redshift sample values
+            type: real 1d
+        bin_{i}:
+            meaning: n(z) values for bin i (bin_1, bin_2, ...)
+            type: real 1d

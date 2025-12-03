@@ -1,4 +1,3 @@
-#This is a template for module description files
 name: BOSS
 version: '1303.4486'
 purpose: Compute the likelihood of supplied fsigma8(z=0.57), H(z=0.57), D_a(z=0.57),

@@ -41,6 +41,11 @@ params:
         type: str
         default:
 
+    mean:
+        meaning: The mean of the output parameters, or blank if the mean is all zero. This can be a file to be loaded or a space-separated list of values.
+        type: str or real-1d
+        default: ""
+
 inputs:
     input_parameters_sections:
         names:

@@ -1,7 +1,10 @@
 from cosmosis.datablock import option_section
 from cosmosis.datablock import names
 import numpy as np
-import scipy.integrate
+try:
+    from scipy.integrate import trapezoid
+except ImportError:
+    from scipy.integrate import trapz as trapezoid
 
 def setup(options):
     z = options[option_section, "z"]
@@ -43,7 +46,7 @@ def execute(block, config):
         nz_bin = gaussian(z, mu[i - 1], sigma[i - 1])
         # the bin may not quite go to zero before we get to the
         # edges so normalize it
-        norm = scipy.integrate.trapz(nz_bin, z)
+        norm = trapezoid(nz_bin, z)
         nz_bin /= norm
         # Save n(z)
         block[section, "BIN_%d" % i] = nz_bin

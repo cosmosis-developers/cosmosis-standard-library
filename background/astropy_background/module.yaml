@@ -1,4 +1,3 @@
-#This is a template for module description files
 name: "astropy_background"
 version: "2.0"
 purpose: "Calculate background cosmology using astropy"

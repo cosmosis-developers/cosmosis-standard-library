@@ -1,4 +1,3 @@
-#This is a template for module description files
 name: no_bias
 version: 1
 purpose: Generate galaxy power P(k) as though galaxies were unbiased DM tracers

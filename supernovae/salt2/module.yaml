@@ -1,0 +1,66 @@
+name: salt2
+version: 1
+purpose: SALT2 supernova distance modulus likelihood
+url: ''
+interface: salt2_interface.py
+attribution: [CosmoSIS Team, K. Barbary]
+rules: []
+cite:
+-   https://www.aanda.org/articles/aa/abs/2007/16/aa6930-06/aa6930-06.html
+assumptions:
+-   SALT2 light curve fitting has been performed
+-   Supernova data includes distance modulus and light curve parameters
+
+explanation: |
+    "This module implements a likelihood for Type Ia supernova distance
+    measurements using SALT2 light curve fits. SALT2 is a spectral template
+    method for standardizing supernova luminosities.
+    
+    The module reads SALT2 fit results including apparent magnitude (mB),
+    color (c), and stretch (x1) parameters along with their covariances,
+    and computes the likelihood comparing predicted distance moduli to
+    the SALT2-derived values."
+
+params:
+    dirname:
+        meaning: Directory containing SALT2 data files
+        type: str
+        default: module directory
+    filename:
+        meaning: Name of SALT2 fit results file
+        type: str
+        default: SALT2.FITRES
+
+inputs:
+    supernova_params:
+        alpha:
+            meaning: SALT2 stretch-luminosity parameter
+            type: real
+            default:
+        beta:
+            meaning: SALT2 color-luminosity parameter
+            type: real
+            default:
+        M:
+            meaning: Absolute B-band magnitude
+            type: real
+            default:
+        DeltaM:
+            meaning: Host galaxy mass correction (if used)
+            type: real
+            default:
+    distances:
+        z:
+            meaning: Redshift values for distance calculations
+            type: real 1d
+            default:
+        d_l:
+            meaning: Luminosity distance in Mpc
+            type: real 1d
+            default:
+
+outputs:
+    likelihoods:
+        salt2_like:
+            meaning: Log-likelihood from SALT2 supernova data
+            type: real

@@ -1,0 +1,58 @@
+# This reproduces the chains that make up figure 2 of the DESI paper
+# 2404.03002
+
+output_dir: "./output/desi-campaign"
+
+runs:
+  - name: base
+    base: examples/desi_dr2.ini
+    params:
+      - emcee.walkers = 32
+      - emcee.samples = 1000
+      - emcee.nsteps = 20
+      - sampler = metropolis
+      - metropolis.use_cobaya = T
+      - metropolis.samples = 20000
+      - metropolis.tuning_frequency = 100
+      - metropolis.tuning_grace = 500
+      - metropolis.tuning_end = 2000
+
+  - name: BGS
+    parent: base
+    params:
+      - desi.desi_data_sets = BGS
+  
+  - name: LRG1
+    parent: base
+    params:
+      - desi.desi_data_sets = LRG1
+
+  - name: LRG2
+    parent: base
+    params:
+      - desi.desi_data_sets = LRG2
+
+  - name: LRG3+ELG1
+    parent: base
+    params:
+      - desi.desi_data_sets = LRG3+ELG1
+
+  - name: ELG2
+    parent: base
+    params:
+      - desi.desi_data_sets = ELG2
+
+  - name: QSO
+    parent: base
+    params:
+      - desi.desi_data_sets = QSO
+
+  - name: Lya
+    parent: base
+    params:
+      - desi.desi_data_sets = Lya
+
+  - name: All
+    parent: base
+    params:
+      - desi.desi_data_sets = all

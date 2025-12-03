@@ -1,4 +1,3 @@
-#This is a template for module description files
 name: sigma8_rescale
 version: '1.0'
 interface: sigma8_rescale.py

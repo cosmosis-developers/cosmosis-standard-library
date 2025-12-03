@@ -1,0 +1,38 @@
+name: choose_ia
+version: 1
+purpose: Select intrinsic alignment parameters from suffixed versions
+url: ''
+interface: choose_ia_params.py
+attribution: [CosmoSIS Team]
+rules: []
+cite: []
+assumptions:
+-   IA parameters have been computed with suffixed names
+
+explanation: |
+    "This utility module selects intrinsic alignment parameters from versions
+    that have been computed with suffixed names. This is useful when multiple
+    IA models or galaxy populations have been computed and stored with different
+    suffixes, and you want to select one set as the primary IA parameters.
+    
+    The module looks for parameters with the specified suffix and copies them
+    to the standard parameter names without the suffix."
+
+params:
+    suffix:
+        meaning: Suffix to look for in parameter names
+        type: str
+        default: ""
+
+inputs:
+    intrinsic_alignment_parameters:
+        parameter_suffix:
+            meaning: IA parameter with suffix to be copied to standard name
+            type: real or real 2d
+            default:
+
+outputs:
+    intrinsic_alignment_parameters:
+        parameter:
+            meaning: IA parameter copied from suffixed version
+            type: real or real 2d

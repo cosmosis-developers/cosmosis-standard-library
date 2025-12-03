@@ -1,4 +1,3 @@
-#This is a template for module description files
 name: qso
 version: "1"
 purpose: Compute the likelihood of eBOSS DR14 D_v from QSO

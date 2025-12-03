@@ -71,6 +71,7 @@ class Types(Enum):
     galaxy_shear_minus_real = "G-R"
     cmb_kappa_real = "CKR"
     cmb_kappa_fourier = "CKF"
+    cmb_kappa_emode_fourier = "CKF"
     
     @classmethod
     def lookup(cls, value):

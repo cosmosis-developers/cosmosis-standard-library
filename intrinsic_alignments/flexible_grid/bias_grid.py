@@ -1,9 +1,10 @@
 from __future__ import print_function
 from builtins import range
 from builtins import object
-import scipy.interpolate as interp
+from scipy.interpolate import RectBivariateSpline
 import numpy as np
-import pdb
+
+
 """
 This module calculates the galaxy and intrinsic alignment bias
 using the flexible grid parameterisation of Joachimi and Bridle
@@ -68,10 +69,10 @@ class flexible_grid(object):
     def interpolate_grid(self):
         # Use the grid points to get nzxnk free bias parameters for an arbitrary set of k,z coordinates
         if self.intrinsic_alignments:
-            ia_interp = interp.interp2d(np.log(self.K), self.Z, self.BI)
+            ia_interp = RectBivariateSpline(np.log(self.K), self.Z, self.BI)
             self.QI = ia_interp(np.log(self.k), self.z)
         if self.galaxy_bias:
-            gb_interp = interp.interp2d(np.log(self.K), self.Z, self.Bg)
+            gb_interp = RectBivariateSpline(np.log(self.K), self.Z, self.Bg)
             self.Qg = gb_interp(np.log(self.k), self.z)
 
     def evaluate_and_save_bias(self, block):

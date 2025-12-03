@@ -1,4 +1,3 @@
-#This is a template for module description files
 name: constant_bias
 version: 1
 purpose: Apply a galaxy bias constant with k and z.

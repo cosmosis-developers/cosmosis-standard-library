@@ -1,0 +1,37 @@
+name: random_fail
+version: 1
+purpose: Randomly fail pipeline runs for testing purposes
+url: ''
+interface: random_fail.py
+attribution: [CosmoSIS Team]
+rules: []
+cite: []
+assumptions:
+-   Used for testing pipeline robustness
+
+explanation: |
+    "This utility module randomly fails pipeline runs with a specified probability.
+    This is useful for testing the robustness of sampling algorithms and pipeline
+    error handling.
+    
+    The module generates a random number and compares it to the specified failure
+    fraction. If the random number is below the threshold, the module returns
+    an error code causing the pipeline to fail."
+
+params:
+    fraction:
+        meaning: Probability of random failure (0.0 = never fail, 1.0 = always fail)
+        type: real
+        default: 0.1
+    seed:
+        meaning: Random seed for reproducible failure patterns
+        type: int
+        default: 6789
+    verbose:
+        meaning: Whether to print when randomly failing
+        type: bool
+        default: false
+
+inputs: {}
+
+outputs: {}

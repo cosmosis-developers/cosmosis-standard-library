@@ -1,3 +1,4 @@
+import numpy as np
 from cosmosis.datablock import names
 from cosmosis.gaussian_likelihood import SingleValueGaussianLikelihood
 

@@ -1,0 +1,49 @@
+name: amod
+version: 1.0
+purpose: Modify the non-linear matter power spectrum using the A_mod phenomenological parameterization
+url: ""
+interface: amod.py
+attribution: [Aaron Ouellette (code)]
+rules:
+    ""
+cite:
+    - Amon & Efstathiou (2022), https://arxiv.org/abs/2206.11794
+
+assumptions:
+    - ""
+
+explanation: |
+    "This module implements a very simple phenomenological model for the suppression of the
+    non-linear power spectrum.
+
+    :math:`P_m(k, z) = P_m^L(k, z) + A_{mod} [P_m^{NL}(k, z) - P_m^L(k, z)]`
+
+    To match the model used in Amon & Efstathiou (2022), the non-linear power spectrum should
+    be computed using HMCode2020 without baryonic feedback.
+    "
+
+# List of parameters that can go in the params.ini file in the section for this module
+params: {}
+
+#Inputs for a given choice of a parameter, from the values.ini or from other modules
+#If no such choices, just do one of these omitting mode=something part:
+inputs:
+    amod_parameter:
+        a_mod:
+            meaning: A_mod parameter
+            type: real
+    matter_power_lin:
+        p_k:
+            meaning: Linear power spectrum
+            type: real 1d
+    matter_power_nl:
+        p_k:
+            meaning: Non-linear power spectrum (ignoring baryonic effects)
+            type: real 1d
+
+outputs:
+    matter_power_nl:
+        p_k:
+            meaning: Modified non-linear power spectrum
+            type: real 1d
+

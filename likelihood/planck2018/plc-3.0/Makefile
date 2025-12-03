@@ -104,7 +104,7 @@ ODIR := ${PREFIX}/buildir/tmp
 
 # tools
 LD = ${FC}
-INSTALL = install
+INSTALL = cp
 
 # get the os
 UNAME := $(shell uname -s)

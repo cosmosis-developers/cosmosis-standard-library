@@ -113,7 +113,7 @@ outputs:
         nbin_b:
             type: int
             meaning: "Number of redshift bins in the second quantity. Currently nbin_a==nbin_b."
-
-
-
+        input_section_name:
+            type: str
+            meaning: "Input section name for the C_ells"
 

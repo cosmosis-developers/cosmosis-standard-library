@@ -3,7 +3,6 @@ from numpy import log, pi, interp, where, loadtxt,dot, append, linalg
 from cosmosis.datablock import names as section_names
 from cosmosis.datablock import option_section
 from cosmosis.gaussian_likelihood import GaussianLikelihood
-from scipy.interpolate import interp2d
 
 dist = section_names.distances
 

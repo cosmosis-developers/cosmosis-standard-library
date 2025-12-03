@@ -109,7 +109,7 @@ class Power3D(object):
         """
         self.chi_logk_spline = interp.RectBivariateSpline(self.chi_vals, self.logk_vals, self.pk_vals)
 
-    def set_nonlimber_splines(self, block, chi_of_z, k_growth=1.e-3):
+    def set_nonlimber_splines(self, block, chi_of_z, k_growth=1.e-3, fz_from_block=False):
         """
         Set up various splines etc. needed for the exact projection
         calculation
@@ -155,15 +155,21 @@ class Power3D(object):
         P_lin_from_growth = np.outer(growth_vals**2, P_lin_z0_resamp)
         P_sublin_vals = self.pk_vals - P_lin_from_growth
         self.sublin_spline = interp.RectBivariateSpline(self.chi_vals, self.logk_vals, P_sublin_vals)
-
-        # When doing RSD, we also need f(a(\chi)) = dln(D(a(chi)))/dlna
-        a_vals = 1/(1+self.z_vals)
-        # Make ln(D)(ln(a)) spline
-        lnD_of_lna_spline = interp.InterpolatedUnivariateSpline(np.log(a_vals)[::-1], np.log(growth_vals)[::-1])
-        # And take derivative
-        f = (lnD_of_lna_spline.derivative())(np.log(a_vals))
-        # Now can set f(chi) spline.
-        self.f_of_chi_spline = interp.InterpolatedUnivariateSpline(self.chi_vals, f)
+        
+        if  fz_from_block:
+            z_growth = block[names.growth_parameters,'z']
+            chi_growth = chi_of_z(z_growth)
+            f_growth = block[names.growth_parameters,'f_z']
+            self.f_of_chi_spline = interp.InterpolatedUnivariateSpline(chi_growth, f_growth)
+        else:             # standard behavior is to do this spline derivative
+            # When doing RSD, we also need f(a(\chi)) = dln(D(a(chi)))/dlna
+            a_vals = 1/(1+self.z_vals)
+            # Make ln(D)(ln(a)) spline
+            lnD_of_lna_spline = interp.InterpolatedUnivariateSpline(np.log(a_vals)[::-1], np.log(growth_vals)[::-1])
+            # And take derivative
+            f = (lnD_of_lna_spline.derivative())(np.log(a_vals))
+            # Now can set f(chi) spline.
+            self.f_of_chi_spline = interp.InterpolatedUnivariateSpline(self.chi_vals, f)
 
 class MatterPower3D(Power3D):
     section = "matter_power_nl"
@@ -332,6 +338,21 @@ class Spectrum(object):
         alpha = block[ f"mag_alpha_{sample}", f"alpha_{bin_num}" ]
         return 2 * (alpha - 1)
 
+    def compute_shared_chi_range(self, sig_over_dchi):
+        """
+        Compute the minimum and maximum chi for the Limber integral
+        over all of the bins, and a suitable dchi spacing.
+        """
+        chi_min = np.inf
+        chi_max = -np.inf
+        dchi = np.inf
+        kernels = self.source.kernels[self.sample_a]
+        for i in range(1, kernels.nbin+1):
+            spl = kernels.get_kernel_spline(self.kernel_types[0], i)
+            chi_min = min(chi_min, spl.xmin_clipped)
+            chi_max = max(chi_max, spl.xmax_clipped)
+            dchi = min(dchi, spl.sigma / sig_over_dchi)
+        return float(chi_min), float(chi_max), float(dchi)
     def compute_limber(self, block, ell, bin1, bin2, dchi=None, sig_over_dchi=100.,
         chimin=None, chimax=None):
         r"""
@@ -1222,6 +1243,10 @@ class SpectrumCalculator(object):
         self.get_kernel_peaks = options.get_bool(option_section, "get_kernel_peaks", False)
         self.save_kernels = options.get_bool(option_section, "save_kernels", False)
 
+        # Do we want to get the growth rate f(z) from previous datablock calculations
+        # or  by taking a spline derivative of tabulated P(k,z)?
+        self.fz_from_block = options.get_bool(option_section, "fz_from_block", False)
+
         self.limber_ell_start = options.get_int(option_section, "limber_ell_start", 300)
         do_exact_string = options.get_string(option_section, "do_exact", "")
         if do_exact_string=="":
@@ -1595,7 +1620,7 @@ class SpectrumCalculator(object):
                 print(f"Loading {power.section_name} 3D power spectrum")
             power.load_from_block(block, self.chi_of_z)
             if do_exact:
-                power.set_nonlimber_splines(block, self.chi_of_z)
+                power.set_nonlimber_splines(block, self.chi_of_z, fz_from_block = self.fz_from_block)
             power_key = (powertype, suffix)
             self.power[power_key] = power
 
@@ -1629,12 +1654,18 @@ class SpectrumCalculator(object):
         block[spectrum.section_name, 'auto_only'] = (
             spectrum.section_name in self.auto_only_section_names)
 
-        # Set up nay required power splines
+        # Set up any required power splines
         spectrum.prepare(block, lin_bias_prefix=self.lin_bias_prefix)
 
         if self.verbose:
             print(f"Computing spectrum {spectrum.__class__.__name__} ({spectrum.section_name}) for samples"
                   f" ({spectrum.sample_a}, {spectrum.sample_b}) from P(k) {spectrum.input_section_name}")
+
+        # The caching of P(k) at the grid points we need is more effective if
+        # everything shares a chimin and chimax so set that now, even though it
+        # means that we are doing some integration over a wider range than strictly
+        # necessary for some bin pairs.
+        chimin, chimax, dchi = spectrum.compute_shared_chi_range(self.sig_over_dchi)
 
         for i in range(na):
             if not spectrum.should_do_bin(i+1) and spectrum.len_only_bins == na:
@@ -1660,11 +1691,14 @@ class SpectrumCalculator(object):
                     if spectrum.has_rsd:
                         exact_kwargs["do_rsd"] = self.do_rsd
                     ell, c_ell = spectrum.compute(block, self.ell_limber, i+1, j+1,
-                        sig_over_dchi_limber=self.sig_over_dchi, ell_exact=self.ell_exact,
-                        exact_kwargs=exact_kwargs)
+                        ell_exact=self.ell_exact,
+                        chimin=chimin, chimax=chimax, dchi_limber=dchi,
+                        exact_kwargs=exact_kwargs
+                    )
                 else:
                     ell, c_ell = spectrum.compute(block, self.ell, i+1, j+1,
-                        sig_over_dchi_limber=self.sig_over_dchi)
+                                                  chimin=chimin, chimax=chimax, dchi_limber=dchi,
+                    )
 
                 block[spectrum.section_name, sep_name] = ell
                 block[spectrum.section_name, f'bin_{i+1}_{j+1}'] = c_ell
@@ -1691,30 +1725,15 @@ class SpectrumCalculator(object):
             self.load_distance_splines(block)
             self.load_lensing_prefactor(block)
             self.load_lensing_weyl_prefactor(block)
-            self.load_kernels(block)
 
             # Loading the kernels can often fail, so we catch that specifically
             # and explain the causes
-            try:
-                t0 = timer()
-                self.load_kernels(block)
-                t1 = timer()
-                if self.verbose:
-                    t = timedelta(seconds=t1-t0)
-                    print(f"Time to set up kernels: {t}")
-            except NullSplineError:
-                sys.stderr.write("Failed to load one of the kernels (n(z) or W(z)) "
-                                 "needed to compute 2D spectra\n"
-                                 "Often this is because you are in a weird part of "
-                                 "parameter space, but if it is \n"
-                                 "consistent then you may wish to look into it in "
-                                 "more detail. Set fatal_errors=T to do so.\n")
-
-                # This parameter makes it easier to debug problems with this module
-                if self.fatal_errors:
-                    raise
-
-                return 1
+            t0 = timer()
+            self.load_kernels(block)
+            t1 = timer()
+            if self.verbose:
+                t = timedelta(seconds=t1-t0)
+                print(f"Time to set up kernels: {t}")
 
             # We can optionally save the kernels that go into the
             # integration as well.  This is useful for e.g. plotting

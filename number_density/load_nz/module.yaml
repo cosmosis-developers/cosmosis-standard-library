@@ -1,4 +1,3 @@
-#This is a template for module description files
 name: load_nz
 version: 1
 purpose: Load a number density n(z) for weak lensing from a file

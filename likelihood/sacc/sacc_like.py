@@ -1,28 +1,55 @@
 import sacc
 from cosmosis.gaussian_likelihood import GaussianLikelihood
-from cosmosis.datablock import names, BlockError
+from cosmosis.datablock import names
 import numpy as np
 import re
+import sacc_likelihoods
+
 import os
 import sys
-this_dir = os.path.dirname(os.path.abspath(__file__))
-parent_dir = os.path.dirname(this_dir)
-twopoint_dir = os.path.join(parent_dir, "2pt")
-sys.path.append(twopoint_dir)
-from spec_tools import SpectrumInterp
 
 default_sections = {
-    "cl_ee": "shear_cl",
-    "galaxy_shear_cl_ee": "shear_cl",
-    "cl_bb": "shear_cl_bb",
-    "galaxy_shear_cl_bb": "shear_cl_bb",
-    "cl_eb": "shear_cl_eb",
-    "galaxy_shear_cl_eb": "shear_cl_eb",
-    "cl_be": "shear_cl_be",
-    "galaxy_shear_cl_be": "shear_cl_be",
+    # Spectrum default sections
+    "cl_ee": ("spectrum", "shear_cl",),
+    "galaxy_shear_cl_ee": ("spectrum", "shear_cl",),
+    "cl_bb": ("spectrum", "shear_cl_bb",),
+    "galaxy_shear_cl_bb": ("spectrum", "shear_cl_bb",),
+    "cl_eb": ("spectrum", "shear_cl_eb",),
+    "galaxy_shear_cl_eb": ("spectrum", "shear_cl_eb",),
+    "cl_be": ("spectrum", "shear_cl_be",),
+    "galaxy_shear_cl_be": ("spectrum", "shear_cl_be",),
+    "galaxy_density_cl": ("spectrum", "galaxy_cl",),
+    "galaxy_shearDensity_cl_e": ("spectrum", "galaxy_shear_cl",),
+    "galaxy_shearDensity_cl_b": ("spectrum", "galaxy_shear_cl",),
+
+    # Real default sections
+    "xi_ee": ("real", "shear_xi",),
+    "galaxy_shear_xi_ee": ("real", "shear_xi",),
+    "xi_bb": ("real", "shear_xi_bb",),
+    "galaxy_shear_xi_bb": ("real", "shear_xi_bb",),
+    "xi_eb": ("real", "shear_xi_eb",),
+    "galaxy_shear_xi_eb": ("real", "shear_xi_eb",),
+    "xi_be": ("real", "shear_xi_be",),
+    "galaxy_shear_xi_be": ("real", "shear_xi_be",),
+    "galaxy_shear_xi_minus": ("real", "shear_xi_minus",),
+    "galaxy_shear_xi_plus": ("real", "shear_xi_plus",),
+    "galaxy_shear_xi_imagMinus": ("real", "shear_xi_minus",),
+    "galaxy_shear_xi_imagPlus": ("real", "shear_xi_plus",),
+    "galaxy_density_xi": ("real", "galaxy_xi",),
+    "galaxy_shearDensity_xi_t": ("real", "galaxy_shear_xi",),
+    "galaxy_shearDensity_xi_x": ("real", "galaxy_shear_xi",),
+
+    # COSEBI's and Psi-stats default sections
+    "galaxy_shear_cosebi_bb": ("cosebis", "cosebis_b"),
+    "galaxy_shear_cosebi_ee": ("cosebis", "cosebis"),
+    "galaxy_shearDensity_cosebi_e": ("cosebis", "psi_stats_gm"),
+    "galaxy_density_cosebi": ("cosebis", "psi_stats_gg"),
+
+    # One-point default sections
+    # Come back and think about the naming here later:
+    "galaxy_stellarmassfunction": ("one_point_mass", "smf",),
+    "galaxy_luminosityfunction": ("one_point_luminosity", "lf",),
 }
-
-
 
 
 class SaccClLikelihood(GaussianLikelihood):
@@ -38,6 +65,8 @@ class SaccClLikelihood(GaussianLikelihood):
     def __init__(self, options):
         self.save_theory = options.get_string("save_theory", "")
         self.save_realization = options.get_string("save_realization", "")
+        self.flip = options.get_string("flip", "").split()
+        self.sacc_like = options.get_string("sacc_like", "2pt")
 
         super().__init__(options)
 
@@ -65,18 +94,15 @@ class SaccClLikelihood(GaussianLikelihood):
         tracer_patterns = self.options.get_string("keep_tracers", default=".*").split()
         tracer_re = [re.compile(pattern) for pattern in tracer_patterns]
         tracer_pairs = s.get_tracer_combinations()
-        for t1, t2 in tracer_pairs:
-            match1 = any([p.match(t1) for p in tracer_re])
-            match2 = any([p.match(t2) for p in tracer_re])
-            if not match1:
-                miss = t1
-            elif not match2:
-                miss = t2
-            else:
-                miss = ""
+        for tracers in tracer_pairs:
+            matches = [any([p.match(t) for p in tracer_re]) for t in tracers]
+            miss = ""
+            for t, m in zip(tracers, matches):
+                if not m:
+                    miss = t
 
             if miss:
-                print(f"Removing tracer pair {t1}, {t2} because {miss} does not match any pattern in {tracer_patterns}")
+                print(f"Removing tracer combination {tracers} because {miss} does not match any pattern in {tracer_patterns}")
                 s.remove_selection(tracers=(t1,t2))
 
         # The ones we actually used.
@@ -86,23 +112,45 @@ class SaccClLikelihood(GaussianLikelihood):
         # each spectrum, for each redshift bin combination. Which is clearly a massive pain...
         # but what can you do?
 
+        valid_tags = ["ell", "theta", "n", "mass", "luminosity"]
+        # We only support these tags for now, but we could add more
         for name in self.used_names:
-            for t1, t2 in s.get_tracer_combinations(name):
-                option_name = "angle_range_{}_{}_{}".format(name, t1, t2)
-                if self.options.has_value(option_name):
+            for tracers in s.get_tracer_combinations(name):
+                if len(tracers) == 2:
+                    t1, t2 = tracers
+                    option_name = f"angle_range_{name}_{t1}_{t2}"
+                else:
+                    t1 = tracers[0]
+                    option_name = f"onepoint_range_{name}_{t1}"
+                    # also allow the invalid "angle_range" form
+                    invalid_name = f"angle_range_{name}_{t1}"
+
+                if self.options.has_value(option_name) or (len(tracers) == 1 and self.options.has_value(invalid_name)):
+                    # if invalid_name is used, warn and substitute
+                    if len(tracers) == 1 and self.options.has_value(invalid_name):
+                        print(f"**** WARNING: '{invalid_name}' is not a valid option name. "
+                              f"Use '{option_name}' instead.")
+                        option_name = invalid_name
                     r = self.options.get_double_array_1d(option_name)
-                    # TODO: Update for theta limits on xi(theta)
-                    s.remove_selection(name, (t1, t2), ell__lt=r[0])
-                    s.remove_selection(name, (t1, t2), ell__gt=r[1])
+                    tags = np.unique([k for row in s.get_data_points(name) for k in row.tags])
+                    for tag in valid_tags:
+                        if tag in tags:
+                            # Determine the tracer tuple based on the tag and data type
+                            tracer_tuple = (t1, t2) if tag in ["ell", "theta", "n"] else (t1,)
+                            # Create keyword arguments for lt and gt
+                            kwargs_lt = {f"{tag}__lt": r[0]}
+                            kwargs_gt = {f"{tag}__gt": r[1]}
+                            # Call the remove_selection method
+                            s.remove_selection(name, tracer_tuple, **kwargs_lt)
+                            s.remove_selection(name, tracer_tuple, **kwargs_gt)
 
         for name in self.used_names:
-            option_name = "cut_{}".format(name)
+            option_name = f"cut_{name}"
             if self.options.has_value(option_name):
                 cuts = self.options[option_name].split()
                 for cut in cuts:
-                    t1, t2 = cut.split(",")
-                    s.remove_selection(name, (t1, t2))
-
+                    tracers = cut.split(",")
+                    s.remove_selection(name, tracers)
 
         # Info on which likelihoods we do and do not use
         print("Found these data sets in the file:")
@@ -114,22 +162,28 @@ class SaccClLikelihood(GaussianLikelihood):
             else:
                 data_points = 0
             if name in self.used_names:
-                print("    - {}  {} data points after cuts {}".format(name,  data_points, "  [using in likelihood]"))
+                print(f"    - {name}  {data_points} data points after cuts   [using in likelihood]")
                 total_data_points += data_points
             else:
-                print("    - {}  {} data points after cuts {}".format(name, data_points, "  [not using in likelihood]"))
-        print("Total data points used = {}".format(total_data_points))
+                print(f"    - {name}  {data_points} data points after cuts   [not using in likelihood]")
+        print(f"Total data points used = {total_data_points}")
 
         self.sections_for_names = {}
         for name in final_names:
             if self.options.has_value(f"{name}_section"):
-                section = options[f"{name}_section"]
+                section = self.options[f"{name}_section"]
             elif name in default_sections:
-                section = default_sections[name]
+                section = default_sections[name][1]
             else:
-                raise ValueError(f"SACC likelihood does not yet understand data type {data_type}")
+                raise ValueError(f"You need to specify {name}_section in the ini file as the data type {name} is not known.")
             print(f"Will look for theory prediction for data set {name} in section {section}")
-            self.sections_for_names[name] = section
+            if self.options.has_value(f"{name}_category"):
+                category = self.options[f"{name}_category"]
+            elif name in default_sections:
+                category = default_sections[name][0]
+            else:
+                raise ValueError(f"You need to specify {name}_category in the ini file as the data type {name} is not known.")
+            self.sections_for_names[name] = (category, section)
 
 
         # build up the data vector from all the separate vectors.
@@ -139,7 +193,7 @@ class SaccClLikelihood(GaussianLikelihood):
         # Make sure
         if len(data_vector) == 0:
             raise ValueError(
-                "No data was chosen to be used from 2-point data file {0}. It was either not selectedin data_sets or cut out".format(filename))
+                f"No data was chosen to be used from 2-point data file {filename}. It was either not selectedin data_sets or cut out")
 
         # The x data is not especially useful here, so return None.
         # We will access the self.sacc_data directly later to
@@ -196,55 +250,53 @@ class SaccClLikelihood(GaussianLikelihood):
             x = (r - 1.0) / (r - p - 2.0)
             C = C * x
             print()
-            print("You set covariance_realizations={} in the 2pt likelihood parameter file".format(r))
+            print(f"You set covariance_realizations={r} in the 2pt likelihood parameter file")
             print("So I will apply the Anderson-Hartlap correction to the covariance matrix")
-            print("The covariance matrix is nxn = {}x{}".format(p, p))
-            print("So the correction scales the covariance matrix by (r - 1) / (r - n - 2) = {}".format(x))
+            print(f"The covariance matrix is nxn = {p}x{p}")
+            print(f"So the correction scales the covariance matrix by (r - 1) / (r - n - 2) = {x}")
             print()
         return C
 
     def extract_theory_points(self, block):
         theory = []
-        # We may want to save these splines for the covariance matrix later
-        self.theory_splines = {}
+        dataset_names = []
 
         # We have a collection of data vectors, one for each spectrum
         # that we include. We concatenate them all into one long vector,
         # so we do the same for our theory data so that they match
 
-        # We will also save angles and bin indices for plotting convenience,
-        # although these are not actually used in the likelihood
-        angle = []
-        bin1 = []
-        bin2 = []
-        dataset_name = []
 
         # Now we actually loop through our data sets
-        for spectrum in self.sacc_data.get_data_types():
-            theory_vector, angle_vector, bin1_vector, bin2_vector = self.extract_spectrum_prediction(
-                block, spectrum)
+        for data_type in self.sacc_data.get_data_types():
+            category, section = self.sections_for_names[data_type]
+            if "one_point" in category:
+                extract_prediction = sacc_likelihoods.onepoint
+                extract_kwargs = {}
+            else:
+                extract_prediction = getattr(sacc_likelihoods, self.sacc_like, None)
+                if extract_prediction is None:
+                    raise ValueError(f"2pt likelihood requires the {self.sacc_like} method to be defined")
+                extract_kwargs = {"flip": self.flip, "options": self.options}
+
+            theory_vector, metadata_vectors = extract_prediction(
+                self.sacc_data, block, data_type, section, category=category, **extract_kwargs
+            )
+
+            # We also save metadata vectors such as the bin indices
+            # and angles, so that we can use them in plotting etc.
+            for name, vector in metadata_vectors.items():
+                block[names.data_vector, f"{data_type}_{name}"] = vector
+
             theory.append(theory_vector)
-            angle.append(angle_vector)
-            bin1.append(bin1_vector)
-            bin2.append(bin2_vector)
+            dataset_names.append(np.repeat(data_type, len(theory_vector)))
 
 
-        # We also collect the ell or theta values.
-        # The gaussian likelihood code itself is not expecting these,
-        # so we just save them here for convenience.
-        angle = np.concatenate(angle)
-        bin1 = np.concatenate(bin1)
-        bin2 = np.concatenate(bin2)
-        # dataset_name = np.concatenate(dataset_name)
-        block[names.data_vector, self.like_name + "_angle"] = angle
-        block[names.data_vector, self.like_name + "_bin1"] = bin1
-        block[names.data_vector, self.like_name + "_bin2"] = bin2
-        # block[names.data_vector, self.like_name+"_name"] = dataset_name
+        dataset_names = np.concatenate(dataset_names)
+        block[names.data_vector, self.like_name+"_name"] = dataset_names
 
         # the thing it does want is the theory vector, for comparison with
         # the data vector
         theory = np.concatenate(theory)
-
         return theory
 
     def do_likelihood(self, block):
@@ -300,92 +352,5 @@ class SaccClLikelihood(GaussianLikelihood):
 
             # overwrite the log-likelihood
             block[names.likelihoods, self.like_name + "_LIKE"] = like
-
-    def extract_spectrum_prediction(self, block, data_type):
-
-        s = self.sacc_data
-        section = self.sections_for_names[data_type]
-
-        ell_theory = block[section, "ell"]
-        is_auto = block[section, "is_auto"]
-
-        # We build up these vectors from all the data points.
-        # Only the theory vector is needed for the likelihood - the others
-        # are for convenience, debugging, etc.
-        theory_vector = []
-        angle_vector = []
-        bin1_vector = []
-        bin2_vector = []
-
-
-        # Because we called to_canonical_order when we loaded the data,
-        # we know that the data is grouped by data type, and then by tracers (tomo bins).
-        # So that means we can do a data type at a time and then concatenate them, and
-        # within this do a bin pair at a time, and concatenate them too.
-        for b1, b2 in s.get_tracer_combinations(data_type):
-            # Here we assume that the bin names are formatted such that
-            # they always end with _1, _2, etc. That isn't always true in
-            # sacc, but is somewhat baked into cosmosis in other modules.
-            # It would be nice to update that throughout, but that will
-            # have to wait. Also, cosmosis bins start from 1 not 0.
-            # We need to make sure that's fixed in the 
-            i = int(b1.split("_")[-1]) + 1
-            j = int(b2.split("_")[-1]) + 1
-
-            try:
-                cl_theory = block[section, f"bin_{i}_{j}"]
-            except BlockError:
-                if is_auto:
-                    cl_theory = block[section, f"bin_{j}_{i}"]
-                else:
-                    raise
-
-            # check that all the data points share the same window
-            # object (window objects contain weights for a set of ell values,
-            # as a matrix), or that none have windows.
-            window = None
-            for d in s.get_data_points(data_type, (b1, b2)):
-                w = d.get_tag('window')
-                if (window is not None) and (w is not window):
-                    raise ValueError("Sacc likelihood currently assumes data types share a window object")
-                window = w
-
-            # We need to interpolate between the sample ell values
-            # onto all the ell values required by the weight function
-            # This will give zero outside the range where we have
-            # calculated the theory
-            cl_theory_spline = SpectrumInterp(ell_theory, cl_theory)
-            if window is not None:
-                ell_window = window.values
-                cl_theory_interpolated = cl_theory_spline(ell_window)
-
-            for d in s.get_data_points(data_type, (b1, b2)):
-                ell_nominal = d['ell']
-                if window is None:
-                    binned_cl_theory = cl_theory_spline(ell_nominal)
-                else:
-                    index = d['window_ind']
-                    weight = window.weight[:, index]
-
-                    # The weight away should hopefully sum to 1 anyway but we should
-                    # probably not rely on that always being true.
-                    binned_cl_theory = (weight @ cl_theory_interpolated) / weight.sum()
-
-                theory_vector.append(binned_cl_theory)
-                angle_vector.append(ell_nominal)
-                bin1_vector.append(i - 1)
-                bin2_vector.append(j - 1)
-
-        # Return the whole collection as a single array
-        theory_vector = np.array(theory_vector)
-
-        # For convenience we also save the angle vector (ell or theta)
-        # and bin indices
-        angle_vector = np.array(angle_vector)
-        bin1_vector = np.array(bin1_vector, dtype=int)
-        bin2_vector = np.array(bin2_vector, dtype=int)
-
-        return theory_vector, angle_vector, bin1_vector, bin2_vector
-
 
 setup, execute, cleanup = SaccClLikelihood.build_module()

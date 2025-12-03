@@ -17,8 +17,6 @@ def setup(options):
 def execute(block, config):
     catalogue = config
 
-    import pdb
-    pdb.set_trace()
     section_II = names.ia_spectrum_ii
     section_GI = names.ia_spectrum_gi
     section_ia = names.intrinsic_alignment_parameters
@@ -39,6 +37,7 @@ def execute(block, config):
     z, k, P_II_blue = block.get_grid(section_ia,  "z", "k_h", "P_II_blue")
     z, k, P_GI_red = block.get_grid(section_ia,  "z", "k_h", "P_GI_red")
     z, k, P_GI_blue = block.get_grid(section_ia,  "z", "k_h", "P_GI_blue")
+
     # Geometric mean of the red and blue II components
     P_II_red_blue = np.sqrt(P_II_red * P_II_blue)
 
@@ -53,9 +52,9 @@ def execute(block, config):
     P_GI = f_red * A_red * P_GI_red * (1 + z_grid)**(alpha_red)
     P_GI += f_blue * A_blue * P_GI_blue * (1 + z_grid)**(alpha_blue)
 
-    block.put_grid(section_ia, "z", z, "k_h", k, "P_II", P_II)
+    block.put_grid(section_II, "z", z, "k_h", k, "P_II", P_II)
     print("Saved II spectrum for %s" % catalogue)
-    block.put_grid(section_ia, "z", z, "k_h", k, "P_GI", P_GI)
+    block.put_grid(section_GI, "z", z, "k_h", k, "P_GI", P_GI)
     print("Saved GI spectrum for %s" % catalogue)
 
     return 0

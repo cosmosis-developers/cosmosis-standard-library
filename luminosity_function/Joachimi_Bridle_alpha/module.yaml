@@ -1,4 +1,3 @@
-#This is a template for module description files
 name: Joachimi_Bridle_alpha
 version: '1.0'
 purpose: Calculate the gradient of the galaxy luminosity function at the limiting

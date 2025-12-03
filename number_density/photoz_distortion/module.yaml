@@ -1,0 +1,122 @@
+name: photoz_distortion
+version: 1
+purpose: Apply photometric redshift systematic biases to n(z) distributions
+url: ''
+interface: photoz_distortion.py
+attribution: [CosmoSIS Team]
+rules: []
+cite: []
+assumptions:
+-   Photo-z systematics can be modeled as shifts, broadening, and skewness
+-   Input n(z) distributions are well-sampled
+
+explanation: |
+    "This module applies systematic biases to photometric redshift n(z) distributions
+    to model the effects of photo-z estimation errors. It can apply three types of
+    distortions:
+    
+    1. Additive bias: Shift in mean redshift (delta_z offset)
+    2. Broadening: Increase in redshift scatter around the mean
+    3. Skewness: Asymmetric redistribution toward higher redshifts
+    
+    The module can also add a population of catastrophic outliers using either
+    a Gaussian 'island' or uniform distribution model. Biases can be applied
+    globally or per-bin."
+
+params:
+    mean:
+        meaning: Whether to apply additive bias (mean shift)
+        type: bool
+        default:
+    width:
+        meaning: Whether to apply broadening (width increase)
+        type: bool
+        default:
+    tail:
+        meaning: Whether to apply skewness (tail asymmetry)
+        type: bool
+        default:
+    bias_per_bin:
+        meaning: Whether biases are specified per bin or globally
+        type: bool
+        default:
+    sample:
+        meaning: Name of the section containing n(z) to be modified
+        type: str
+        default:
+    catastrophic_outliers:
+        meaning: Model for catastrophic outliers ('island' or 'uniform')
+        type: str
+        default:
+
+inputs:
+    sample_section:
+        nzbin:
+            meaning: Number of redshift bins
+            type: int
+            default:
+        z:
+            meaning: Redshift sample values
+            type: real 1d
+            default:
+        bin_{i}:
+            meaning: n(z) values for bin i to be modified
+            type: real 1d
+            default:
+        bias_{i}:
+            meaning: Additive bias for bin i (if mean=true and bias_per_bin=true)
+            type: real
+            default:
+        bias_1:
+            meaning: Global additive bias (if mean=true and bias_per_bin=false)
+            type: real
+            default:
+        S_z_{i}:
+            meaning: Broadening parameter for bin i (if width=true and bias_per_bin=true)
+            type: real
+            default:
+        S_z_1:
+            meaning: Global broadening parameter (if width=true and bias_per_bin=false)
+            type: real
+            default:
+        T_z_{i}:
+            meaning: Skewness parameter for bin i (if tail=true and bias_per_bin=true)
+            type: real
+            default:
+        T_z_1:
+            meaning: Global skewness parameter (if tail=true and bias_per_bin=false)
+            type: real
+            default:
+        method:
+            meaning: Catastrophic outlier method ('island' or 'uniform')
+            type: str
+            default:
+        fcat:
+            meaning: Fraction of catastrophic outliers
+            type: real
+            default:
+        dzcat:
+            meaning: Redshift range for catastrophic outliers
+            type: real
+            default:
+        zcat0:
+            meaning: Central redshift for catastrophic outlier region
+            type: real
+            default:
+        zcat:
+            meaning: Central redshift for catastrophic outlier distribution
+            type: real
+            default:
+        sigcat:
+            meaning: Width of catastrophic outlier Gaussian (if method='island')
+            type: real
+            default:
+
+outputs:
+    sample_section:
+        z:
+            meaning: Extended redshift grid including padding
+            type: real 1d
+        bin_{i}:
+            meaning: Modified n(z) values for bin i with applied systematics
+            type: real 1d

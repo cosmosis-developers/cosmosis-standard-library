@@ -1,14 +1,14 @@
-#This is a template for module description files
 name: "fast_pt"
 version: "1"
 purpose: "Compute various 1-loop perturbation theory quantities"
 url: "https://github.com/JoeMcEwen/FAST-PT"
 interface: "fast_pt_interface.py"
-attribution: ["Niall Maccrann", "Jonathan Blazek"]
+attribution: ["Niall Maccrann", "Jonathan Blazek", "Simon Samuroff"]
 rules:
     ""
 cite:
     - "https://iopscience.iop.org/article/10.1088/1475-7516/2016/09/015"
+    - "https://doi.org/10.1088/1475-7516/2017/02/030"
 
 assumptions:
     - "1-loop perturbation theory"
@@ -95,6 +95,10 @@ params:
         meaning: Print extra output
         type: bool
         default: False
+    P_window:
+        meaning: Power window parameter
+        type: real
+        default:
 
 
 

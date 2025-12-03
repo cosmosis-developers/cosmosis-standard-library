@@ -1,4 +1,3 @@
-#This is a template for module description files
 name: apply_astrophysical_biases
 version: '1.0'
 purpose: Apply various astrophysical biases to the matter power spectrum P(k,z)

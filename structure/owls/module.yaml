@@ -1,0 +1,88 @@
+name: owls
+version: 1
+purpose: Apply baryonic feedback effects to matter power spectrum using OWLS simulations
+url: https://virgo.dur.ac.uk/2010/02/12/OWLS/
+interface: owls_interface.py
+attribution: [CosmoSIS Team, VIRGO Consortium]
+rules: []
+cite:
+-   Baryon boosts from OWLS simulations
+assumptions:
+-   OWLS simulation results can be interpolated to desired cosmology
+-   Baryonic effects modify only the matter power spectrum
+
+explanation: |
+    "This module applies baryonic feedback effects to the nonlinear matter
+    power spectrum using the OWLS (OverWhelmingly Large Simulations) suite
+    of hydrodynamical simulations.
+    
+    The module supports several modes:
+    - 'single': Single parameter OWLS_R controlling feedback strength
+    - 'chebyshev': Multiple Chebyshev coefficients for k and z dependence
+    - 'fixed': Fixed feedback from specific OWLS simulation
+    - 'scaled': Scaled version of fixed OWLS simulation
+    
+    The feedback modulation is applied as a multiplicative factor to the
+    matter power spectrum."
+
+params:
+    mode:
+        meaning: OWLS mode ('single', 'chebyshev', 'fixed', or 'scaled')
+        type: str
+        default: single
+    nterm:
+        meaning: Number of Chebyshev terms (required for chebyshev mode)
+        type: int
+        default:
+    powtable:
+        meaning: Path to OWLS power table file (required for fixed/scaled modes)
+        type: str
+        default:
+    nterm:
+        meaning: Number of Chebyshev terms (required for chebyshev mode)
+        type: int
+        default:
+    powtable:
+        meaning: Path to OWLS power table file (required for fixed/scaled modes)
+        type: str
+        default:
+
+inputs:
+    OWLS:
+        R:
+            meaning: OWLS feedback parameter (for single/scaled modes)
+            type: real
+            default:
+        K{i}:
+            meaning: Chebyshev coefficient for k-dependence (K1, K2, ... for chebyshev mode)
+            type: real
+            default:
+        Z{i}:
+            meaning: Chebyshev coefficient for z-dependence (Z1, Z2, ... for chebyshev mode)
+            type: real
+            default:
+    matter_power_nl:
+        k_h:
+            meaning: Wavenumber values in h/Mpc
+            type: real 1d
+            default:
+        z:
+            meaning: Redshift values
+            type: real 1d
+            default:
+        p_k:
+            meaning: Nonlinear matter power spectrum to be modified
+            type: real 2d
+            default:
+
+outputs:
+    matter_power_nl:
+        k_h:
+            meaning: Wavenumber values in h/Mpc
+            type: real 1d
+        z:
+            meaning: Redshift values
+            type: real 1d
+        p_k:
+            meaning: Baryonic feedback-modified matter power spectrum
+            type: real 2d

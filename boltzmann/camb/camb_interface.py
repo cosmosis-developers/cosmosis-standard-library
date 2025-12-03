@@ -20,6 +20,7 @@ MODES = [MODE_BG, MODE_THERM, MODE_CMB, MODE_POWER, MODE_ALL]
 
 DEFAULT_A_S = 2.1e-9
 
+C_KMS = 299792.458
 
 # See this table for description:
 #https://camb.readthedocs.io/en/latest/transfer_variables.html#transfer-variables
@@ -87,6 +88,27 @@ def make_z_for_pk(more_config):
 
     return z
 
+def cosmopower_k():
+    """ 
+    Set the k values if CAMB module is used for training the CosmoPower.
+    This is a fixed grid with variable precision to maximise the prediction 
+    accuracy where there are a lot of changes in the power spectra.
+
+    This is currently hardcoded to empirical values initially set by Pierre Burger.
+    """
+    ranges = [
+        (1e-5, 1e-4, 20),
+        (1e-4, 1e-3, 40),
+        (1e-3, 1e-2, 60),
+        (1e-2, 1e-1, 80),
+        (1e-1, 1, 100),
+        (1, 10, 120),
+        (10, 20, 40)
+    ]
+
+    # Generate each segment and concatenate them
+    k = np.concatenate([np.geomspace(start, stop, num=num, endpoint=False) for start, stop, num in ranges])
+    return k
 
 def setup(options):
     mode = options.get_string(opt, 'mode', default="all")
@@ -120,6 +142,8 @@ def setup(options):
     
     config['want_zdrag'] = mode != MODE_BG
     config['want_zstar'] = config['want_zdrag']
+
+    more_config['recombination_model'] = options.get_string(opt, 'recombination_model', default='recfast')
 
     more_config['want_chistar'] = options.get_bool(opt, 'want_chistar', default=True)
     more_config['n_logz'] = options.get_int(opt, 'n_logz', default=0)
@@ -156,7 +180,7 @@ def setup(options):
         raise ValueError("halofit_version must be one of : {}.  You put: {}".format(known_halofit_versions, halofit_version))
 
     more_config["accuracy_params"] = get_optional_params(options, opt, 
-                                                        ['AccuracyBoost', 'lSampleBoost', 'lAccuracyBoost', 'DoLateRadTruncation'])
+                                                        ['AccuracyBoost', 'lSampleBoost', 'lAccuracyBoost', 'DoLateRadTruncation', 'min_l_logl_sampling'])
                                                         #  'TimeStepBoost', 'BackgroundTimeStepBoost', 'IntTolBoost', 
                                                         #  'SourcekAccuracyBoost', 'IntkAccuracyBoost', 'TransferkBoost',
                                                         #  'NonFlatIntAccuracyBoost', 'BessIntBoost', 'LensingBoost',
@@ -204,35 +228,39 @@ Please use any these (separated by spaces): {}""".format(bad_power, good_power))
 # during the execute function
 
 def extract_recombination_params(block, config, more_config):
-    default_recomb = camb.recombination.Recfast()
- 
-    min_a_evolve_Tm = block.get_double('recfast', 'min_a_evolve_Tm', default=default_recomb.min_a_evolve_Tm)
-    RECFAST_fudge = block.get_double('recfast', 'RECFAST_fudge', default=default_recomb.RECFAST_fudge)
-    RECFAST_fudge_He = block.get_double('recfast', 'RECFAST_fudge_He', default=default_recomb.RECFAST_fudge_He)
-    RECFAST_Heswitch = block.get_int('recfast', 'RECFAST_Heswitch', default=default_recomb.RECFAST_Heswitch)
-    RECFAST_Hswitch = block.get_bool('recfast', 'RECFAST_Hswitch', default=default_recomb.RECFAST_Hswitch)
-    AGauss1 = block.get_double('recfast', 'AGauss1', default=default_recomb.AGauss1)
-    AGauss2 = block.get_double('recfast', 'AGauss2', default=default_recomb.AGauss2)
-    zGauss1 = block.get_double('recfast', 'zGauss1', default=default_recomb.zGauss1)
-    zGauss2 = block.get_double('recfast', 'zGauss2', default=default_recomb.zGauss2)
-    wGauss1 = block.get_double('recfast', 'wGauss1', default=default_recomb.wGauss1)
-    wGauss2 = block.get_double('recfast', 'wGauss2', default=default_recomb.wGauss2)
-    
-    recomb = camb.recombination.Recfast(
-        min_a_evolve_Tm = min_a_evolve_Tm, 
-        RECFAST_fudge = RECFAST_fudge, 
-        RECFAST_fudge_He = RECFAST_fudge_He, 
-        RECFAST_Heswitch = RECFAST_Heswitch, 
-        RECFAST_Hswitch = RECFAST_Hswitch, 
-        AGauss1 = AGauss1, 
-        AGauss2 = AGauss2, 
-        zGauss1 = zGauss1, 
-        zGauss2 = zGauss2, 
-        wGauss1 = wGauss1, 
-        wGauss2 = wGauss2, 
-    )
+    if more_config['recombination_model'] == 'recfast':
+        default_recomb = camb.recombination.Recfast()
+     
+        min_a_evolve_Tm = block.get_double('recfast', 'min_a_evolve_Tm', default=default_recomb.min_a_evolve_Tm)
+        RECFAST_fudge = block.get_double('recfast', 'RECFAST_fudge', default=default_recomb.RECFAST_fudge)
+        RECFAST_fudge_He = block.get_double('recfast', 'RECFAST_fudge_He', default=default_recomb.RECFAST_fudge_He)
+        RECFAST_Heswitch = block.get_int('recfast', 'RECFAST_Heswitch', default=default_recomb.RECFAST_Heswitch)
+        RECFAST_Hswitch = block.get_bool('recfast', 'RECFAST_Hswitch', default=default_recomb.RECFAST_Hswitch)
+        AGauss1 = block.get_double('recfast', 'AGauss1', default=default_recomb.AGauss1)
+        AGauss2 = block.get_double('recfast', 'AGauss2', default=default_recomb.AGauss2)
+        zGauss1 = block.get_double('recfast', 'zGauss1', default=default_recomb.zGauss1)
+        zGauss2 = block.get_double('recfast', 'zGauss2', default=default_recomb.zGauss2)
+        wGauss1 = block.get_double('recfast', 'wGauss1', default=default_recomb.wGauss1)
+        wGauss2 = block.get_double('recfast', 'wGauss2', default=default_recomb.wGauss2)
+        
+        recomb = camb.recombination.Recfast(
+            min_a_evolve_Tm = min_a_evolve_Tm, 
+            RECFAST_fudge = RECFAST_fudge, 
+            RECFAST_fudge_He = RECFAST_fudge_He, 
+            RECFAST_Heswitch = RECFAST_Heswitch, 
+            RECFAST_Hswitch = RECFAST_Hswitch, 
+            AGauss1 = AGauss1, 
+            AGauss2 = AGauss2, 
+            zGauss1 = zGauss1, 
+            zGauss2 = zGauss2, 
+            wGauss1 = wGauss1, 
+            wGauss2 = wGauss2, 
+        )
 
-    #Not yet supporting CosmoRec, but not too hard if needed.
+    #Not yet supporting CosmoRec by default, but not too hard to compile in camb yourself if needed.
+    elif more_config['recombination_model'] == 'cosmorec':
+
+        recomb = camb.recombination.CosmoRec()
 
     return recomb
 
@@ -241,7 +269,7 @@ def extract_reionization_params(block, config, more_config):
     if more_config["do_reionization"]:
         if more_config['use_optical_depth']:
             tau = block[cosmo, 'tau']
-            reion = camb.reionization.TanhReionization(use_optical_depth=True, optical_depth=tau)
+            reion = camb.reionization.TanhReionization(use_optical_depth=True, optical_depth=tau, **more_config["reionization_params"])
         else:
             sec = 'reionization'
             redshift = block[sec, 'redshift']
@@ -251,7 +279,6 @@ def extract_reionization_params(block, config, more_config):
                 use_optical_depth=False,
                 redshift = redshift,
                 delta_redshift = delta_redshift,
-                include_helium_fullreion = include_helium_fullreion,
                 **reion_params,
                 **more_config["reionization_params"],
             )
@@ -344,7 +371,13 @@ def extract_camb_params(block, config, more_config):
 
     # Set A_s for now, this gets rescaled later if sigma_8 is provided.
     if not block.has_value(cosmo, 'A_s'):
-        block[cosmo, 'A_s'] = DEFAULT_A_S
+        if block.has_value(cosmo, 'sigma_8'):
+            block[cosmo, 'A_s'] = DEFAULT_A_S
+        elif block.has_value(cosmo, "log1e10As"):
+            log10As = block[cosmo, "log1e10As"]
+            block[cosmo, 'A_s'] = np.exp(log10As) * 1.0e-10
+        else:
+            raise ValueError("CAMB requires either A_s, log1e10As, or sigma_8")
     
     # if want_perturbations:
     init_power = extract_initial_power_params(block, config, more_config)
@@ -430,6 +463,9 @@ def save_derived_parameters(r, block):
     for k, v in derived.items():
         block[names.distances, k] = v
     block[names.distances, 'rs_zdrag'] = block[names.distances, 'rdrag']
+    zstar = derived['zstar']
+    shift = r.angular_diameter_distance(zstar) * (1 + zstar) * (p.omegam * p.H0**2)**0.5 / C_KMS
+    block[names.distances, "cmbshift"] = shift
     
     p.omegal = 1 - p.omegam - p.omk
     p.ommh2 = p.omegam * p.h**2
@@ -527,7 +563,7 @@ def compute_growth_factor(r, block, P_tot, k, z, more_config):
     P_kmin = P_tot.P(z, kmin)
 
     D = np.sqrt(P_kmin / P_kmin[0]).squeeze()
-    return D
+    return np.atleast_1d(D)
 
 
 def save_matter_power(r, block, more_config):
@@ -538,6 +574,8 @@ def save_matter_power(r, block, more_config):
     # of these
     kmax_power = max(more_config['kmax'], more_config['kmax_extrapolate'])
     z = make_z_for_pk(more_config)[::-1]
+    if block.has_value('redshift_as_parameter', 'z'):
+        z = np.atleast_1d(block['redshift_as_parameter', 'z'])
 
     P_tot = None
 
@@ -554,6 +592,8 @@ def save_matter_power(r, block, more_config):
         )
         assert P.islog
         k = np.logspace(np.log10(kcalc[0]), np.log10(kmax_power), more_config['nk'])
+        if block.has_value('redshift_as_parameter', 'z'):
+            k = cosmopower_k()
 
         # P.P evaluates at k instead of logk
         p_k = P.P(z, k, grid=True)
@@ -570,9 +610,11 @@ def save_matter_power(r, block, more_config):
         # Note that the transfer function has different k range and precision as
         # there is no interpolating function for it in CAMB.
         # We might consider creating an interpolator ...
+        # Note here, that like in the returned sigma_8 and fsigma_8, the redshifts here are reversed
+        # thus for a redshift=0 transfer function we ask for the last element
         section_name_transfer = matter_power_section_names[transfer_type] + "_transfer_func"
-        transfer_func = r.get_matter_transfer_data().transfer_z(tt)
-        k_transfer_func = r.get_matter_transfer_data().transfer_z("k/h")
+        transfer_func = r.get_matter_transfer_data().transfer_z(tt, -1)
+        k_transfer_func = r.get_matter_transfer_data().transfer_z("k/h", -1)
         block.put_double_array_1d(section_name_transfer, "k_h", k_transfer_func)
         block.put_double_array_1d(section_name_transfer, "t_k", transfer_func)
 

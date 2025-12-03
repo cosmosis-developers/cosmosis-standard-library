@@ -1,0 +1,65 @@
+name: "act_dr6"
+version: "1.0.0"
+purpose: "Full Multi-Frequency primary CMB from ACT DR6 data including systematics and foregrounds."
+url: "https://github.com/ACTCollaboration/act_dr6_mflike"
+interface: "act_dr6_interface.py"
+attribution: ["Xavier Garrido, Serena Giardiello, ACT Collaboration (Library)", "Ian Harrison, CosmoSIS Team (Interface)"]
+rules:
+    "None"
+cite:
+    - "https://arxiv.org/abs/2503.14452"
+
+assumptions:
+    - "act_dr6_mflike python module"
+    - "ACT DR6 multi multi-frequency data"
+
+explanation: |
+    "Important note: please see https://github.com/ACTCollaboration/ACT-DR6-parameters/blob/main/theories/camb.yaml
+    for the default CAMB settings required for this likelihood to reproduce the published result. This also requires
+    the use of the CosmoRec recombination module which is not supplied by default in CAMB. This repo also specifies 
+    default priors for the likelihood, including the tau prior which should be used if no large scale CMB polarisation 
+    data (e.g. from Planck SRoll2) is included.
+
+    This is the full multi-frequency MFLike primary CMB likelihood from the ACT DR6 data release. This includes a 
+    full set of foreground and instrumental systematics modelling parameters. For a lighter version of the likelihood 
+    including only two nuisance parameters, which gives the same results in Lambda-CDM cosmologies, it is suggested to 
+    use the `lite' version also provided.
+    What is supplied here is only the CosmoSIS interface to the official Cobaya likelihood.
+    This should be obtainable through installing the Cobaya likelihood from the provided github repository.
+    The required data can be downloaded with the provided shell script."
+
+# List of parameters that can go in the params.ini file in the section for this module    
+params: {}
+
+
+#Inputs for a given choice of a parameter, from the values.ini or from other modules
+#If no such choices, just do one of these omitting mode=something part:
+inputs:
+    cmb_cl:
+        tt:
+            meaning: "Lensed CMB temperature power spectrum in ell(ell+1)/2pi units"
+            type: real 1d
+            default:
+        te:
+            meaning: "Lensed CMB temperature-E-mode polarization cross power spectrum in ell(ell+1)/2pi units"
+            type: real 1d
+            default:
+        ee:
+            meaning: "Lensed CMB E-mode polaration power spectrum in ell(ell+1)/2pi units"
+            type: real 1d
+            default:
+    act_params:
+        A_act:
+            meaning: "Overall ACT calibration parameter used to model residual systematics."
+            type: real
+            default: 1.0
+        P_act:
+            meaning: "Overall ACT polarisation efficiency parameter used to model residual systematics."
+            type: real
+            default: 1.0
+
+outputs:
+    likelihoods:
+        act_dr6_lite_like:
+            meaning: "ACT DR6 primary CMB-only likelihood for given selection"
+            type: real

@@ -1,4 +1,3 @@
-#This is a template for module description files
 name: "act-dr6-lens"
 version: "1.0.0"
 purpose: "CMB Lensing from ACT DR6 data."

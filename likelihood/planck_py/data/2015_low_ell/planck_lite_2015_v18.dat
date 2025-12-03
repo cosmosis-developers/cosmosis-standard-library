@@ -1,0 +1,3 @@
+# spectrum index_in_spectrum band_ell_min band_ell_max weight_row_min weight_row_max band_ell_nominal bandpower bandpower_sigma
+TT 0 2 16 0 14 8.5 53.56901287667544 4.7933578632091685
+TT 1 16 30 14 28 22.5 9.84557844464471 0.5649102386271555

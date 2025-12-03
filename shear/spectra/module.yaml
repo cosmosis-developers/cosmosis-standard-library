@@ -1,4 +1,3 @@
-#This is a template for module description files
 name: wl_spectra
 version: '1.0'
 purpose: Compute various weak lensing C\_ell from P(k,z) with the Limber integral

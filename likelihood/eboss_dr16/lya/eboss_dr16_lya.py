@@ -2,7 +2,6 @@ import os
 from numpy import log, pi, interp, where, loadtxt, dot, append, linalg, inf, zeros
 from cosmosis.datablock import names as section_names
 from cosmosis.datablock import option_section
-from scipy.interpolate import interp2d 
 from scipy.interpolate import RegularGridInterpolator
 
 cosmo = section_names.cosmological_parameters

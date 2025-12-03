@@ -13,11 +13,12 @@ likelihood/planck/plc-1.0/buildir
 likelihood/planck/plc-1.0/bin/
 likelihood/planck/plc-1.0/lib/
 output/
-boltzmann/class/class_v2.4.1/class
-boltzmann/class/class_v2.4.1/classy_install/
-boltzmann/class/class_v2.4.1/build/
-boltzmann/class/class_v2.4.1/python/WD/
-boltzmann/class/class_v2.4.1/python/classy.c
+boltzmann/class/class_v*
+boltzmann/class/class_v*/class
+boltzmann/class/class_v*/classy_install/
+boltzmann/class/class_v*/build/
+boltzmann/class/class_v*/python/WD/
+boltzmann/class/class_v*/python/classy.c
 likelihood/planck2015/plc-2.0/bin/
 likelihood/planck2015/plc-2.0/buildir/
 likelihood/planck2015/plc-2.0/include/

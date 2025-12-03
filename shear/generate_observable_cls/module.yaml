@@ -1,0 +1,278 @@
+name: generate_observable_cls
+version: 1
+purpose: Generate observable C_ell from theoretical power spectra including systematic effects
+url: ''
+interface: generate_observable_spectra_interface.py
+attribution: [Richard Rollins, Simon Samuroff]
+rules: []
+cite: []
+assumptions: []
+
+explanation: |
+    "This module generates observable angular power spectra C_ell from
+    theoretical power spectra, including the effects of intrinsic alignments, 
+    magnification, and (optionally) noise.
+    
+    The module transforms theoretical predictions into the form that
+    would actually be measured by a survey."
+
+params:
+    shear:
+        meaning: Whether to include cosmic shear spectra
+        type: bool
+        default:
+    intrinsic_alignments:
+        meaning: Whether to include intrinsic alignment contributions
+        type: bool
+        default:
+    GI:
+        meaning: Whether to include galaxy-intrinsic alignment cross terms (if intrinsic_alignments=true)
+        type: bool
+        default: true
+    II:
+        meaning: Whether to include intrinsic-intrinsic alignment terms (if intrinsic_alignments=true)
+        type: bool
+        default: true
+    cmb_kappa:
+        meaning: Whether to include CMB lensing convergence spectra
+        type: bool
+        default:
+    kappa_shear:
+        meaning: Whether to include CMB lensing-shear cross spectra
+        type: bool
+        default:
+    kappa_position:
+        meaning: Whether to include CMB lensing-position cross spectra
+        type: bool
+        default:
+    position:
+        meaning: Whether to include position (galaxy clustering) spectra
+        type: bool
+        default:
+    ggl:
+        meaning: Whether to include galaxy-galaxy lensing spectra
+        type: bool
+        default:
+    magnification:
+        meaning: Whether to include magnification effects
+        type: bool
+        default:
+    noise:
+        meaning: Whether to add shot noise to spectra
+        type: bool
+        default: false
+    bias:
+        meaning: Whether to include shape measurement bias corrections
+        type: bool
+        default:
+    m_per_bin:
+        meaning: Whether to apply different bias corrections per bin
+        type: bool
+        default:
+    angular_frequency_bins:
+        meaning: Whether to use angular frequency binning
+        type: bool
+        default:
+    window:
+        meaning: Window function to use for binning
+        type: str
+        default: ""
+    nlbin_shear:
+        meaning: Number of ell bins for shear spectra
+        type: int
+        default: 0
+    lmax_shear:
+        meaning: Maximum ell for shear spectra
+        type: real
+        default: 0.0
+    lmin_shear:
+        meaning: Minimum ell for shear spectra
+        type: real
+        default: 0.0
+    nlbin_ggl:
+        meaning: Number of ell bins for galaxy-galaxy lensing
+        type: int
+        default: 0
+    lmax_ggl:
+        meaning: Maximum ell for galaxy-galaxy lensing
+        type: real
+        default: 0.0
+    lmin_ggl:
+        meaning: Minimum ell for galaxy-galaxy lensing
+        type: real
+        default: 0.0
+    nlbin_pos:
+        meaning: Number of ell bins for position spectra
+        type: int
+        default: 0
+    lmax_pos:
+        meaning: Maximum ell for position spectra
+        type: real
+        default: 0.0
+    lmin_pos:
+        meaning: Minimum ell for position spectra
+        type: real
+        default: 0.0
+    nlbin_cmb_kappa:
+        meaning: Number of ell bins for CMB kappa spectra
+        type: int
+        default: 0
+    lmax_cmb_kappa:
+        meaning: Maximum ell for CMB kappa spectra
+        type: real
+        default: 0.0
+    lmin_cmb_kappa:
+        meaning: Minimum ell for CMB kappa spectra
+        type: real
+        default: 0.0
+    nlbin_kappa_shear:
+        meaning: Number of ell bins for kappa-shear cross spectra
+        type: int
+        default: 0
+    lmax_kappa_shear:
+        meaning: Maximum ell for kappa-shear cross spectra
+        type: real
+        default: 0.0
+    lmin_kappa_shear:
+        meaning: Minimum ell for kappa-shear cross spectra
+        type: real
+        default: 0.0
+    nlbin_kappa_position:
+        meaning: Number of ell bins for kappa-position cross spectra
+        type: int
+        default: 0
+    lmax_kappa_position:
+        meaning: Maximum ell for kappa-position cross spectra
+        type: real
+        default: 0.0
+    lmin_kappa_position:
+        meaning: Minimum ell for kappa-position cross spectra
+        type: real
+        default: 0.0
+    shear_sample:
+        meaning: Section name containing shear survey parameters
+        type: str
+        default: ""
+    lss_sample:
+        meaning: Section name containing LSS survey parameters
+        type: str
+        default: ""
+    cmb_sample:
+        meaning: Section name containing CMB survey parameters
+        type: str
+        default: ""
+    output:
+        meaning: Output file path for data vector
+        type: str
+        default: ""
+
+inputs:
+    shear_cl:
+        ell:
+            meaning: Angular multipole values for shear
+            type: int 1d
+            default:
+        bin_{i}_{j}:
+            meaning: Shear power spectrum for bins i,j
+            type: real 1d
+            default:
+    galaxy_cl:
+        ell:
+            meaning: Angular multipole values for galaxy clustering
+            type: int 1d
+            default:
+        bin_{i}_{j}:
+            meaning: Galaxy clustering power spectrum for bins i,j
+            type: real 1d
+            default:
+    galaxy_shear_cl:
+        ell:
+            meaning: Angular multipole values for galaxy-shear cross correlation
+            type: int 1d
+            default:
+        bin_{i}_{j}:
+            meaning: Galaxy-shear cross power spectrum for bins i,j
+            type: real 1d
+            default:
+    intrinsic_power:
+        ell:
+            meaning: Angular multipole values for intrinsic alignments
+            type: int 1d
+            default:
+        bin_{i}_{j}:
+            meaning: Intrinsic alignment power spectrum for bins i,j
+            type: real 1d
+            default:
+    galaxy_intrinsic_power:
+        ell:
+            meaning: Angular multipole values for galaxy-intrinsic cross correlation
+            type: int 1d
+            default:
+        bin_{i}_{j}:
+            meaning: Galaxy-intrinsic cross power spectrum for bins i,j
+            type: real 1d
+            default:
+    cmb_cl:
+        ell:
+            meaning: Angular multipole values for CMB
+            type: int 1d
+            default:
+        pp:
+            meaning: CMB lensing convergence power spectrum
+            type: real 1d
+            default:
+    galaxy_cmbkappa_cl:
+        ell:
+            meaning: Angular multipole values for galaxy-CMB kappa cross correlation
+            type: int 1d
+            default:
+        bin_{i}:
+            meaning: Galaxy-CMB kappa cross power spectrum for bin i
+            type: real 1d
+            default:
+    shear_cmbkappa_cl:
+        ell:
+            meaning: Angular multipole values for shear-CMB kappa cross correlation
+            type: int 1d
+            default:
+        bin_{i}:
+            meaning: Shear-CMB kappa cross power spectrum for bin i
+            type: real 1d
+            default:
+    shear_sample:
+        ngal:
+            meaning: Galaxy number density for shear sample (if using noise)
+            type: real
+            default: 0.0
+        shape_dispersion:
+            meaning: Shape measurement dispersion for noise calculation
+            type: real
+            default: 0.25
+    lss_sample:
+        ngal:
+            meaning: Galaxy number density for LSS sample (if using noise)
+            type: real
+            default: 0.0
+
+outputs:
+    shear_cl:
+        ell:
+            meaning: Output angular multipole values for observable shear spectra
+            type: int 1d
+        bin_{i}_{j}:
+            meaning: Observable shear power spectrum for bins i,j
+            type: real 1d
+    galaxy_cl:
+        ell:
+            meaning: Output angular multipole values for observable galaxy spectra
+            type: int 1d
+        bin_{i}_{j}:
+            meaning: Observable galaxy clustering power spectrum for bins i,j
+            type: real 1d
+    galaxy_shear_cl:
+        ell:
+            meaning: Output angular multipole values for observable galaxy-shear cross spectra
+            type: int 1d
+        bin_{i}_{j}:
+            meaning: Observable galaxy-shear cross power spectrum for bins i,j
+            type: real 1d

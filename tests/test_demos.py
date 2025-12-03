@@ -1,7 +1,9 @@
 import os
 from cosmosis import run_cosmosis
+from cosmosis.runtime.handler import activate_segfault_handling
 from cosmosis.postprocessing import run_cosmosis_postprocess
 import pytest
+activate_segfault_handling()
 
 def run_demo(i, args=None, variables=None):
     if args is None:
@@ -96,7 +98,14 @@ def test_demo15():
     run_demo(15)
 
 def test_demo16():
-    run_demo(16)
+    try:
+        run_demo(16)
+    except ValueError as error:
+        err = str(error)
+        if "minuit2 wrapper was not compiled" in err:
+            pytest.skip("Minuit2 not available")
+        else:
+            raise
 
 def test_demo17():
     run_demo(17, 
@@ -114,3 +123,7 @@ def test_demo18():
 
 def test_demo19():
     run_demo(19, ["grid.nsample_dimension=20"])
+
+
+if __name__ == "__main__":
+    test_demo17()

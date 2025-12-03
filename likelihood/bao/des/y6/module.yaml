@@ -1,0 +1,60 @@
+name: des-y6-bao
+version: '1.0'
+purpose: Compute the likelihood of DES Y6 BAO data
+url: ''
+interface: bao_y6_like.py
+attribution: [DES Collaboration]
+rules: ''
+cite:
+-   "DES Collaboration, Physical Review D, TBD"
+
+assumptions:
+-   BAO chi2
+-   FLRW metric and standard BAO size
+
+explanation: |
+    "This module gives a likelihood of the combination d_m / r_s from the DES Y6 data.
+    It interpolates the ratio of that combination to a fiducial value, and then interpolates
+    into a pre-computed chi2 as a function of that ratio.
+    "
+params:
+    verbose:
+        meaning: Print extra output
+        type: bool
+        default: false
+    chi2_dir:
+        meaning: Directory to find data file
+        type: str
+        default: Module directory
+    chi2_file:
+        meaning: Name of CSV data file within chi2_dir
+        type: str
+        default: chi2profile_dvdesy6_cosmoplanck18_covcosmolike.csv
+    chi2_column:
+        meaning: Column to read for alpha from the file
+        type: int
+        default: 1
+
+inputs:
+    distances:
+        z:
+            meaning: Redshifts of samples
+            type: real 1d
+            default:
+        d_m:
+            meaning: Physical angular diameter distance in Mpc
+            type: real 1d
+            default:
+        h:
+            meaning: Hubble parameter with in units of Mpc
+            type: real 1d
+            default:
+        rz_zdrag:
+            meaning: Sound horizon at last scattering in Mpc
+            type: real
+            default:
+outputs:
+    likelihoods:
+        des_y6_bao_like:
+            meaning: Likelihood of supplied expansion history
+            type: real

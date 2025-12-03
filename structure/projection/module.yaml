@@ -1,4 +1,3 @@
-#This is a template for module description files
 name: project_2d
 version: 1.0
 purpose: Project 3D power spectra to 2D tomographic bins using the Limber approximation
@@ -200,6 +199,10 @@ params:
         default: b
     do_rsd:
         meaning: Whether to compute RSD in non-limber calculations
+        type: bool
+        default: False
+    fz_from_block:
+        meaning: Whether to get f(z) used in RSD from the datablock. If False, from spline derivative of P(k,z). 
         type: bool
         default: False
 inputs:

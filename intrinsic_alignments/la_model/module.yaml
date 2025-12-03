@@ -1,4 +1,3 @@
-#This is a template for module description files
 name: linear_alignments
 version: '1.0'
 purpose: Compute the terms P_II and P_GI which go into intrinsic aligment calculations

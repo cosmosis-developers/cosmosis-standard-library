@@ -1,5 +1,7 @@
 from cosmosis.gaussian_likelihood import GaussianLikelihood
 from cosmosis.datablock import names
+from cosmosis import __version__ as cosmosis_version
+
 from twopoint_cosmosis import theory_names, type_table
 from astropy.io import fits
 from scipy.interpolate import interp1d
@@ -10,6 +12,18 @@ import os
 from spec_tools import TheorySpectrum
 default_array = np.repeat(-1.0, 99)
 
+# There is a bug in cosmosis 3.19 and below that causes a crash in the
+# logging mechanism if an array of strings is saved to the block.
+# This only appears if you try to run debugging, but is a hard crash
+# so we really want to avoid it.
+try:
+    cosmosis_version = cosmosis_version.split('.')
+    cosmosis_version = int(cosmosis_version[0]), int(cosmosis_version[1])
+    is_newer_than_3_19 = (cosmosis_version[0] > 3) or \
+        (cosmosis_version[0] == 3 and cosmosis_version[1] > 19)
+except (ValueError, IndexError):
+    # fall back to the old version
+    is_newer_than_3_19 = False
 
 def is_default(x):
     return len(x) == len(default_array) and (x == default_array).all()
@@ -290,7 +304,7 @@ class TwoPointLikelihood(GaussianLikelihood):
             angle.append(angle_vector)
             bin1.append(bin1_vector)
             bin2.append(bin2_vector)
-            # dataset_name.append(np.repeat(spectrum.name, len(bin1_vector)))
+            dataset_name.append(np.repeat(spectrum.name, len(bin1_vector)))
 
         # We also collect the ell or theta values.
         # The gaussian likelihood code itself is not expecting these,
@@ -298,11 +312,14 @@ class TwoPointLikelihood(GaussianLikelihood):
         angle = np.concatenate(angle)
         bin1 = np.concatenate(bin1)
         bin2 = np.concatenate(bin2)
-        # dataset_name = np.concatenate(dataset_name)
+        dataset_name = np.concatenate(dataset_name)
         block[names.data_vector, self.like_name + "_angle"] = angle
         block[names.data_vector, self.like_name + "_bin1"] = bin1
         block[names.data_vector, self.like_name + "_bin2"] = bin2
-        # block[names.data_vector, self.like_name+"_name"] = dataset_name
+        if is_newer_than_3_19:
+            block[names.data_vector, self.like_name+"_name"] = dataset_name
+        else:
+            block[names.data_vector, self.like_name+"_name"] = "Value not saved in block in cosmosis 3.19 or below due to a bug."
 
         # the thing it does want is the theory vector, for comparison with
         # the data vector

@@ -1,4 +1,3 @@
-#This is a template for module description files
 name: growth_factor
 version: 1
 purpose: returns linear growth factor and growth rate for flat cosmology with either

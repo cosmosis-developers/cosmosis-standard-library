@@ -1,0 +1,83 @@
+name: "rescale_distances_rdh"
+version: "1.0"
+purpose: "Rescale computed distances to be consistent with a given value of R_d * h"
+url: ""
+interface: "rescale_distances_rdh.py"
+attribution: [CosmoSIS Team]
+rules: []
+cite: []
+assumptions:
+    - "FLRW"
+explanation: |
+    BAO people sometimes sample using the best-constrained BAO parameter r_d * h,
+    where r_d is the sound horizon at the drag epoch (last scattering). This module
+    takes a set of distances and rescales them to be consistent with a given value of
+    r_d * h. This is useful for replicating, for example, the DESI BAO-only analysis.
+
+    For that reason this module is limited to rescale distances, and not, for example.
+    k values in a power spectrum.
+
+    In general I'd discourage people from sampling in whatever is the best-constrained
+    parameter for their particular analysis - it doesn't correspond to particularly
+    sensible priors in any other parametrization. But it can make sampling more efficient,
+    depending on the sampler.
+
+    Specifically, this module reads a value of rd_prime computed from a (fixed) value
+    of H0, e.g. by camb, and a sampled rdh_sample value, from which it computes
+    rd_sample = rdh_sample / h_fid. It then sets f = rd_prime / rd_sample, and muliplies
+    all the distance metrics by f.  H(z) is also rescaled by 1/f, and mu(z) adjust accordingly too.
+
+    This module is not intended to be used in a general way, but only in the context of
+    the specific BAO analysis described above.
+
+params: {}
+
+inputs:
+    cosmological_parameters:
+        h0:
+            meaning: Fiducial value of H0 in km/s/Mpc/100. Should be fixed
+            type: real
+            default:
+        rdh:
+            meaning: Sample value of R_d * h in km/s.
+            type: real
+            default:
+    distances:
+        rs_zdrag:
+            meaning: "Sound horizon at drag epoch computing using fiducial h0, in Mpc"
+            type: real
+            default:
+outputs:
+    cosmological_parameters:
+        h0:
+            meaning: Updated h0
+            type: real
+    distances:
+        D_L:
+            meaning: Updated luminosity distance in Mpc
+            type: real 1d
+        D_A:
+            meaning: Updated angular diameter distance in Mpc
+            type: real 1d
+        D_V: 
+            meaning: Updated BAO average distance in Mpc
+            type: real 1d
+        D_M:
+            meaning: Updated line of sight comoving distance in Mpc
+            type: real 1d
+        D_C:
+            meaning: Updated transverse comoving distance in Mpc
+            type: real 1d
+        H:
+            meaning: Updated Hubble parameter in km/s/Mpc
+            type: real 1d
+        mu:
+            meaning: Updated distance modulus
+            type: real 1d
+        rs_zsrag:
+            meaning: "Sound horizon at drag epoch computing using updated h0, in Mpc"
+            type: real
+        h0rd:
+            meaning: "Final value of h0 r_d, using updated h0"
+            type: real
+        

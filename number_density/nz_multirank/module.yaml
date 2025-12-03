@@ -1,4 +1,3 @@
-#This is a template for module description files
 name: nz_multirank
 version: 1
 purpose: Load, rank, and sample a set of density n(z) realisations from a FITS file

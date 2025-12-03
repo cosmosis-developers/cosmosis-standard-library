@@ -1,0 +1,79 @@
+name: additive_systematic
+version: 1
+purpose: Model additive systematic errors for HSC cosmic shear analysis
+url: ''
+interface: sys_model.py
+attribution: [Roohi Dalal, Xiangchong Li, HSC Collaboration]
+rules: []
+cite:
+-   https://arxiv.org/abs/2304.00701
+assumptions:
+-   Additive systematics can be modeled with simple parametric forms
+-   Systematics are additive to the cosmic shear signal
+
+explanation: |
+    "This module models additive systematic errors for the Hyper Suprime-Cam
+    (HSC) cosmic shear analysis. It implements parametric models for
+    systematics that are added to the theoretical cosmic shear correlation
+    functions to account for observational effects that are not captured
+    by the standard cosmological model."
+
+params:
+    theta_min:
+        meaning: Minimum angular scale to include (arcmin)
+        type: real
+        default: 6.0
+    theta_max:
+        meaning: Maximum angular scale to include (arcmin)
+        type: real
+        default: 200.0
+    model_type:
+        meaning: Type of systematic model to use ('systematics' or 'pca')
+        type: str
+        default:
+    psf_file:
+        meaning: Path to file containing PSF systematic matrices (required for model_type='systematics')
+        type: str
+        default:
+    nzs:
+        meaning: Number of redshift bins (required for model_type='systematics')
+        type: int
+        default:
+    tfile:
+        meaning: Optional transformation file for parameter space (for model_type='systematics')
+        type: str
+        default: ""
+
+inputs:
+    shear_xi_plus:
+        nbin_a:
+            meaning: Number of redshift bins for first shear measurement
+            type: int
+            default:
+        nbin_b:
+            meaning: Number of redshift bins for second shear measurement
+            type: int
+            default:
+        theta:
+            meaning: Angular separation values
+            type: real 1d
+            default:
+    psf_systematics_parameters:
+        psf_cor{i}_z{j}:
+            meaning: PSF correlation systematic parameters for component i, redshift bin j
+            type: real
+            default:
+        psf_c1_z{j}:
+            meaning: PSF additive bias c1 parameter for redshift bin j
+            type: real
+            default:
+        psf_c2_z{j}:
+            meaning: PSF additive bias c2 parameter for redshift bin j
+            type: real
+            default:
+
+outputs:
+    shear_xi_plus:
+        theta:
+            meaning: Modified angular separation values (trimmed to theta_min/theta_max range)
+            type: real 1d

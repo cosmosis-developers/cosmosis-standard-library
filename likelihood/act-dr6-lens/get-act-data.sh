@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-
+pushd "$(dirname "$0")"
 if [ -d data/v1.1 ]
 then
     echo ACT DR6 Lensing data already downloaded
@@ -12,3 +12,4 @@ else
     rm ACT_dr6_likelihood_v1.1.tgz
     popd
 fi
+popd

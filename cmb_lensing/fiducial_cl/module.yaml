@@ -1,0 +1,74 @@
+name: fiducial_cl
+version: 1
+purpose: Replace CMB power spectra with fiducial values from data files
+url: ''
+interface: fiducial_cl.py
+attribution: [CosmoSIS Team]
+rules: []
+cite: []
+assumptions:
+-   Fiducial CMB power spectra are provided as external data files
+
+explanation: |
+    "This module replaces computed CMB power spectra with fiducial values
+    loaded from data files. This is useful for testing or when you want
+    to use specific reference power spectra instead of computed ones.
+    
+    The module loads TT, TE, EE, BB, and optionally PP (lensing) power spectra
+    from files and replaces the first part of the computed spectra with these
+    fiducial values. The rest can optionally be zeroed out."
+
+params:
+    data_dir:
+        meaning: Directory containing fiducial power spectra files (should contain clTT.txt, clTE.txt, etc.)
+        type: str
+        default: data/
+    replace_pp:
+        meaning: Whether to also replace the lensing potential power spectrum
+        type: bool
+        default: false
+    zero_remainder:
+        meaning: Whether to zero out spectra beyond the fiducial range
+        type: bool
+        default: false
+
+inputs:
+    cmb_cl:
+        TT:
+            meaning: Temperature power spectrum to be replaced
+            type: real 1d
+            default:
+        TE:
+            meaning: Temperature-E-mode cross power spectrum to be replaced
+            type: real 1d
+            default:
+        EE:
+            meaning: E-mode power spectrum to be replaced
+            type: real 1d
+            default:
+        BB:
+            meaning: B-mode power spectrum to be replaced
+            type: real 1d
+            default:
+        PP:
+            meaning: Lensing potential power spectrum to be replaced (if replace_pp=true)
+            type: real 1d
+            default:
+
+outputs:
+    cmb_cl:
+        TT:
+            meaning: Modified temperature power spectrum with fiducial values
+            type: real 1d
+        TE:
+            meaning: Modified temperature-E-mode cross power spectrum
+            type: real 1d
+        EE:
+            meaning: Modified E-mode power spectrum with fiducial values
+            type: real 1d
+        BB:
+            meaning: Modified B-mode power spectrum with fiducial values
+            type: real 1d
+        PP:
+            meaning: Modified lensing potential power spectrum (if replace_pp=true)
+            type: real 1d

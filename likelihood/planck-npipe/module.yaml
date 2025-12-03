@@ -1,0 +1,67 @@
+name: planck_npipe
+version: 1
+purpose: Planck NPIPE CMB lensing likelihood
+url: https://github.com/carronj/planck_PR4_lensing
+interface: npipe_interface.py
+attribution: [CosmoSIS Team (interface), J. Carron, A. Lewis, M. Mirmelstein]
+rules: []
+cite:
+-   https://arxiv.org/abs/2206.07773
+assumptions:
+-   Planck NPIPE lensing power spectrum measurements
+-   Optional CMB primary anisotropy marginalization
+
+explanation: |
+    "This module implements the Planck NPIPE CMB lensing likelihood.
+    NPIPE is an improved data processing pipeline for Planck that
+    provides cleaner CMB maps and lensing reconstructions.
+    
+    The module can operate in two modes:
+    1. Marginalized: Uses only lensing power spectrum with primary CMB marginalized
+    2. Non-marginalized: Uses full set of CMB power spectra (TT, EE, TE, BB, PP)
+    
+    Requires the planckpr4lensing package to be installed."
+
+params:
+    use_marginalized:
+        meaning: Whether to use primary CMB-marginalized likelihood
+        type: bool
+        default: true
+
+inputs:
+    cmb_cl:
+        ell:
+            meaning: Angular multipole values
+            type: int 1d
+            default:
+        pp:
+            meaning: Lensing potential power spectrum
+            type: real 1d
+            default:
+        tt:
+            meaning: Temperature power spectrum (if use_marginalized=false)
+            type: real 1d
+            default:
+        te:
+            meaning: Temperature-E-mode cross power spectrum (if use_marginalized=false)
+            type: real 1d
+            default:
+        ee:
+            meaning: E-mode power spectrum (if use_marginalized=false)
+            type: real 1d
+            default:
+        bb:
+            meaning: B-mode power spectrum (if use_marginalized=false)
+            type: real 1d
+            default:
+    planck:
+        a_planck:
+            meaning: Planck absolute calibration parameter
+            type: real
+            default:
+
+outputs:
+    likelihoods:
+        npipe_like:
+            meaning: Log-likelihood from Planck NPIPE lensing
+            type: real

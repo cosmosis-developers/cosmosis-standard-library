@@ -1,4 +1,3 @@
-#This is a template for module description files
 name: BICEP2
 version: '20140314'
 purpose: Compute the likelihood of the supplied CMB power spectra

@@ -1,0 +1,240 @@
+name: cl_to_xi_fullsky
+version: 1
+purpose: Transform angular power spectra C_ell to real-space correlation functions
+url: ''
+interface: cl_to_xi_interface.py
+attribution: [CosmoSIS Team]
+rules: []
+cite: []
+assumptions:
+-   ell values have sufficient range
+
+explanation: |
+    "This module transforms angular power spectra C_ell to real-space correlation
+    functions xi(theta) using Legendre polynomial integration. It supports various
+    correlation function types:
+    
+    - xi+/xi- (spin-2 shear correlations)  
+    - w(theta) (scalar galaxy correlations)
+    - gamma_t (galaxy-shear cross correlation)
+    - E/B mode combinations
+    
+    The module supports both exact calculations at theta points and bin-averaged
+    calculations over theta ranges. It includes high-ell filtering to reduce
+    ringing artifacts."
+
+params:
+    xi_type:
+        meaning: Type of correlation function ('22', '22+', '22-', 'EB', '00', '02', '02+')
+        type: str
+        default:
+    ell_max:
+        meaning: Maximum ell value to include in transform
+        type: int
+        default:
+    bin_avg:
+        meaning: Whether to use bin-averaged Legendre coefficients
+        type: bool
+        default: false
+    theta_file:
+        meaning: FITS file containing theta values for measurement
+        type: str
+        default: ""
+    theta_section:
+        meaning: Section name in theta_file to read from
+        type: str
+        default: depends on xi_type
+    high_l_filter:
+        meaning: High-ell filter parameter to reduce ringing (0=off, 1=maximum)
+        type: real
+        default: 0.75
+    two_thirds_midpoint:
+        meaning: Use 2/3-weighted midpoint for theta from bin edges
+        type: bool
+        default: true
+    input_section_name:
+        meaning: Section containing input C_ell values
+        type: str
+        default: depends on xi_type
+    output_section_name:
+        meaning: Section name for output correlation functions
+        type: str
+        default: depends on xi_type
+    save_name:
+        meaning: Custom name for saving outputs
+        type: str
+        default: ""
+    theta_min:
+        meaning: Minimum theta value in arcmin (if not using theta_file)
+        type: real
+        default: 1.0
+    theta_max:
+        meaning: Maximum theta value in arcmin (if not using theta_file)
+        type: real
+        default: 300.0
+    n_theta:
+        meaning: Number of theta points (if not using theta_file or bin_avg)
+        type: int
+        default: 20
+    n_theta_bins:
+        meaning: Number of theta bins (if using bin_avg and not theta_file)
+        type: int
+        default: 20
+    theta:
+        meaning: Specific theta values in arcmin (alternative to min/max/n)
+        type: real 1d
+        default:
+    theta_edges:
+        meaning: Theta bin edges in arcmin (for bin averaging)
+        type: real 1d
+        default:
+
+inputs:
+    shear_cl:
+        ell:
+            meaning: Angular multipole values
+            type: int 1d
+            default:
+        nbin:
+            meaning: Number of redshift bins
+            type: int
+            default:
+        bin_{i}_{j}:
+            meaning: Shear power spectrum for bins i,j
+            type: real 1d
+            default:
+        sample_a:
+            meaning: Name identifier for first tomographic sample
+            type: str
+            default:
+        sample_b:
+            meaning: Name identifier for second tomographic sample
+            type: str
+            default:
+        is_auto:
+            meaning: Whether this is an autocorrelation (True) or cross-correlation (False)
+            type: bool
+            default:
+    shear_cl_bb:
+        ell:
+            meaning: Angular multipole values for B-modes (if xi_type='EB')
+            type: int 1d
+            default:
+        bin_{i}_{j}:
+            meaning: B-mode shear power spectrum for bins i,j (if xi_type='EB')
+            type: real 1d
+            default:
+    galaxy_cl:
+        ell:
+            meaning: Angular multipole values (if xi_type='00')
+            type: int 1d
+            default:
+        bin_{i}_{j}:
+            meaning: Galaxy power spectrum for bins i,j (if xi_type='00')
+            type: real 1d
+            default:
+    galaxy_shear_cl:
+        ell:
+            meaning: Angular multipole values (if xi_type='02')
+            type: int 1d
+            default:
+        bin_{i}_{j}:
+            meaning: Galaxy-shear cross power spectrum for bins i,j (if xi_type='02')
+            type: real 1d
+            default:
+
+outputs:
+    shear_xi_plus:
+        theta:
+            meaning: Angular separation values in arcmin
+            type: real 1d
+        nbin:
+            meaning: Number of redshift bins
+            type: int
+        bin_{i}_{j}:
+            meaning: xi+ correlation function for bins i,j
+            type: real 1d
+        nbin_a:
+            meaning: Number of redshift bins in first quantity
+            type: int
+        nbin_b:
+            meaning: Number of redshift bins in second quantity
+            type: int
+        sample_a:
+            meaning: Name identifier for first tomographic sample
+            type: str
+        sample_b:
+            meaning: Name identifier for second tomographic sample
+            type: str
+        is_auto:
+            meaning: Whether this is an autocorrelation (True) or cross-correlation (False)
+            type: bool
+        cl_section:
+            meaning: Name of input section that C_ell values were read from
+            type: str
+        sep_name:
+            meaning: Name of the separation variable ('theta')
+            type: str
+        save_name:
+            meaning: Custom save name if specified
+            type: str
+        bin_avg:
+            meaning: Whether bin averaging was used
+            type: bool
+        theta_edges:
+            meaning: Theta bin edges in radians (if bin_avg=True)
+            type: real 1d
+    shear_xi_minus:
+        theta:
+            meaning: Angular separation values in arcmin
+            type: real 1d
+        nbin:
+            meaning: Number of redshift bins
+            type: int
+        bin_{i}_{j}:
+            meaning: xi- correlation function for bins i,j
+            type: real 1d
+        nbin_a:
+            meaning: Number of redshift bins in first quantity
+            type: int
+        nbin_b:
+            meaning: Number of redshift bins in second quantity
+            type: int
+        sample_a:
+            meaning: Name identifier for first tomographic sample
+            type: str
+        sample_b:
+            meaning: Name identifier for second tomographic sample
+            type: str
+        is_auto:
+            meaning: Whether this is an autocorrelation (True) or cross-correlation (False)
+            type: bool
+        cl_section:
+            meaning: Name of input section that C_ell values were read from
+            type: str
+        sep_name:
+            meaning: Name of the separation variable ('theta')
+            type: str
+        save_name:
+            meaning: Custom save name if specified
+            type: str
+        bin_avg:
+            meaning: Whether bin averaging was used
+            type: bool
+        theta_edges:
+            meaning: Theta bin edges in radians (if bin_avg=True)
+            type: real 1d
+    galaxy_xi:
+        theta:
+            meaning: Angular separation values in arcmin (if xi_type='00')
+            type: real 1d
+        bin_{i}_{j}:
+            meaning: w(theta) correlation function for bins i,j (if xi_type='00')
+            type: real 1d
+    galaxy_shear_xi:
+        theta:
+            meaning: Angular separation values in arcmin (if xi_type='02')
+            type: real 1d
+        bin_{i}_{j}:
+            meaning: gamma_t correlation function for bins i,j (if xi_type='02')
+            type: real 1d

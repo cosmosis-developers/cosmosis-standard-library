@@ -100,7 +100,10 @@ def execute(block, config):
 		D_M = D_C
 	else:
 		sqrtOk0 = np.sqrt(abs(Ok0))
-		dh = model._hubble_distance.value
+		try:
+			dh = model._hubble_distance.value
+		except AttributeError:
+			dh = model.hubble_distance.value
 		if Ok0 > 0:
 			D_M = dh / sqrtOk0 * np.sinh(sqrtOk0 * D_C / dh)
 		else:

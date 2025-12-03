@@ -1,4 +1,3 @@
-#This is a template for module description files
 name: "EuclidEmulator2"
 version: "1.0.1"
 purpose: "Emulate the boost factors that convert the linear to non-linear power spectrum, including baryon corrections"

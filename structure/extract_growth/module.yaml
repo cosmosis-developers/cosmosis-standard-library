@@ -1,4 +1,3 @@
-#This is a template for module description files
 name: extract_growth
 version: 1
 purpose: returns growth factor and growth rate by examining small-scale P(k)

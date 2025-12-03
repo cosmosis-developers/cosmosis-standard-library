@@ -1,0 +1,616 @@
+name: cosmopower
+version: 1.0
+purpose: Interface to cosmopower emulators for fast cosmological calculations, a drop-in replacement for camb.
+url: https://github.com/alessiospuriomancini/cosmopower
+interface: cosmopower_interface.py
+attribution: "Andrej Dvornik, Pierre Burger, Naomi Robertson, Joe Zuntz"
+rules: 
+cite: 
+-   https://arxiv.org/abs/2106.03846
+
+assumptions: []
+
+explanation: | 
+    The cosmopower module provides an interface to the cosmopower emulators for fast cosmological calculations.
+    It is a drop-in replacement for camb, and can be used in any pipeline that uses camb.
+    The cosmopower emulators need to be trained using the cosmopower training option in CosmoSIS, or in the case of CMB be provided from Alessio.
+    The module will calculate background quantities (directly using the CAMB in background mode), CMB power spectra, and matter power spectra (from trained emulators).
+    It can also calculate distance measures and growth parameters (using both CAMB in the background mode and the trained emulators).
+    The module can use the cosmopower k vector for P(k,z) output, or a CAMB k vector.
+    
+params:
+    cosmopower_folder:
+        meaning: Folder where the cosmopower trained emulator models are stored. 
+            These need to be trained using the cosmopower training option in CosmoSIS 
+            (or in the case of CMB be provided from the Alessio).
+        type: str
+        default:
+    use_cosmopower_kvec:
+        meaning: Whether to use the cosmopower k vector for P(k,z) output. If false,
+            a CAMB k vector is used.
+        type: bool
+        default: true
+    mode:
+        meaning: Choose from Background, thermal, cmb, power, or all. In background
+            mode only the expansion history is calculated. In thermal mode the recombination
+            history is computed and rs_zdrag and related quantities also. In cmb mode
+            the CMB power spectra are also calculated. In power mode the CMB is not
+            calculated but low-z mattter power is.  In all mode everything is calculated.
+        type: str
+        default:
+    feedback:
+        meaning: Amount of output to print.  0 for no feedback.  1 for basic, 2 for
+            extended, maybe higher?
+        type: int
+        default: 0
+    max_printed_errors:
+        meaning: Max number of full tracebacks to print when camb fails
+        type: int
+        default: 20
+    do_lensing:
+        meaning: Include lensing of CMB, and save C_ell phi-phi.
+        type: bool
+        default: false
+    do_reionization:
+        meaning: Use the tanh reionization model to calculate the reionization history.
+        type: bool
+        default: true
+    do_tensors:
+        meaning: Include tensor modes.
+        type: bool
+        default: false
+    do_vectors:
+        meaning: Vector modes.
+        type: bool
+        default: false
+    power_spectra:
+        meaning: Which power spectra to save. Any combination of delta_cdm, delta_baryon, delta_photon, delta_neutrino,
+            delta_nu, delta_tot, delta_nonu, delta_nonu, weyl, v_newtonian_cdm, v_newtonian_baryon,
+            v_baryon_cdm, separated by spaces.  
+        type: str
+        default: delta_tot
+    nonlinear:
+        meaning: One of 'none', 'pk', 'lens', 'both'.  Determining whether to generate
+            NL p(k,z) and to apply NL corrections to lensing. /both depending on mode
+            choice
+        type: str
+        default: none
+    halofit_version:
+        meaning: If nonlinear!=none, select a halofit version from original, bird,
+            peacock, takahashi, mead, halomodel, casarini, mead2015.
+        type: str
+        default: mead
+    initial:
+        meaning: One of adiabatic, iso_CDM, iso_baryon, iso_neutrino, iso_neutrino_vel.  Scalar
+            initial conditions.
+        type: str
+        default: adiabatic
+    neutrino_hierarchy:
+        meaning: Choose from 'degenerate', 'normal', or 'inverted' (1 or 2 eigenstate
+            approximation).
+        type: str
+        default: degenerate
+    use_ppf_w:
+        meaning: Whether to use the PPF perturbation approximation (arXiv:0808.3125)
+            instead of the constant sound-speed single fluid model
+        type: bool
+        default: false
+    use_tabulated_w:
+        meaning: Set to true to load w(z) from the datablock instead of assuming a model
+        type: bool
+        default: false
+    pivot_scalar:
+        meaning: Pivot scale for scalar spectrum
+        type: real
+        default: 0.05
+    pivot_tensor:
+        meaning: Pivot scale for tensor spectrum
+        type: real
+        default: 0.05
+    lmax:
+        meaning: Only if mode in cmb,all. The max ell to use for cmb calculation
+        type: int
+        default: 2600
+    kmax:
+        meaning: Max wavenumber k to calculate P(k,z)
+        type: real
+        default: 10.0
+    kmax_extrapolate:
+        meaning: Max wavenumber k to save P(k,z), extrapolating log-linearly beyond
+            calculation
+        type: real
+        default: kmax
+    nk:
+        meaning: Number of k values to save P(k,z).
+        type: int
+        default: 200
+    zmin:
+        meaning: Min redshift value to save P(k,z).
+        type: real
+        default: 0.0
+    zmax:
+        meaning: Max redshift value to save P(k,z)
+        type: real
+        default: 3.01
+    nz:
+        meaning: Number of z values to save P(k,z)
+        type: int
+        default: 150
+    zmid:
+        meaning: If set then use two ranges of z values, zmin-zmid and zmid-zmax,
+            with different nz values
+        type: real
+        default:
+    nzmid:
+        meaning: Number of redshift points to use in lower range zmin-zmid, if set
+        type: int
+        default:
+    zmin_background:
+        meaning: Min redshift value to save distance measures.
+        type: real
+        default: 0.0
+    zmax_background:
+        meaning: Max redshift value to save distance measures
+        type: real
+        default: zmax
+    nz_background:
+        meaning: Number of z values to save distance measures
+        type: int
+        default: nz
+    do_bao:
+        meaning: Whether to save BAO quantities rs_DV and F_AP. Switch off to save time in SN-only runs.
+        type: bool
+        default: true
+    theta_H0_range:
+        meaning: Two space-separated values with the min and max H0 values to use
+            when sampling in cosmomc_theta instead of H0.
+        type: str
+        default: "10 100"
+    max_eta_k:
+        meaning: Maximum k*eta_0 for scalar C_ell, where eta_0 is the conformal time
+            today.
+        type: real
+        default: ell-dependent
+    k_eta_fac:
+        meaning: Default factor for setting max_eta_k = k_eta_fac*lmax if max_eta_k=None.
+        type: real
+        default: 2.5
+    k_per_logint:
+        meaning: Number of k steps per log k, or zero for camb automatic assignment.
+        type: int
+        default: 0
+    lAccuracyBoost:
+        meaning: Factor to increase the maximum ell included in the Boltzmann hierarchies.
+        type: real
+        default: 1.0
+    lens_k_eta_reference:
+        meaning: Value of max_eta_k to use when lens_potential_accuracy>0; use k_eta_max
+            = lens_k_eta_reference*lens_potential_accuracy
+        type: real
+        default: 18000.0
+    lens_margin:
+        meaning: The Delta lmax to use to ensure lensed C_ell are correct at lmax.
+        type: int
+        default: 150
+    lens_potential_accuracy:
+        meaning: Set to 1 or higher if you want to get the lensing potential accurate
+            (1 is Planck-level accuracy)
+        type: real
+        default: 1.0
+    AccuracyBoost:
+        meaning: Apply an accuracy boost across all calculations.
+        type: real
+        default: 1.0
+    accurate_massive_neutrinos:
+        meaning: True if you want neutrino transfer functions accurate.
+        type: bool
+        default: false
+    min_kh_nonlinear:
+        meaning: Minimum k/h at which to apply non-linear corrections
+        type: real
+        default: 0.005
+    lSampleBoost:
+        meaning: Factor to increase density of ell sampling for CMB
+        type: real
+        default: 1.0
+    use_optical_depth:
+        meaning: Whether to use the tau parametrization of reionization instead of z.
+        type: bool
+        default: true
+    DoLateRadTruncation:
+        meaning: Whether to use smooth approx to radiation perturbations after decoupling
+            on small scales, saving evolution of irrelevant osciallatory multipole
+            equations.
+        type: bool
+        default: true
+    include_helium_fullreion:
+        meaning: Whether to include second reionization of helium
+        type: bool
+        default: true
+    tau_max_redshift:
+        meaning: Maxmimum redshift allowed when mapping tau into reionization redshift
+        type: real
+        default: 50.0
+    tau_solve_accuracy_boost:
+        meaning: Accuracy boosting parameter for solving for z_re from tau
+        type: real
+        default: 1.0
+    tau_timestep_boost:
+        meaning: Accuracy boosting parameter for the minimum number of time sampling
+            steps through reionization
+        type: real
+        default: 1.0
+inputs:
+    cosmological_parameters:
+        ombh2:
+            meaning: Physical baryon density
+            type: real
+            default:
+        omch2:
+            meaning: Physical cold dark matter density
+            type: real
+            default:
+        omega_k:
+            meaning: Curvature density
+            type: real
+            default:
+        n_s:
+            meaning: Primordial scalar spectral index
+            type: real
+            default:
+        A_s:
+            meaning: Primordial scalar spectral amplitude
+            type: real
+            default:
+        sigma_8:
+            meaning: Amplitude of linear perturbations at z=0 on scales of 8 Mpc/h.
+                Only A_s or sigma_8 should be provided.
+            type: real
+            default:
+        hubble:
+            meaning: Hubble parameter in km/s/Mpc
+            type: real
+            default:
+        h0:
+            meaning: Hubble parameter in km/s/Mpc/100 (searched for if hubble not
+                found)
+            type: real
+            default:
+        cosmomc_theta:
+            meaning: Acoustic scale parameter (if hubble and h0 not found)
+            type: real
+            default:
+        tau:
+            meaning: Optical depth to reionization (use_optical_depth=T)
+            type: real
+            default:
+        w:
+            meaning: W(z=0) equation of state of dark energy. Ignored if use_tabulated_w=T
+            type: real
+            default: -1.0
+        wa:
+            meaning: Equation of state parameter w(z) = w_0 + w_a z / (1+z). Ignored
+                if use_tabulated_w=T
+            type: real
+            default: 0.0
+        cs2_de:
+            meaning: Dark energy sound speed/c
+            type: real
+            default: 1.0
+        nrun:
+            meaning: Running of the scalar spectral index
+            type: real
+            default: 0.0
+        nrunrun:
+            meaning: Second order running of the scalar spectral index
+            type: real
+            default: 0.0
+        r:
+            meaning: Tensor to scalar ratio at pivot
+            type: real
+            default: 0.0
+        nt:
+            meaning: Tensor spectral index
+            type: real
+            default: inflation consistency
+        ntrun:
+            meaning: Running of tensor spectral index
+            type: real
+            default: 0.0
+        TCMB:
+            meaning: CMB temperature today
+            type: real
+            default: 2.7255
+        YHe:
+            meaning: Helium mass fraction
+            type: real
+            default: BBN consistency
+        num_massive_neutrinos:
+            meaning: Number of massive neutrino species
+            type: int
+            default: 1
+        mnu:
+            meaning: Sum of neutrino masses (in eV); Omega_nu is calculated approximately
+                from this.
+            type: real
+            default: 0.06
+        nnu:
+            meaning: N_eff, the effective relativistic degrees of freedom
+            type: real
+            default: 3.046
+        standard_neutrino_neff:
+            meaning: Default value for N_eff in fiducial cosmology used to calculate
+                omnhu2
+            type: real
+            default: 3.046
+        A_lens:
+            meaning: Scaling of the lensing potential compared to theory prediction
+            type: real
+            default: 1.0
+    reionization:
+        redshift:
+            meaning: Reionization redshift to use if use_optical_depth=False
+            type: real
+            default:
+        delta_redshift:
+            meaning: Duration of reionization if use_optical_depth=False
+            type: real
+            default:
+        fraction:
+            meaning: Reionization fraction when complete, or -1 for full ionization
+                of hydrogen and first ionization of helium
+            type: real
+            default: -1.0
+        helium_redshift:
+            meaning: Redshift for second reionization of helium
+            type: real
+            default: 3.5
+        helium_delta_redshift:
+            meaning: Width in redshift for second reionization of helium
+            type: real
+            default: 0.4
+        helium_redshiftstart:
+            meaning: Include second helium reionizatio below this redshift
+            type: real
+            default: 5.5
+    recfast:
+        min_a_evolve_Tm:
+            meaning: Minimum scale factor at which to solve matter temperature perturbation
+                if evolving sound speed or ionization fraction perturbations (/(1+900)
+            type: real
+            default: 1.0
+        RECFAST_fudge:
+            meaning: Float Hydrogen fudge parameter
+            type: real
+            default: 1.14
+        RECFAST_fudge_He:
+            meaning: Helium fudge parameter
+            type: real
+            default: 0.86
+        RECFAST_Heswitch:
+            meaning: 0-6, method to use for calculating Helium recombination. See camb docs.
+            type: int
+            default: 6
+        RECFAST_Hswitch:
+            meaning: Whether to include H recombination corrections
+            type: bool
+            default: true
+        AGauss1:
+            meaning: Amplitude of 1st recfast Gaussian
+            type: real
+            default: -0.14d
+        AGauss2:
+            meaning: Amplitude of 2nd recfast Gaussian
+            type: real
+            default: 0.079
+        zGauss1:
+            meaning: ln(1+z) of 1st recfast Gaussian
+            type: real
+            default: 7.28
+        zGauss2:
+            meaning: ln(1+z) of 2nd recfast Gaussian
+            type: real
+            default: 6.73
+        wGauss1:
+            meaning: Width of 1st recfast Gaussian
+            type: real
+            default: 0.18
+        wGauss2:
+            meaning: Width of 2nd recfastGaussian
+            type: real
+            default: 0.33
+    halo_model_parameters:
+        A:
+            meaning: Amplitude of the concentration-mass relation
+            type: real
+            default:
+        eta:
+            meaning: Real halo window function re-scaling parameter
+            type: real
+            default:
+    de_equation_of_state:
+        a:
+            meaning: Scale factor a values used if use_tabulated_w=T.
+            type: real 1d
+            default: none
+        w:
+            meaning: Wquation of state w(a) values used if use_tabulated_w=T.
+            type: real 1d
+            default: none
+outputs:
+    cosmological_parameters:
+        sigma_8:
+            meaning: Amplitude of linear matter power at 8/h Mpc at z=0.  Only calculated
+                if mode=all
+            type: real
+    distances:
+        nz:
+            meaning: Number of distance samples
+            type: int
+        z:
+            meaning: Redshifts of distance samples
+            type: real 1d
+        a:
+            meaning: Scale factor of distance samples
+            type: real 1d
+        d_a:
+            meaning: Angular diameter distance in Mpc
+            type: real 1d
+        d_m:
+            meaning: Co-moving distance in Mpc
+            type: real 1d
+        d_l:
+            meaning: Luminosity distance in Mpc
+            type: real 1d
+        d_v:
+            meaning: Angular average of comoving angular diameter and line of sight distance in Mpc
+            type: real 1d
+        mu:
+            meaning: Distance modulus
+            type: real 1d
+        h:
+            meaning: Hubble parameter as function of redshift in units of Mpc
+            type: real 1d
+        age:
+            meaning: Age of universe in GYr
+            type: real
+        zstar:
+            meaning: Redshift of unity optical depth.  Only if mode!=background
+            type: real
+        thetastar:
+            meaning: Angular size of sound horizon at zstar. Only if mode!=background
+            type: real
+        DAstar:
+            meaning: Angular diameter distance to zstar. Only if mode!=background
+            type: real
+        chistar:
+            meaning: Comoving distance to zstar. Only if mode!=background
+            type: real
+        zdrag:
+            meaning: Redshift where baryons no longer dragged by photons. Only if
+                mode!=background
+            type: real
+        rdrag:
+            meaning: Sound horizon size at zdrag. Only if mode!=background
+            type: real
+        rs_zdrag:
+            meaning: Same as rdrag
+            type: real
+        kd:
+            meaning: K parameter at drag epoch
+            type: real
+        thetad:
+            meaning: Theta parameter at drag epoch
+            type: real
+        zeq:
+            meaning: Redshift of matter-radiation equality
+            type: real
+        keq:
+            meaning: Wavenumber (1/a) (da/dtau) at equality
+            type: real
+        thetaeq:
+            meaning: Angle 100 tau_eq / D_A(zstar)
+            type: real
+        thetarseq:
+            meaning: Angle 100 r_s(eq)/DA(zstar)
+            type: real
+        cmbshift:
+            meaning: CMB shift parameter equation 69 of Komatsu et al 2009
+            type: real
+    growth_parameters:
+        z:
+            meaning: Redshift samples of other values in this section, (all if mode=power
+                or all)
+            type: real 1d
+        a:
+            meaning: Scale factor samples of other values in this section
+            type: real 1d
+        sigma_8:
+            meaning: Amplitude of linear matter power as function of z sigma_8(z)
+            type: real 1d
+        fsigma_8:
+            meaning: Growth rate (f*sigma_8)(z)
+            type: real 1d
+        rs_DV:
+            meaning: (rs_zdrag / volume distance D_V)(z)
+            type: real 1d
+        H:
+            meaning: Hubble parameter H(z). Repeated here at this sampling since useful
+                to have BAO values at same z values
+            type: real 1d
+        DA:
+            meaning: Angular diameter distance D_A(z)
+            type: real 1d
+        F_AP:
+            meaning: Alcock-Paczynski factor  (D_A * H / c)(z)
+            type: real 1d
+        d_z:
+            meaning: Growth factor D(z)
+            type: real 1d
+        f_z:
+            meaning: Growth rate f(z)=dlog(D)/dlog(a)
+            type: real 1d
+    cmb_cl:
+        ell:
+            meaning: Angular frequencies. Only if mode=cmb or all
+            type: int 1d
+        tt:
+            meaning: ell * (ell+1) C_ell^TT / 2 pi in mu K^2. Only if mode=cmb or
+                all
+            type: real 1d
+        ee:
+            meaning: ell * (ell+1) C_ell^EE / 2 pi in mu K^2. Only if mode=cmb or
+                all
+            type: real 1d
+        bb:
+            meaning: ell * (ell+1) C_ell^BB / 2 pi in mu K^2. Only if mode=cmb or
+                all
+            type: real 1d
+        te:
+            meaning: ell * (ell+1) C_ell^TE / 2 pi in mu K^2. Only if mode=cmb or
+                all
+            type: real 1d
+        pp:
+            meaning: 'Phi-Phi lensing spectrum; ell * (ell+1) C_ell^PhiPhi  / 2pi.
+                Only if mode=cmb or all'
+            type: real 1d
+        pt:
+            meaning: 'Phi-T lensing spectrum; ell * (ell+1) C_ell^PhiT / 2pi
+                Only if mode=cmb or all'
+            type: real 1d
+        pe:
+            meaning: 'Phi-E lensing spectrum;  ell * (ell+1) C_ell^PhiE / 2pi
+                Only if mode=cmb or all'
+            type: real 1d
+    matter_power_lin:
+        z:
+            meaning: Redshifts of samples. Only if mode is 'all' or 'power', nonlinear!=none
+                and matter_power is switched on in the power_spectra option. Other values specified
+                in power_spectra will output equivalent sections.
+            type: real 1d
+        k_h:
+            meaning: Wavenumbers k of samples in Mpc/h.
+            type: real 1d
+        p_k:
+            meaning: Linear power spectrum at samples in (Mpc/h)^-3.
+            type: real 2d
+    matter_power_nl:
+        z:
+            meaning: Redshifts of samples. Only if mode is 'all' or 'power', and matt
+                is switched on in the power_spectra option. Other values specified
+                in power_spectra will output equivalent sections.
+            type: real 1d
+        k_h:
+            meaning: Wavenumbers k of samples in Mpc/h.
+            type: real 1d
+        p_k:
+            meaning: Non-linear power spectrum at samples in (Mpc/h)^-3.
+            type: real 2d
+    transfer_func:
+        k_h:
+            meaning: Wavenumbers k of samples in Mpc/h.
+                Different than the k of power spectra!
+            type: real 1d
+        t_k:
+            meaning: Linear transfer function at z=0.
+            type: real 1d

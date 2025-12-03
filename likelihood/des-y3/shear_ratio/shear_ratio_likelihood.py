@@ -6,8 +6,10 @@ import pickle
 
 def get_ratio_from_gammat(gammat1, gammat2, inv_cov):
     #Given two gammats, calculate the ratio
-    s2 = (1./float(np.matrix(np.ones(len(gammat1)))*np.matrix(inv_cov)*np.matrix(np.ones(len(gammat1))).T))
-    ratio = s2*float(np.matrix(gammat1/gammat2)*np.matrix(inv_cov)*np.matrix(np.ones(len(gammat1))).T)
+    n1 = len(gammat1)
+    unit1 = np.ones(n1)
+    s2 = (1./float(unit1 @ inv_cov @ unit1.T))
+    ratio = s2*float(((gammat1/gammat2) @ inv_cov @ unit1.T))
     return ratio
 
 def radians_to_arcmin(r):

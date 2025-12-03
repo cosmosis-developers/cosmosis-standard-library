@@ -69,7 +69,7 @@ def execute(block, config):
         nbin_pos = block[galaxy_shear, 'nbin_a']
 
     if perbin:
-        A = [block[parameters, "A{}".format(i + 1)]
+        A = [block[parameters, "A1_{}".format(i + 1)]
              for i in range(nbin_shear)]
     else:
         A = [1 for i in range(nbin_shear)]

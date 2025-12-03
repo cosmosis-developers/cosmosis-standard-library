@@ -1,4 +1,3 @@
-#This is a template for module description files
 name: rename
 version: '1.0'
 purpose: Rename a section to a new name

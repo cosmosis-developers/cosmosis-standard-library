@@ -14,12 +14,12 @@ jobs:
 
   Download_Data:
     name: Download test data
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
 
-      - uses: actions/cache@v3
+      - uses: actions/cache@v4
         name: Planck Data Cache
         id: cache-planck
         with:
@@ -37,7 +37,7 @@ jobs:
         
       - name: Cache WMAP data
         id: cache-wmap
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: wmap_likelihood_full_v5.tar.gz
           key: wmap-9-data
@@ -50,7 +50,7 @@ jobs:
 
       - name: Cache ACT data
         id: cache-act
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: ACT_dr6_likelihood_v1.1.tgz
           key: act-dr6-data
@@ -62,8 +62,6 @@ jobs:
           wget https://lambda.gsfc.nasa.gov/data/suborbital/ACT/ACT_dr6/likelihood/data/ACT_dr6_likelihood_v1.1.tgz
 
 
-
-
   conda_test:
     name: Conda Test
     needs: Download_Data
@@ -71,23 +69,22 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-20.04, macos-latest]
-        pyversion: ["3.8", "3.9", "3.10", "3.11"]
+        os: [ubuntu-latest, macos-latest]
+        pyversion: ["3.10", "3.11", "3.12", "3.13"]
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
 
       - uses: conda-incubator/setup-miniconda@v2
         with:
           activate-environment: cosmosis-env
           channels: conda-forge
-          miniforge-variant: Mambaforge
           miniforge-version: latest
           python-version: ${{ matrix.pyversion }}
 
       - name: Install dependencies with conda
         shell: bash -l {0}
-        run: mamba install -c conda-forge "cosmosis>=3.2" cosmosis-build-standard-library pytest
+        run: mamba install -c conda-forge "cosmosis>=3.18" cosmosis-build-standard-library pytest
       
       - name: Get Cached Planck
         uses: actions/cache/restore@v3
@@ -109,7 +106,7 @@ jobs:
           path: ACT_dr6_likelihood_v1.1.tgz
           key: act-dr6-data
           fail-on-cache-miss: true
-          
+
       - name: Extract data
         shell: bash -l {0}
         run: |
@@ -137,7 +134,9 @@ jobs:
       - name: Install likelihood python dependencies from pip
         shell: bash -l {0}
         run: |
-          pip install "act_dr6_lenslike>=1.0.2"
+          export COBAYA_PACKAGES_PATH=$PWD/cobaya-data
+          pip install "act_dr6_lenslike>=1.0.2" "git+https://github.com/carronj/planck_PR4_lensing"
+          pip install "candl-like==2.*" "git+https://github.com/Lbalkenhol/candl_data.git"
 
       - name: Run Tests
         shell: bash -l {0}
@@ -154,15 +153,15 @@ jobs:
 
 
   apt-get-test:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
     needs: Download_Data
     strategy:
       matrix:
-        python-version: [3.7, 3.8, 3.9, "3.10", "3.11", "3.12"]
+        python-version: ["3.10", "3.11", "3.12", "3.13"]
 
     steps:
     - name: Checkout repository
-      uses: actions/checkout@v2
+      uses: actions/checkout@v4
       with:
         submodules: true
 
@@ -174,9 +173,9 @@ jobs:
     - name: Install apt dependencies
       run: |
         sudo apt-get update
-        sudo apt-get -y install gfortran-7 swig libopenmpi-dev openmpi-bin libopenblas-dev
-        sudo ln -s `which gfortran-7` /usr/local/bin/gfortran
-        sudo apt-get -y install libgsl-dev libfftw3-bin libfftw3-dev libfftw3-3 autotools-dev  autoconf libcfitsio-dev
+        sudo apt-get -y install gfortran-11 swig libopenmpi-dev openmpi-bin libopenblas-dev
+        sudo ln -s `which gfortran-11` /usr/local/bin/gfortran
+        sudo apt-get -y install libgsl-dev libfftw3-bin libfftw3-dev autotools-dev  autoconf libcfitsio-dev
 
 
     - name: Get Cached Planck
@@ -199,11 +198,12 @@ jobs:
         path: ACT_dr6_likelihood_v1.1.tgz
         key: act-dr6-data
         fail-on-cache-miss: true
-    
+
+
     - name: Extract data
       shell: bash -l {0}
       run: |
-        # WMAP
+        # WMAP  
         pushd likelihood/wmap9/data
         tar -zxvf ../../../wmap_likelihood_full_v5.tar.gz
         mv wmap_likelihood_v5/data/* .
@@ -219,7 +219,7 @@ jobs:
         popd
   
 
-    - uses: actions/cache@v2
+    - uses: actions/cache@v4
       name: Load pip cache
       id: cache-pip
       with:
@@ -230,13 +230,15 @@ jobs:
     - name: Install python dependencies
       run: |
         python -m pip install --upgrade pip wheel setuptools
-        pip install "cosmosis>=3.2" "nautilus-sampler==0.6.*"
+        pip install cosmosis "nautilus-sampler==1.0.1" "scipy" "numpy>=2"
         pip install -v --no-cache-dir --no-binary=mpi4py,camb mpi4py camb
-        pip install fitsio astropy fast-pt "Cython<3.0" jupyter sacc
-
-    - name: Install likelihood python dependencies
+        pip install astropy fast-pt "Cython>=3.0" jupyter sacc "act_dr6_lenslike>=1.0.2" "git+https://github.com/carronj/planck_PR4_lensing"
+    
+    - name: Install recent python dependencies
       run: |
-        pip install "act_dr6_lenslike>=1.0.2"
+        pip install "candl-like==2.*"
+        pip install "git+https://github.com/Lbalkenhol/candl_data.git"
+        
 
     - name: Build
       run: |
@@ -261,9 +263,14 @@ jobs:
         grep -e "🟢 fiducial-test-only" output/campaign.log
         cosmosis-campaign  examples/des-campaign.yml --status
 
-    - name: ExampleNotebook
+    - name: Run Tests
       shell: bash -l {0}
       run: |
         source cosmosis-configure
-        rm -f output/pantheon.txt
-        jupyter nbconvert --to notebook --execute "examples/example.ipynb"
+        pytest -vv --durations=0 tests/test_cosmosis_standard_library.py
+
+    - name: Run Demos
+      shell: bash -l {0}
+      run: |
+        source cosmosis-configure
+        pytest -vv --durations=0 tests/test_demos.py

@@ -1,13 +1,12 @@
-#This is a template for module description files
 name: balmes
 version: 1
-purpose: ''
+purpose: 'Balmes & Corasaniti 2012 H0 Measurement likelihood'
 url: ''
 interface: balmes.py
 attribution: [I. Balmes & P.S. Corasaniti]
 rules: Please cite the relevant papers if you use this module.
 cite:
--   'arXiv:1206.5801 '
+-   'arXiv:1206.5801'
 
 assumptions:
 -   Strong lensing modelling details

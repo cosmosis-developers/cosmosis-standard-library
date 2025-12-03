@@ -1,0 +1,47 @@
+name: "lollipop"
+version: "1.0"
+purpose: "Likelihood of the Planck low-ell data polarizaton data from the PR4 analysis, using the Lollipop likelihood code."
+url: "https://github.com/planck-npipe/lollipop/"
+interface: "lollipop_interface.py"
+attribution: []
+rules:
+    "Please cite the paper below"
+cite:
+    - "https://arxiv.org/abs/2112.07961"
+
+assumptions:
+    - "Foreground model as specified at URL"
+
+explanation: |
+    "Lollipop is a Planck low-l polarization likelihood based on cross-power-spectra 
+    for which the bias is zero when the noise is uncorrelated between maps. It uses the 
+    approximation presented in Hamimeche & Lewis (2008), modified as described in 
+    Mangilli et al. (2015) to apply to cross-power spectra. This version is based on the 
+    Planck PR4 data. Cross-spectra are computed on the CMB maps from Commander component 
+    separation applied on each detset-split Planck frequency maps."
+
+
+params:
+    mode:
+        meaning: "Choice of data mode, TT, TE, EE, or TTTEEE"
+        type: str
+        default: TTTEEE
+
+inputs:
+    cmb_cl:
+        ee:
+            meaning: E polarization power spectrum C_ell^EE
+            type: real 1d
+        bb:
+            meaning: B polarization power spectrum C_ell^BB
+            type: real 1d
+    planck:
+        A_planck:
+            meaning: "Overall Planck calibration"
+            type: real
+
+outputs:
+    likelihoods:
+        lollipop_like:
+            meaning: Lollipop likelihood
+            type: real

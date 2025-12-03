@@ -1,0 +1,33 @@
+name: hmcode_eta
+version: 1
+purpose: Compute eta parameter for HMCode based on concentration amplitude A
+url: ''
+interface: hmcode_eta.py
+attribution: [CosmoSIS Team]
+rules: []
+cite: []
+assumptions:
+-   Empirical relation between eta and concentration amplitude A
+
+explanation: |
+    "This module computes the eta parameter for the HMCode halo model
+    based on the concentration amplitude parameter A. The relation
+    eta = 0.98 - 0.12 * A is an empirical fit used in HMCode.
+    
+    This parameter affects the transition between linear and nonlinear
+    scales in the halo model calculation."
+
+params: {}
+
+inputs:
+    halo_model_parameters:
+        A:
+            meaning: Concentration amplitude parameter
+            type: real
+            default:
+
+outputs:
+    halo_model_parameters:
+        eta:
+            meaning: Computed eta parameter for HMCode
+            type: real

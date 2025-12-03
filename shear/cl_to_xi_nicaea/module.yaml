@@ -1,4 +1,3 @@
-#This is a template for module description files
 name: cl_to_xi_nicaea
 version: '1.0'
 purpose: Compute WL correlation functions xi+, xi- from C_ell

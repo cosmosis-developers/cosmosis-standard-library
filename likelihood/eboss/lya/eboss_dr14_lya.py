@@ -2,7 +2,7 @@ from numpy import log, pi, interp, where, loadtxt,dot, append, linalg, inf
 import os
 from cosmosis.datablock import names as section_names
 from cosmosis.datablock import option_section
-from scipy.interpolate import interp2d 
+from scipy.interpolate import bisplrep, bisplev
 
 cosmo = section_names.cosmological_parameters
 likes = section_names.likelihoods
@@ -31,7 +31,7 @@ def setup(options):
     # in a table of chi^2 values, which are presumably -2log(L) values.
     # We build the interpolator which we use to read into that table here.
     # Outside the table range we use -inf
-    chi2_interp = interp2d(dm_rd_data, dh_rd_data, chi2_data, kind='cubic', fill_value=inf)
+    chi2_interp = bisplrep(dm_rd_data, dh_rd_data, chi2_data, kx=3, ky=3, s=0)
 
     return chi2_interp, z_eff_fid, feedback, dm_rd_data, dh_rd_data
 
@@ -56,7 +56,7 @@ def execute(block, config):
     dh_z_rd_predicted = dh_z / rd
 
     # Interpolate to get the actual likelihood
-    chi2 = chi2_interp(dm_z_rd_predicted, dh_z_rd_predicted)[0]
+    chi2 = bisplev(dm_z_rd_predicted, dh_z_rd_predicted, chi2_interp)
 
     block[likes,'eboss14_lya_like'] = -chi2 / 2
     

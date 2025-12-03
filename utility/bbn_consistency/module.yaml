@@ -1,4 +1,3 @@
-#This is a template for module description files
 name: BBN-Consistency
 version: '0705.0290'
 purpose: Compute consistent Helium fraction from baryon density given BBN

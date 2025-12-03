@@ -115,7 +115,7 @@ int execute(c_datablock * block, void * config_in)
 	double b=0, d=0;
 	double tmp_E, integrand_E;
 	double tmp_B, integrand_B;
-	double pk1, pk2, f1, f2
+	double pk1, pk2, f1, f2;
 	double fB1, fB2;
 	// Loop over redshift
 	for (int j=0 ; j<nz ; ++j){
