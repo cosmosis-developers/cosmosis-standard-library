@@ -1,6 +1,7 @@
 from cosmosis.datablock import option_section, names
 import jax_cosmo
 import jax.numpy as jnp
+import jax
 
 cosmosis_jax = True
 
@@ -12,18 +13,11 @@ def setup(options):
         "nz": nz,
     }
 
-inputs = [
-    (names.cosmological_parameters, "omega_m"),
-    (names.cosmological_parameters, "omega_k"),
-    (names.cosmological_parameters, "w"),
-    (names.cosmological_parameters, "h0"),
-]
-
-def execute(inputs, config):
-    omega_m = inputs[("cosmological_parameters", "omega_m")]
-    omega_k = inputs[("cosmological_parameters", "omega_k")]
-    w = inputs[("cosmological_parameters", "w")]
-    h0 = inputs[("cosmological_parameters", "h0")]
+def execute(block, config):
+    omega_m = block.get_double("cosmological_parameters", "omega_m")
+    omega_k = block.get_double("cosmological_parameters", "omega_k")
+    w = block.get_double("cosmological_parameters", "w")
+    h0 = block.get_double("cosmological_parameters", "h0")
     omega_b = 0.044
     omega_c = omega_m - omega_b
     cosmo = jax_cosmo.Cosmology(Omega_c=omega_c, Omega_b=omega_b, h=h0, n_s=0.96, sigma8=0.8, Omega_k=omega_k, w0=w, wa=0.0)
@@ -34,11 +28,13 @@ def execute(inputs, config):
     d_m = jax_cosmo.background.transverse_comoving_distance(cosmo, a) / h0
     d_l = (1 + z)**2 * d_a
     mu = 5 * jnp.log10(d_l) + 25
-    return {
-        ("distances", "z"): z,
-        ("distances", "a"): a,
-        ("distances", "mu"): mu,
-        ("distances", "d_a"): d_a,
-        ("distances", "d_m"): d_m,
-        ("distances", "d_l"): d_l,
-    }
+    # return {
+    block["distances", "z"] = z
+    block["distances", "a"] = a
+    block["distances", "mu"] = mu
+    block["distances", "d_a"] = d_a
+    block["distances", "d_m"] = d_m
+    block["distances", "d_l"] = d_l
+    return 0
+    # could change the return value to "block" maybe?
+
