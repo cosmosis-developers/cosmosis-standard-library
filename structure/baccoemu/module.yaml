@@ -39,6 +39,10 @@ params:
         meaning: Which model to use for the baryonic boost. Options are 'Arico2021' or 'Burger2025'
         type: str
         default: Arico2021
+    extrapolate_bcm_cosmo_parameters:
+        meaning: Extrapolate cosmology parameters when computing baryonic boost (keeps baryon fraction constant)
+        type: bool
+        default: False
 
 #Inputs for a given choice of a parameter, from the values.ini or from other modules
 #If no such choices, just do one of these omitting mode=something part:
