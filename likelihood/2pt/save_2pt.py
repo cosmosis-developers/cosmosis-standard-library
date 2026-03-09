@@ -202,6 +202,16 @@ def setup(options):
             config['upsample_cov'] = None
         config['ell_max'] = options.get_int(option_section, "ell_max")
         config['high_l_filter'] = options.get_double(option_section, "high_l_filter", 0.75)
+        cmb_lensing_noise_file = options.get_string(option_section, 'cmb_lensing_noise_file', '')
+        config['cmb_lensing_noise_interp'] = None
+        if cmb_lensing_noise_file:
+            from scipy.interpolate import interp1d
+            noise_data = np.loadtxt(cmb_lensing_noise_file)
+            cmb_lensing_noise_col = options.get_int(option_section, 'cmb_lensing_noise_col', -1)
+            ells_nl = noise_data[:, 0]
+            nl = noise_data[:, cmb_lensing_noise_col]
+            config['cmb_lensing_noise_interp'] = interp1d(ells_nl, nl, kind='cubic',
+                                                           bounds_error=False, fill_value='extrapolate')
 
     # name of the output file and whether to overwrite it.
     config['filename'] = options.get_string(option_section, "filename")
@@ -375,6 +385,10 @@ def execute(block, config):
                                  zip(config['sigma_e_total'],config['number_density_shear_rad2']) ])
                     elif cl_spec.types[0].name == "galaxy_position_fourier":
                         noise = [ 1./n for n in config['number_density_lss_rad2'] ]
+                    elif cl_spec.types[0].name == "cmb_kappa_fourier":
+                        if config['cmb_lensing_noise_interp'] is None:
+                            raise ValueError("Set cmb_lensing_noise_file in [save_2pt] to compute covariance with CMB kappa")
+                        noise = [config['cmb_lensing_noise_interp']]
                     else:
                         print("Tried to, but can't generate noise for spectrum %s"%cl_section)
                         raise ValueError
