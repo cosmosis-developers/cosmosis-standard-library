@@ -211,7 +211,7 @@ def setup(options):
             ells_nl = noise_data[:, 0]
             nl = noise_data[:, cmb_lensing_noise_col]
             config['cmb_lensing_noise_interp'] = interp1d(ells_nl, nl, kind='cubic',
-                                                           bounds_error=False, fill_value='extrapolate')
+                                                           bounds_error=False, fill_value=(nl[0], nl[-1]))
 
     # name of the output file and whether to overwrite it.
     config['filename'] = options.get_string(option_section, "filename")
