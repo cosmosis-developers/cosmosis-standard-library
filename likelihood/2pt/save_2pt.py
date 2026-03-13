@@ -206,10 +206,25 @@ def setup(options):
         config['cmb_lensing_noise_interp'] = None
         if cmb_lensing_noise_file:
             from scipy.interpolate import interp1d
-            noise_data = np.loadtxt(cmb_lensing_noise_file)
-            cmb_lensing_noise_col = options.get_int(option_section, 'cmb_lensing_noise_col', -1)
-            ells_nl = noise_data[:, 0]
-            nl = noise_data[:, cmb_lensing_noise_col]
+            if cmb_lensing_noise_file.endswith('.npy'):
+                # Dict-based npy file (e.g. SO/Planck noise files stored as pickled dicts).
+                # Use cmb_lensing_ells_key and cmb_lensing_noise_key to select the arrays.
+                noise_dict = np.load(cmb_lensing_noise_file, allow_pickle=True,
+                                     encoding='latin1').item()
+                ells_key = options.get_string(option_section, 'cmb_lensing_ells_key', 'els')
+                noise_key = options.get_string(option_section, 'cmb_lensing_noise_key', 'Nl_MV')
+                ells_nl = np.array(noise_dict[ells_key]).real
+                nl = np.array(noise_dict[noise_key]).real
+                # Remove NaN/inf entries (e.g. below lmin where noise is undefined)
+                valid = np.isfinite(ells_nl) & np.isfinite(nl)
+                ells_nl = ells_nl[valid]
+                nl = nl[valid]
+            else:
+                # Plain text file: first column is ell, cmb_lensing_noise_col selects noise column
+                noise_data = np.loadtxt(cmb_lensing_noise_file)
+                cmb_lensing_noise_col = options.get_int(option_section, 'cmb_lensing_noise_col', -1)
+                ells_nl = noise_data[:, 0]
+                nl = noise_data[:, cmb_lensing_noise_col]
             config['cmb_lensing_noise_interp'] = interp1d(ells_nl, nl, kind='cubic',
                                                            bounds_error=False, fill_value=(nl[0], nl[-1]))
 
