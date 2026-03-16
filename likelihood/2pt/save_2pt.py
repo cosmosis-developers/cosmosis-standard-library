@@ -215,16 +215,29 @@ def setup(options):
                 noise_key = options.get_string(option_section, 'cmb_lensing_noise_key', 'Nl_MV')
                 ells_nl = np.array(noise_dict[ells_key]).real
                 nl = np.array(noise_dict[noise_key]).real
-                # Remove NaN/inf entries (e.g. below lmin where noise is undefined)
-                valid = np.isfinite(ells_nl) & np.isfinite(nl)
-                ells_nl = ells_nl[valid]
-                nl = nl[valid]
             else:
-                # Plain text file: first column is ell, cmb_lensing_noise_col selects noise column
+                # Plain text file: if 1D (ell = index), or 2D (first column is ell)
                 noise_data = np.loadtxt(cmb_lensing_noise_file)
-                cmb_lensing_noise_col = options.get_int(option_section, 'cmb_lensing_noise_col', -1)
-                ells_nl = noise_data[:, 0]
-                nl = noise_data[:, cmb_lensing_noise_col]
+                if noise_data.ndim == 1:
+                    ells_nl = np.arange(len(noise_data), dtype=float)
+                    nl = noise_data
+                else:
+                    cmb_lensing_noise_col = options.get_int(option_section, 'cmb_lensing_noise_col', -1)
+                    ells_nl = noise_data[:, 0]
+                    nl = noise_data[:, cmb_lensing_noise_col]
+            # Remove NaN/inf entries (e.g. below lmin where noise is undefined)
+            valid = np.isfinite(ells_nl) & np.isfinite(nl)
+            ells_nl = ells_nl[valid]
+            nl = nl[valid]
+            # Raise at setup time if the file does not cover the required ell range
+            if config['ell_max'] > ells_nl[-1]:
+                raise ValueError(
+                    "cmb_lensing_noise_file '%s' only provides noise up to ell=%d, "
+                    "but ell_max=%d is required for the covariance. "
+                    "Either use a file with higher ell coverage or reduce ell_max."
+                    % (cmb_lensing_noise_file, int(ells_nl[-1]), config['ell_max']))
+            # fill_value for ell below the file's lmin (e.g. ell=0,1 below lmin=100):
+            # use nl[0]. Values above ell_max are guaranteed covered by the check above.
             config['cmb_lensing_noise_interp'] = interp1d(ells_nl, nl, kind='cubic',
                                                            bounds_error=False, fill_value=(nl[0], nl[-1]))
 
