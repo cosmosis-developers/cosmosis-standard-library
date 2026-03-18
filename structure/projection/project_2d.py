@@ -402,6 +402,17 @@ class Spectrum(object):
             chimin = max(K1.xmin_clipped, K2.xmin_clipped)
         if chimax is None:
             chimax = min(K1.xmax_clipped, K2.xmax_clipped)
+
+        # Avoid extrapolating P(k, z) beyond the range where it was tabulated.
+        # This matters especially for CMB-lensing auto-spectra, whose kernels
+        # extend to recombination while the matter-power grid may stop at much
+        # lower redshift.
+        power = self.source.power[self.power_key]
+        chimin = max(chimin, power.chi_vals.min())
+        chimax = min(chimax, power.chi_vals.max())
+        if chimax <= chimin:
+            return np.zeros_like(ell)
+            
         if dchi is None:
             assert (sig_over_dchi is not None)
             dchi = min(K1.sigma / sig_over_dchi, K2.sigma / sig_over_dchi)
@@ -477,6 +488,13 @@ class Spectrum(object):
             chimin = max( K1.xmin_clipped, K2.xmin_clipped )
         if chimax is None:
             chimax = min( K1.xmax_clipped, K2.xmax_clipped )
+
+        power = self.source.power[self.power_key]
+        chimin = max(chimin, power.chi_vals.min())
+        chimax = min(chimax, power.chi_vals.max())
+        if chimax <= chimin:
+            return np.zeros_like(ell)
+            
         if dlogchi is None:
             sig = min( K1.sigma/sig_over_dchi, K2.sigma/sig_over_dchi )
             # We want a maximum dchi that is sig / sig_over_dchi where sig is the
