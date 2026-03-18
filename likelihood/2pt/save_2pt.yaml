@@ -55,6 +55,10 @@ params:
     overwrite: "bool, whether to overwrite the output file if it exists already"
     angle_range_{name}_{i}_{j}: "2 real values, For choices of {name} in output_extensions or spectrum_sections, min and max values to save for bin pair i,j"
     cut_{name}_{i}_{j}: "bool, whether to completely exclude the given bin pair for the named output"
+    cmb_lensing_noise_file: "string, default='') Path to CMB lensing reconstruction noise N_ell^kk. Required when make_covariance=T and any CMB kappa spectrum is included. Accepts: plain-text 1-D (row index=ell), plain-text 2-D (first col=ell), or NumPy .npy dict."
+    cmb_lensing_noise_col: "int, default=-1) Column index (0-indexed) for N_ell in a multi-column text noise file. Default -1 selects the last column."
+    cmb_lensing_ells_key: "string, default='els') Dictionary key for the ell array in a .npy dict noise file."
+    cmb_lensing_noise_key: "string, default='Nl_MV') Dictionary key for the N_ell array in a .npy dict noise file."
 
 #Inputs for a given choice of a parameter, from the values.ini or from other modules
 #If no such choices, just do one of these omitting mode=something part:
