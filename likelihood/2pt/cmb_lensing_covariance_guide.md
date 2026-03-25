@@ -43,7 +43,7 @@ Three formats are accepted:
 **2. Plain text, 2-D** — first column is ell, noise in another column:
 ```ini
 cmb_lensing_noise_file = /path/to/noise.dat
-cmb_lensing_noise_col  = 1   ; 0-indexed column; default = -1 (last column)
+cmb_lensing_noise_col  = 7   ; required; 0-indexed (col 0 is ell); for SO nlkk files col 7 = N_MV
 ```
 
 **3. NumPy `.npy` dict** (e.g. SO / Simons Observatory format):

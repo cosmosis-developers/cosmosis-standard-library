@@ -222,7 +222,26 @@ def setup(options):
                     ells_nl = np.arange(len(noise_data), dtype=float)
                     nl = noise_data
                 else:
-                    cmb_lensing_noise_col = options.get_int(option_section, 'cmb_lensing_noise_col', -1)
+                    n_cols = noise_data.shape[1]
+                    if not options.has_value(option_section, 'cmb_lensing_noise_col'):
+                        raise ValueError(
+                            "cmb_lensing_noise_file '%s' has %d columns. "
+                            "You must set cmb_lensing_noise_col to select the noise column "
+                            "(0-indexed, excluding col 0 which is ell). "
+                            "E.g. for the SO nlkk files the MV estimator is col 7."
+                            % (cmb_lensing_noise_file, n_cols))
+                    cmb_lensing_noise_col = options.get_int(option_section, 'cmb_lensing_noise_col')
+                    if cmb_lensing_noise_col == 0:
+                        raise ValueError(
+                            "cmb_lensing_noise_col=0 would select the ell column. "
+                            "Use a non-zero column index for the noise.")
+                    if cmb_lensing_noise_col >= n_cols or cmb_lensing_noise_col < -n_cols:
+                        raise ValueError(
+                            "cmb_lensing_noise_col=%d is out of range for file '%s' "
+                            "which has %d columns (0-indexed)."
+                            % (cmb_lensing_noise_col, cmb_lensing_noise_file, n_cols))
+                    print("Reading CMB lensing noise from column %d of %d in '%s'"
+                          % (cmb_lensing_noise_col % n_cols, n_cols, cmb_lensing_noise_file))
                     ells_nl = noise_data[:, 0]
                     nl = noise_data[:, cmb_lensing_noise_col]
             # Remove NaN/inf entries (e.g. below lmin where noise is undefined)
