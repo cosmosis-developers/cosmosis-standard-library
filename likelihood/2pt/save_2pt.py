@@ -84,7 +84,16 @@ def setup(options):
     }
 
     def read_list(key, default=""):
-        s = options.get_string(option_section, key, default)
+        try:
+            s = options.get_string(option_section, key, default)
+        except Exception:
+            # Values like "00 00 00" (all integer-like tokens) get stored as
+            # an int array in the CosmoSIS datablock. Convert back to strings.
+            val = options[option_section, key]
+            if hasattr(val, '__iter__') and not isinstance(val, str):
+                s = " ".join(str(int(v)).zfill(2) for v in val)
+            else:
+                s = str(int(val)).zfill(2)
         return s.split()
 
     #Get the spectrum section names to be saved
