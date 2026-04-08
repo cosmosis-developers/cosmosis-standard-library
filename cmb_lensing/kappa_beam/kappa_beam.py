@@ -53,10 +53,10 @@ def setup(options):
     shearkappa_section = options.get_string(option_section, "shearkappa_section", default="shear_cmbkappa_cl")
     galkappa_section = options.get_string(option_section, "galkappa_section", default="galaxy_cmbkappa_cl")
     kappakappa_section = options.get_string(option_section, "kappakappa_section", default="cmbkappa_cl")
-    shearkappa_output_section = options.get_string(option_section, "shearkappa_output_section", default=None)
-    galkappa_output_section = options.get_string(option_section, "galkappa_output_section", default=None)
-    kappakappa_output_section = options.get_string(option_section, "kappakappa_output_section", default=None)
-    save_name = options.get_string(option_section, "save_name", default=None)
+    shearkappa_output_section = options.get_string(option_section, "shearkappa_output_section", default="") or None
+    galkappa_output_section = options.get_string(option_section, "galkappa_output_section", default="") or None
+    kappakappa_output_section = options.get_string(option_section, "kappakappa_output_section", default="") or None
+    save_name = options.get_string(option_section, "save_name", default="") or None
 
     if options.has_value(option_section, 'beam_sigma_arcmin'):
         beam_sigma_arcmin = options[option_section, "beam_sigma_arcmin"]
