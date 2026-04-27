@@ -20,7 +20,7 @@ omega_m_h2  : Omega_m h^2 from Planck (default 0.14283, Planck 2015)
 omega_b_h2  : Omega_b h^2 from Planck (default 0.02226, Planck 2015)
 theta_A     : acoustic angle r_s/((1+z_cmb)*d_A(z_cmb)) (default 0.010409)
 m_nu        : total neutrino mass in eV, enters r_s only (default 0.06)
-z_cmb       : CMB source redshift (default 1090.0)
+z_cmb       : CMB source redshift (default 1089.0)
 """
 
 import numpy as np
@@ -63,7 +63,7 @@ def setup(options):
     obh2    = options.get_double(option_section, "omega_b_h2", 0.02226)
     theta_A = options.get_double(option_section, "theta_A",    0.010409)
     m_nu    = options.get_double(option_section, "m_nu",       0.06)
-    z_cmb   = options.get_double(option_section, "z_cmb",      1090.0)
+    z_cmb   = options.get_double(option_section, "z_cmb",      1089.0)
 
     rs = _get_rs(omh2, obh2, m_nu)
     print(f"[strong_cmb_prior] Omh2={omh2:.5f}  Obh2={obh2:.5f}  "
