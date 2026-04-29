@@ -47,23 +47,25 @@ def _normalize_nz_collection(z, nzs):
 def _sigma_crit_inverse_grid(z_l, z_s, cosmo):
     """
     Return Sigma_crit^{-1}(z_l, z_s) on a (n_lens, n_source) grid [Mpc^2/Msun].
+    Uses angular diameter distances — correct for curved cosmology.
     """
-    chi_l = cosmo.comoving_distance(z_l).to_value(u.Mpc)
-    chi_s = cosmo.comoving_distance(z_s).to_value(u.Mpc)
+    d_l = cosmo.angular_diameter_distance(z_l).to_value(u.Mpc)    # D_A(z_l), (n_l,)
+    d_s = cosmo.angular_diameter_distance(z_s).to_value(u.Mpc)    # D_A(z_s), (n_s,)
 
-    chi_l_g = chi_l[:, np.newaxis]
-    chi_s_g = chi_s[np.newaxis, :]
-    z_l_g   = z_l[:, np.newaxis]
+    # D_A(z_l, z_s) on a (n_l, n_s) grid — vectorised via flat arrays
+    z_l_rep = np.repeat(z_l, z_s.size)
+    z_s_tile = np.tile(z_s, z_l.size)
+    d_ls = cosmo.angular_diameter_distance_z1z2(z_l_rep, z_s_tile).to_value(u.Mpc)
+    d_ls = d_ls.reshape(z_l.size, z_s.size)                       # (n_l, n_s)
 
-    beta = np.divide(
-        np.maximum(chi_s_g - chi_l_g, 0.0),
-        chi_s_g,
-        out=np.zeros((z_l.size, z_s.size)),
-        where=chi_s_g > 0.0,
-    )
-    d_l = (chi_l_g / (1.0 + z_l_g)) * u.Mpc
+    d_s_g = d_s[np.newaxis, :]
+    d_l_g = d_l[:, np.newaxis]
+
+    # beta = D_A(z_l, z_s) / D_A(z_s); zero when z_s <= z_l
+    beta = np.where(d_s_g > 0.0, np.maximum(d_ls, 0.0) / np.where(d_s_g > 0.0, d_s_g, 1.0), 0.0)
+
     prefactor = 4.0 * np.pi * const.G / const.c**2
-    return (prefactor * d_l * beta).to(u.Mpc**2 / u.Msun).value
+    return (prefactor * (d_l_g * u.Mpc) * beta).to(u.Mpc**2 / u.Msun).value
 
 
 def _sigma_crit_eff_grid(z_l, lens_nzs, z_s, source_nzs, cosmo):
