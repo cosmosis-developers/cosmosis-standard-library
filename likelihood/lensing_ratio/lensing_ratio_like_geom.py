@@ -12,11 +12,11 @@ Reads a pkl file produced by compute_lensing_ratios.ipynb containing:
   n_ggl_combos, n_cmb_combos           (sizes)
 
 The choice of basis (CMB-only vs GGL+CMB) is encoded in the file itself —
-pass the appropriate pkl path as data_file.
+pass the appropriate pkl path as ratio_file.
 
 Cosmosis ini options
 --------------------
-data_file         : path to the pkl file
+ratio_file        : path to the pkl file
 z_cmb             : CMB last-scattering redshift (default 1089.80, Planck 2018 z*)
 lens_nz_section   : block section for lens n(z)  (default nz_lens)
 source_nz_section : block section for source n(z) (default nz_source)
@@ -106,7 +106,7 @@ def _sigma_crit_eff_cmb(z_l, lens_nzs, z_cmb, cosmo):
 def setup(options):
     config = {}
 
-    filename = options[option_section, "data_file"]
+    filename = options[option_section, "ratio_file"]
     with open(filename, "rb") as f:
         config["data"] = pickle.load(f)
 
