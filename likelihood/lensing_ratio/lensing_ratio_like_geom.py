@@ -17,7 +17,7 @@ pass the appropriate pkl path as data_file.
 Cosmosis ini options
 --------------------
 data_file         : path to the pkl file
-z_cmb             : CMB last-scattering redshift (default 1089.9, Planck 2015 z*)
+z_cmb             : CMB last-scattering redshift (default 1089.80, Planck 2018 z*)
 lens_nz_section   : block section for lens n(z)  (default nz_lens)
 source_nz_section : block section for source n(z) (default nz_source)
 """
@@ -110,7 +110,7 @@ def setup(options):
     with open(filename, "rb") as f:
         config["data"] = pickle.load(f)
 
-    config["z_cmb"]          = options.get_double(option_section, "z_cmb", 1089.9)
+    config["z_cmb"]          = options.get_double(option_section, "z_cmb", 1089.80)
     config["lens_section"]   = options.get_string(option_section, "lens_nz_section",   "nz_lens")
     config["source_section"] = options.get_string(option_section, "source_nz_section", "nz_source")
 
