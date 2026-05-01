@@ -140,7 +140,7 @@ def execute(block, config):
     delta = vec - config["mean"]
     chi2  = float(delta @ config["inv_cov"] @ delta)
 
-    block[names.likelihoods, "aubourg_cmb_prior"]  = -0.5 * chi2
+    block[names.likelihoods, "aubourg_cmb_prior_like"] = -0.5 * chi2
     block["data_vector", "aubourg_cmb_chi2"]        = chi2
     return 0
 
