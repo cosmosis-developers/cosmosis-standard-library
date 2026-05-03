@@ -1,11 +1,11 @@
 name: "spk"
 version: "v2.0"
+category: Baryons
 purpose: "A hydrodynamical simulation-based model for the impact of baryon physics on the non-linear matter power spectrum"
 url: "https://github.com/jemme07/pyspk/"
 interface: "spk_interface.py"
 attribution: [Jaime Salcido, Ian McCarthy, Juliana Kwan, Amol Upadhye, Andreea Font]
-rules:
-    Please cite the papers below if you use this code in your research"
+rules: "Please cite the papers below if you use this code in your research."
 cite:
     - "https://doi.org/10.1093/mnras/stad1474"
 
@@ -39,6 +39,18 @@ params:
                  mass with a radius where the mean density is 200 or 500 times the critical density of the Universe.
         type: int
         default: 500
+    input_section:
+        meaning: Datablock section containing the input matter power grid.
+        type: str
+        default: matter_power_nl
+    output_section:
+        meaning: Datablock section to write the baryon-modified matter power grid.
+        type: str
+        default: matter_power_nl
+    suppression_section:
+        meaning: Optional section to write the SP(k) suppression grid as S_k. Leave empty to disable.
+        type: str
+        default:
     verbose:
         meaning: Run in verbose mode
         type: bool
@@ -101,7 +113,7 @@ inputs:
 
 
 outputs:
-    matter_power_nl:
+    output_section:
         z:
             meaning: Redshifts of samples. 
             type: real 1d
@@ -110,4 +122,14 @@ outputs:
             type: real 1d
         P_k:
             meaning: Non-linear power spectrum at samples in (Mpc/h)^-3, including SP(k) baryon correction.
+            type: real 2d
+    suppression_section:
+        z:
+            meaning: Redshifts of samples.
+            type: real 1d
+        k_h:
+            meaning: Wavenumbers k of samples in Mpc/h.
+            type: real 1d
+        S_k:
+            meaning: SP(k) multiplicative suppression factor.
             type: real 2d

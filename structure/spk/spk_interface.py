@@ -1,7 +1,7 @@
-"""Cosmosis interface for applying py-SP(k) baryonic suppression.
+"""CosmoSIS interface for applying py-SP(k) baryonic suppression.
 
-This module modifies the existing non-linear matter power spectrum in
-``matter_power_nl/P_k`` by multiplying it by the py-SP(k) suppression factor.
+This module multiplies an input matter power spectrum grid by the py-SP(k)
+suppression factor and writes the result to a configurable output section.
 """
 
 from cosmosis.datablock import names as section_names
@@ -9,11 +9,37 @@ from cosmosis.datablock import option_section
 from cosmosis.utils import datablock_to_astropy
 
 import numpy as np
-import pyspk as spk
 from scipy.interpolate import LinearNDInterpolator
+from typing import Any, cast
+
+try:
+    import pyspk as spk
+    _PYSPK_IMPORT_ERROR = None
+except ImportError as import_error:
+    spk = None
+    _PYSPK_IMPORT_ERROR = import_error
 
 SPK_SECTION = "spk"
 SPK_PARAMS = ("fb_a", "fb_pow", "fb_pivot", "epsilon", "alpha", "beta", "gamma", "m_pivot")
+
+
+def _require_pyspk():
+    """Ensure pyspk is available before module setup.
+
+    Raises:
+        ImportError: If pyspk is not installed in the active environment.
+    """
+    if spk is None:
+        raise ImportError(
+            "[SPK] Missing required dependency 'pyspk'. "
+            "Install with: pip install pyspk"
+        ) from _PYSPK_IMPORT_ERROR
+
+
+def _spk_or_raise():
+    """Return the pyspk module after dependency validation."""
+    _require_pyspk()
+    return cast(Any, spk)
 
 
 def setup(options):
@@ -25,13 +51,36 @@ def setup(options):
     Returns:
         dict: Module configuration shared by each ``execute`` call.
     """
+    _require_pyspk()
+
     so = options.get_int(option_section, "SO", default=500)
     if so not in (200, 500):
         raise ValueError(f"[SPK] SO must be 200 or 500, received {so}.")
 
+    input_section = options.get_string(
+        option_section,
+        "input_section",
+        default=section_names.matter_power_nl,
+    )
+    output_section = options.get_string(
+        option_section,
+        "output_section",
+        default=section_names.matter_power_nl,
+    )
+    suppression_section = options.get_string(
+        option_section,
+        "suppression_section",
+        default="",
+    ).strip()
+
     fb_table = options.get_string(option_section, "fb_table", default="").strip()
     if fb_table:
         table = np.loadtxt(fb_table, skiprows=1, delimiter=",")
+        if table.ndim != 2 or table.shape[1] < 3:
+            raise ValueError(
+                "[SPK] fb_table must have at least three columns: "
+                "z, M_halo, fb."
+            )
         interpolator = LinearNDInterpolator(table[:, [0, 1]], table[:, 2], rescale=True)
     else:
         fb_table = None
@@ -40,6 +89,9 @@ def setup(options):
     return {
         "verbose": options.get_bool(option_section, "verbose", default=False),
         "SO": so,
+        "input_section": input_section,
+        "output_section": output_section,
+        "suppression_section": suppression_section,
         "fb_table": fb_table,
         "extrapolate": options.get_bool(option_section, "extrapolate", default=False),
         "interpolator": interpolator,
@@ -70,8 +122,11 @@ Provide exactly one relation definition:
 
 Received: {spk_params}
 """
-    has_all = lambda keys: all(spk_params[key] is not None for key in keys)
-    has_any = lambda keys: any(spk_params[key] is not None for key in keys)
+    def has_all(keys):
+        return all(spk_params[key] is not None for key in keys)
+
+    def has_any(keys):
+        return any(spk_params[key] is not None for key in keys)
 
     if fb_table is not None:
         if has_any(SPK_PARAMS):
@@ -106,21 +161,31 @@ def _read_spk_params(block):
 
 def _get_or_build_evaluator(config, relation_kind, k_array):
     """Get a cached pyspk evaluator or build one for the current k-grid."""
+    pyspk = _spk_or_raise()
     cache = config["evaluator_cache"]
     cached = cache.get(relation_kind)
     if cached is not None and np.array_equal(cached["k"], k_array):
         return cached["evaluator"]
 
-    evaluator = spk.build_sup_model_evaluator(
+    evaluator = pyspk.build_sup_model_evaluator(
         SO=config["SO"], relation_kind=relation_kind, k_array=k_array
     )
     cache[relation_kind] = {"k": np.array(k_array, copy=True), "evaluator": evaluator}
     return evaluator
 
 
+def _write_grid(block, section, k_array, z_array, values, value_name):
+    """Write a 2D grid to a section, replacing existing values when present."""
+    if block.has_value(section, value_name):
+        block.replace_grid(section, "k_h", k_array, "z", z_array, value_name, values)
+    else:
+        block.put_grid(section, "k_h", k_array, "z", z_array, value_name, values)
+
+
 def _mhalo_and_fb_from_table(config, z, k_array):
     """Build binned ``M_halo`` and ``fb`` arrays from the user table at one redshift."""
-    optimal_mass = np.asarray(spk.optimal_mass(config["SO"], z, k_array), dtype=float)
+    pyspk = _spk_or_raise()
+    optimal_mass = np.asarray(pyspk.optimal_mass(config["SO"], z, k_array), dtype=float)
     logm = np.log10(optimal_mass)
     min_logm = np.floor(np.min(logm) * 10.0) / 10.0
     max_logm = np.ceil(np.max(logm) * 10.0) / 10.0
@@ -146,8 +211,11 @@ def execute(block, config):
     Returns:
         int: ``0`` on success, ``1`` if the modified spectrum contains NaNs.
     """
-    section = section_names.matter_power_nl
-    k, z_array, p_nl = block.get_grid(section, "k_h", "z", "P_k")
+    input_section = config["input_section"]
+    output_section = config["output_section"]
+    suppression_section = config["suppression_section"]
+
+    k, z_array, p_nl = block.get_grid(input_section, "k_h", "z", "P_k")
     spk_params = _read_spk_params(block)
     relation_kind = check_parameter_choice(config["fb_table"], spk_params)
     evaluator = _get_or_build_evaluator(config, relation_kind, k)
@@ -201,5 +269,13 @@ def execute(block, config):
         suppression[:, i] = sup
 
     p_nl_mod = p_nl * suppression
-    block.replace_grid(section, "k_h", k, "z", z_array, "P_k", p_nl_mod)
+
+    if output_section == input_section:
+        block.replace_grid(output_section, "k_h", k, "z", z_array, "P_k", p_nl_mod)
+    else:
+        _write_grid(block, output_section, k, z_array, p_nl_mod, "P_k")
+
+    if suppression_section:
+        _write_grid(block, suppression_section, k, z_array, suppression, "S_k")
+
     return 1 if np.isnan(p_nl_mod).any() else 0
