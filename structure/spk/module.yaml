@@ -13,24 +13,19 @@ assumptions:
     - "Requires external package pyspk (>=2.0) and its dependencies"
     - "Install with: pip install pyspk"
 
-explanation: 
-    py-SP(k) (Salcido et al. 2023) is a python package aimed at predicting the suppression of the 
-    total matter power spectrum due to baryonic physics as a function of the baryon fraction of haloes and redshift.
+explanation: |
+    py-SP(k) (Salcido et al. 2023) predicts multiplicative suppression of the
+    non-linear matter power spectrum from baryonic physics.
 
-    This Cosmosis interface supports exactly one SP(k) relation mode at a time:
-
+    This CosmoSIS interface applies SP(k) to an input power grid and supports
+    exactly one relation mode per sample:
     1. Power law: fb_a, fb_pow, optional fb_pivot
-    2. Cosmology-based redshift-dependent power law: alpha, beta, gamma
-    3. Redshift-dependent double power law: epsilon, alpha, beta, gamma, m_pivot
-    4. Binned relation from a table: fb_table module option
+    2. Cosmology power law: alpha, beta, gamma
+    3. Double power law: epsilon, alpha, beta, gamma, m_pivot
+    4. Binned relation from table: fb_table option
 
-    A jupyter notebook with more detailed examples can be found within the pyspk repository at
-    https://github.com/jemme07/pyspk/blob/main/examples/pySPk_Examples.ipynb
-
-    WARNING - if the combination of parameters and your choice for the functional form of the 
-    baryon fraction - halo mass relation goes outside the SP(k) fitting limits, pyspk returns NaN values.
-    This can happen easily at high-z and high-k will return an error to cosmosis.  This SP(k) parameter combination will
-    then be given a likelihood of zero, thus creating a theoretical prior that you should be aware of.
+    If requested parameters are outside pyspk calibration support, pyspk may
+    return NaNs; those samples should be treated as invalid by the pipeline.
 
 
 params:
@@ -57,7 +52,7 @@ params:
         default: False
     fb_table:
         meaning: Optional for binned mode only. Name of file containing baryon fraction as a function of halo mass and redshift.
-                 Format - Redshift, Halo mass [M_odot], Baryon fraction (normalised by the Universal baryon fraction)
+                 Format - Redshift, Halo mass [M_sun], Baryon fraction (normalised by the Universal baryon fraction)
                  The file BAHAMAS_fb_M200.csv provides this data from the BAHAMAS simulations (McCarthy et al. 2017).
                  If provided, do not set any SP(k) input parameters in [spk] values.
         type: str

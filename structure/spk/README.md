@@ -52,9 +52,8 @@ output_section = matter_power_nl
 suppression_section =
 verbose = F
 extrapolate = F
-
-[spk]
-; choose one relation mode via parameters sampled in this section
 ```
+
+In `values.ini`, set exactly one supported SP(k) relation mode in `[spk]`.
 
 See `examples/spk-configuration.ini` for a fuller snippet.
