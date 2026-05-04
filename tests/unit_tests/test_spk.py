@@ -11,7 +11,10 @@ class DummyOptions:
         self.values = dict(values)
 
     def get_int(self, section, key, default=None):
-        return int(self.values.get(key, default))
+        value = self.values.get(key, default)
+        if value is None:
+            raise ValueError(f"Missing required integer option: {key}")
+        return int(value)
 
     def get_string(self, section, key, default=None):
         value = self.values.get(key, default)
