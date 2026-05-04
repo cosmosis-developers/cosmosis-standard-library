@@ -10,14 +10,10 @@ from cosmosis.utils import datablock_to_astropy
 
 import numpy as np
 from scipy.interpolate import LinearNDInterpolator
-from typing import Any, cast
+from typing import Any
 
-try:
-    import pyspk as spk
-    _PYSPK_IMPORT_ERROR = None
-except ImportError as import_error:
-    spk = None
-    _PYSPK_IMPORT_ERROR = import_error
+spk: Any | None = None
+_PYSPK_IMPORT_ERROR: ImportError | None = None
 
 SPK_SECTION = "spk"
 SPK_PARAMS = ("fb_a", "fb_pow", "fb_pivot", "epsilon", "alpha", "beta", "gamma", "m_pivot")
@@ -29,17 +25,34 @@ def _require_pyspk():
     Raises:
         ImportError: If pyspk is not installed in the active environment.
     """
-    if spk is None:
+    _spk_or_raise()
+
+
+def _spk_or_raise():
+    """Return the pyspk module, importing lazily when first needed."""
+    global spk
+    global _PYSPK_IMPORT_ERROR
+
+    if spk is not None:
+        return spk
+
+    if _PYSPK_IMPORT_ERROR is not None:
         raise ImportError(
             "[SPK] Missing required dependency 'pyspk'. "
             "Install with: pip install pyspk"
         ) from _PYSPK_IMPORT_ERROR
 
+    try:
+        import pyspk as pyspk_module
+    except ImportError as import_error:
+        _PYSPK_IMPORT_ERROR = import_error
+        raise ImportError(
+            "[SPK] Missing required dependency 'pyspk'. "
+            "Install with: pip install pyspk"
+        ) from import_error
 
-def _spk_or_raise():
-    """Return the pyspk module after dependency validation."""
-    _require_pyspk()
-    return cast(Any, spk)
+    spk = pyspk_module
+    return pyspk_module
 
 
 def setup(options):
