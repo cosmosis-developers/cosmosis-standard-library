@@ -146,3 +146,56 @@ def test_execute_reuses_cached_evaluator(monkeypatch, power_block):
     assert first == 0
     assert second == 0
     assert fake.build_calls == 1
+
+
+def test_execute_matches_direct_pyspk_power_law():
+    pyspk = pytest.importorskip("pyspk")
+
+    block = cosmosis.DataBlock()
+    k = np.array([0.1, 0.2, 0.5, 1.0, 2.0])
+    z = np.array([0.2, 0.8, 1.5])
+    p_input = np.array(
+        [
+            [10.0, 11.0, 12.0],
+            [20.0, 21.0, 22.0],
+            [30.0, 31.0, 32.0],
+            [40.0, 41.0, 42.0],
+            [50.0, 51.0, 52.0],
+        ]
+    )
+    p_reference = np.array(p_input, copy=True)
+
+    block.put_grid("matter_power_nl", "k_h", k, "z", z, "P_k", p_input)
+    block["spk", "fb_a"] = 0.40
+    block["spk", "fb_pow"] = 0.30
+    block["spk", "fb_pivot"] = 3.16228e13
+
+    options = DummyOptions({"SO": 500, "suppression_section": "spk_suppression"})
+    config = spk_module.setup(options)
+
+    status = spk_module.execute(block, config)
+    assert status == 0
+
+    _, _, p_wrapped = block.get_grid("matter_power_nl", "k_h", "z", "P_k")
+    _, _, s_wrapped = block.get_grid("spk_suppression", "k_h", "z", "S_k")
+
+    evaluator = pyspk.build_sup_model_evaluator(
+        SO=500,
+        relation_kind="power_law",
+        k_array=k,
+    )
+    s_direct = np.column_stack(
+        [
+            evaluator(
+                z=float(zi),
+                fb_a=0.40,
+                fb_pow=0.30,
+                fb_pivot=3.16228e13,
+                verbose=False,
+            )[1]
+            for zi in z
+        ]
+    )
+
+    assert np.allclose(s_wrapped, s_direct, rtol=1e-10, atol=1e-12)
+    assert np.allclose(p_wrapped, p_reference * s_direct, rtol=1e-10, atol=1e-12)
