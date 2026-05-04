@@ -14,18 +14,40 @@ assumptions:
     - "Install with: pip install pyspk"
 
 explanation: |
-    py-SP(k) (Salcido et al. 2023) predicts multiplicative suppression of the
-    non-linear matter power spectrum from baryonic physics.
+        SP(k) model and relation parameters.
 
-    This CosmoSIS interface applies SP(k) to an input power grid and supports
-    exactly one relation mode per sample:
-    1. Power law: fb_a, fb_pow, optional fb_pivot
-    2. Cosmology power law: alpha, beta, gamma
-    3. Double power law: epsilon, alpha, beta, gamma, m_pivot
-    4. Binned relation from table: fb_table option
+        References:
+        - SP(k) model: arXiv:2305.09710 (https://arxiv.org/abs/2305.09710)
+        - MNRAS 523, 2247 (2023): https://doi.org/10.1093/mnras/stad1474
+        - Mode details and examples: https://github.com/jemme07/pyspk
 
-    If requested parameters are outside pyspk calibration support, pyspk may
-    return NaNs; those samples should be treated as invalid by the pipeline.
+        This CosmoSIS interface applies SP(k) suppression to an input nonlinear
+        matter power grid. Exactly one SP(k) relation mode must be active per
+        sample.
+
+        SP(k) modes supported by this interface:
+        - power_law:
+            fb / (Omega_b/Omega_m) = a * (M_SO/M_pivot)^b
+            with a=fb_a, b=fb_pow, M_pivot=fb_pivot (optional).
+
+        - cosmo_power_law (redshift-dependent power law):
+            fb / (Omega_b/Omega_m) = (exp(alpha)/100)
+                                                            * (M_500c / 1e14 M_sun)^(beta-1)
+                                                            * (E(z)/E(0.3))^gamma
+            with alpha=alpha, beta=beta, gamma=gamma.
+
+        - double_power_law (redshift-dependent double power law):
+            fb / (Omega_b/Omega_m) = 0.5 * epsilon
+                                                            * ((M_500c/M_pivot)^alpha + (M_500c/M_pivot)^beta)
+                                                            * (E(z)/E(0.3))^gamma
+            with epsilon=epsilon, alpha=alpha, beta=beta, gamma=gamma,
+            M_pivot=m_pivot.
+
+        - binned:
+            fb(M,z) provided by fb_table (z, M_halo, fb).
+
+        If requested parameters are outside pyspk calibration support, pyspk may
+        return NaNs; those samples should be treated as invalid by the pipeline.
 
 
 params:
