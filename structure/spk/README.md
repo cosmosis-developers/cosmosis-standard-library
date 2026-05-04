@@ -56,4 +56,5 @@ extrapolate = F
 
 In `values.ini`, set exactly one supported SP(k) relation mode in `[spk]`.
 
-See `examples/spk-configuration.ini` for a fuller snippet.
+For a complete runnable example, see `examples/spk.ini` and
+`examples/spk_values.ini`.
