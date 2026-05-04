@@ -19,15 +19,6 @@ SPK_SECTION = "spk"
 SPK_PARAMS = ("fb_a", "fb_pow", "fb_pivot", "epsilon", "alpha", "beta", "gamma", "m_pivot")
 
 
-def _require_pyspk():
-    """Ensure pyspk is available before module setup.
-
-    Raises:
-        ImportError: If pyspk is not installed in the active environment.
-    """
-    _spk_or_raise()
-
-
 def _spk_or_raise():
     """Return the pyspk module, importing lazily when first needed."""
     global spk
@@ -64,7 +55,7 @@ def setup(options):
     Returns:
         dict: Module configuration shared by each ``execute`` call.
     """
-    _require_pyspk()
+    _spk_or_raise()
 
     so = options.get_int(option_section, "SO", default=500)
     if so not in (200, 500):
