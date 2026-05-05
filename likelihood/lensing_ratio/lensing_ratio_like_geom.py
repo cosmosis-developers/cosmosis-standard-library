@@ -26,7 +26,7 @@ import pickle
 import numpy as np
 from astropy import constants as const
 from astropy import units as u
-from astropy.cosmology import wCDM
+from astropy.cosmology import w0waCDM
 from cosmosis.datablock import option_section, names
 
 
@@ -139,9 +139,10 @@ def execute(block, config):
     h0  = block[names.cosmological_parameters, "h0"]
     om0 = block[names.cosmological_parameters, "omega_m"]
     w   = block[names.cosmological_parameters, "w"]       if block.has_value(names.cosmological_parameters, "w")       else -1.0
+    wa  = block[names.cosmological_parameters, "wa"]      if block.has_value(names.cosmological_parameters, "wa")      else  0.0
     ok0 = block[names.cosmological_parameters, "omega_k"] if block.has_value(names.cosmological_parameters, "omega_k") else 0.0
     ode0 = 1.0 - om0 - ok0
-    cosmo = wCDM(H0=h0 * 100.0, Om0=om0, Ode0=ode0, w0=w, Tcmb0=2.725)
+    cosmo = w0waCDM(H0=h0 * 100.0, Om0=om0, Ode0=ode0, w0=w, wa=wa, Tcmb0=2.725)
 
     n_lens   = d["nbin_lens"]
     n_source = d["nbin_source"]
