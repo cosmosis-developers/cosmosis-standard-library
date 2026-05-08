@@ -31,8 +31,15 @@ Does not depend on any other module output; can run first:
 
 CosmoSIS ini options
 --------------------
-omega_b_h2  : fixed physical baryon density omega_b = Omega_b h^2
-              (default 0.02223, from the Lemos & Lewis / DESI DR2 compression mean)
+omega_b_h2    : fixed physical baryon density omega_b = Omega_b h^2
+                (default 0.02223, from the Lemos & Lewis / DESI DR2 compression mean)
+mu_theta_star : override prior mean for theta_*   (default: 0.01041, real Planck/DESI DR2)
+mu_omega_b    : override prior mean for omega_b   (default: 0.02223)
+mu_omega_bc   : override prior mean for omega_bc  (default: 0.14208)
+
+For simulated/forecast chains set these to the values at the fiducial cosmology to
+avoid tension between the prior and simulated BAO/SN data vectors. The covariance
+(Planck measurement precision) is kept unchanged in both cases.
 """
 
 import numpy as np
@@ -115,14 +122,21 @@ def _compute_r_star(omega_cb, omega_b, N_eff=3.044):
 def setup(options):
     config = {}
     config["omega_b"] = options.get_double(option_section, "omega_b_h2", 0.02223)
-    config["mean"]    = _MU.copy()
+
+    # Allow per-chain override of the prior mean for simulated/forecast chains.
+    # Defaults are the real Lemos & Lewis (2023) / DESI DR2 values.
+    mu = _MU.copy()
+    mu[0] = options.get_double(option_section, "mu_theta_star", _MU[0])
+    mu[1] = options.get_double(option_section, "mu_omega_b",    _MU[1])
+    mu[2] = options.get_double(option_section, "mu_omega_bc",   _MU[2])
+    config["mean"]    = mu
     config["inv_cov"] = np.linalg.inv(_COV)
 
-    # Diagnostic at fiducial mean
-    r_s_fid, z_rec_fid = _compute_r_star(_MU[2], _MU[1])
-    print(f"[compressed_cmb_prior] Lemos & Lewis (2023) / DESI DR2 mean: "
-          f"theta_*={_MU[0]:.5f}  omega_b={_MU[1]:.5f}  omega_bc={_MU[2]:.5f}")
-    print(f"[compressed_cmb_prior] Fiducial z_* = {z_rec_fid:.1f},  r_* = {r_s_fid:.2f} Mpc")
+    source = "fiducial override" if not np.allclose(mu, _MU) else "Lemos & Lewis (2023) / DESI DR2"
+    r_s_fid, z_rec_fid = _compute_r_star(mu[2], mu[1])
+    print(f"[compressed_cmb_prior] mean ({source}): "
+          f"theta_*={mu[0]:.7f}  omega_b={mu[1]:.7f}  omega_bc={mu[2]:.7f}")
+    print(f"[compressed_cmb_prior] z_* = {z_rec_fid:.1f},  r_* = {r_s_fid:.2f} Mpc")
     return config
 
 
