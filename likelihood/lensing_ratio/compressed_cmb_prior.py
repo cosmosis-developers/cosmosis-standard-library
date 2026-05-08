@@ -150,7 +150,11 @@ def execute(block, config):
     ok0 = (block[names.cosmological_parameters, "omega_k"]
            if block.has_value(names.cosmological_parameters, "omega_k") else 0.0)
 
-    omega_b  = config["omega_b"]
+    if block.has_value(names.cosmological_parameters, "omega_b"):
+        # omega_b is being sampled; block stores Omega_b (capital), convert to physical density
+        omega_b = block[names.cosmological_parameters, "omega_b"] * h0**2
+    else:
+        omega_b = config["omega_b"]
     omega_bc = om0 * h0**2
 
     r_s, z_rec = _compute_r_star(omega_bc, omega_b)
