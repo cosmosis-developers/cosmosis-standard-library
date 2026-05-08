@@ -13,22 +13,27 @@ def get_nbins(block, section):
 
 
 def apply_lcut(block, section, Lmin, Lmax, output_section = "", save_name = ""):
-    n_other, n_cmb = get_nbins(block, section)
-    if (n_cmb != 1):
-        raise ValueError("Found more than 1 CMB bin - there is definitely only 1 CMB.")
+    n_a, n_b = get_nbins(block, section)
+    # n_b is 1 for CMB kappa cross-correlations, or n_sources for galaxy-kappa
+    # cross-correlations (e.g. galaxy_shear_cl used as the lensing ratio denominator).
+    # The ell filter is the same for all bin pairs so we apply it uniformly.
 
     ell = block[section, 'ell']
     w   = np.ones(ell.shape[0])
     w[ell<Lmin]=0
     w[ell>Lmax+1]=0
 
-    for bini in range(0,n_other):
-        C_ell_orig = block[section, 'bin_{}_1'.format(bini+1)]
-        filtered_C_ell = C_ell_orig*w
-        if (output_section == ""):
-            block[section, 'bin_{}_1'.format(bini+1)] = filtered_C_ell
-        else:
-            block[output_section, 'bin_{}_1'.format(bini+1)] = filtered_C_ell
+    for bini in range(0,n_a):
+        for binj in range(0,n_b):
+            cl_bin = 'bin_{}_{}'.format(bini+1, binj+1)
+            if not block.has_value(section, cl_bin):
+                continue
+            C_ell_orig = block[section, cl_bin]
+            filtered_C_ell = C_ell_orig*w
+            if (output_section == ""):
+                block[section, cl_bin] = filtered_C_ell
+            else:
+                block[output_section, cl_bin] = filtered_C_ell
 
     # If output_section is specified and different from section we need
     # to copy over info from section into output_section

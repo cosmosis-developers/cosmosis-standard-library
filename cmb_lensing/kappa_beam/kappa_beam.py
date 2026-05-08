@@ -11,22 +11,27 @@ def get_nbins(block, section):
     return n_a, n_b
           
 def apply_beam(block, section, beam_sigma, is_auto=False, output_section = None, save_name = None):
-    n_other, n_cmb = get_nbins(block, section)
-    if (n_cmb != 1):
-        raise ValueError("Found more than 1 CMB bin - there is definitely only 1 CMB.")
+    n_a, n_b = get_nbins(block, section)
+    # n_b is 1 for CMB kappa cross-correlations, or n_sources for galaxy-kappa
+    # cross-correlations (e.g. galaxy_shear_cl used as the lensing ratio denominator).
+    # The beam is the same for all bin pairs so we apply it uniformly.
 
     ell = block[section, 'ell']
     B_ell = np.exp(-0.5*ell*(ell+1.)*beam_sigma**2.)
-    for bini in range(0,n_other):
-        C_ell_orig = block[section, 'bin_{}_1'.format(bini+1)]
-        if (is_auto):
-            beamed_C_ell = C_ell_orig*(B_ell**2.)
-        else:
-            beamed_C_ell = C_ell_orig*B_ell
-        if (output_section is None):
-            block[section, 'bin_{}_1'.format(bini+1)] = beamed_C_ell
-        else:
-            block[output_section, 'bin_{}_1'.format(bini+1)] = beamed_C_ell
+    for bini in range(0,n_a):
+        for binj in range(0,n_b):
+            cl_bin = 'bin_{}_{}'.format(bini+1, binj+1)
+            if not block.has_value(section, cl_bin):
+                continue
+            C_ell_orig = block[section, cl_bin]
+            if (is_auto):
+                beamed_C_ell = C_ell_orig*(B_ell**2.)
+            else:
+                beamed_C_ell = C_ell_orig*B_ell
+            if (output_section is None):
+                block[section, cl_bin] = beamed_C_ell
+            else:
+                block[output_section, cl_bin] = beamed_C_ell
 
     if  (section != output_section and (not output_section is None)):
         if (block.has_value(section,"nbin")):
@@ -48,10 +53,10 @@ def setup(options):
     shearkappa_section = options.get_string(option_section, "shearkappa_section", default="shear_cmbkappa_cl")
     galkappa_section = options.get_string(option_section, "galkappa_section", default="galaxy_cmbkappa_cl")
     kappakappa_section = options.get_string(option_section, "kappakappa_section", default="cmbkappa_cl")
-    shearkappa_output_section = options.get_string(option_section, "shearkappa_output_section", default=None)
-    galkappa_output_section = options.get_string(option_section, "galkappa_output_section", default=None)
-    kappakappa_output_section = options.get_string(option_section, "kappakappa_output_section", default=None)
-    save_name = options.get_string(option_section, "save_name", default=None)
+    shearkappa_output_section = options.get_string(option_section, "shearkappa_output_section", default="") or None
+    galkappa_output_section = options.get_string(option_section, "galkappa_output_section", default="") or None
+    kappakappa_output_section = options.get_string(option_section, "kappakappa_output_section", default="") or None
+    save_name = options.get_string(option_section, "save_name", default="") or None
 
     if options.has_value(option_section, 'beam_sigma_arcmin'):
         beam_sigma_arcmin = options[option_section, "beam_sigma_arcmin"]

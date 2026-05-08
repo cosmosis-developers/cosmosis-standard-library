@@ -376,11 +376,10 @@ class InterpolatedTheorySpectrum(TheorySpectrum):
 
 
     def get_noise_spec_values( self, bin1, bin2, angle ):
-        noise = np.zeros_like(angle)
-        if self.is_auto:
-            if bin1==bin2:
-                noise = self.noise_var_per_mode[bin1-1] * np.ones_like(angle)
-                return noise
+        noise = np.zeros_like(angle, dtype=float)
+        if self.is_auto and bin1 == bin2:
+            n = self.noise_var_per_mode[bin1 - 1]
+            noise = n(angle) if callable(n) else n * np.ones_like(angle)
         return noise
 
     def get_obs_spec_values( self, bin1, bin2, angle ):
@@ -599,6 +598,15 @@ def real_space_cov( cl_cov, cl_specs, cl2xi_types, ell_max, angle_lims_rad,
         angle_lims_rad_upsampled = angle_lims_rad
         angle_mids_rad_upsampled = np.exp( log_angle_mids_rad )
 
+    # Identify spectrum types that carry ell-dependent noise (e.g. CMB lensing).
+    # For these, the analytic noise-noise term is not valid and we use the full
+    # numerical transform instead.
+    l_dep_noise_types = set()
+    for spec in cl_cov.theory_spectra:
+        if spec.noise_var_per_mode is not None:
+            if any(callable(n) for n in spec.noise_var_per_mode):
+                l_dep_noise_types.update(spec.types)
+
     for i_xi in range(len(cl2xi_types)):
         cl2xi_i = cl2xi_types[i_xi]
         cl_spec_i = cl_specs[i_xi]
@@ -638,30 +646,40 @@ def real_space_cov( cl_cov, cl_specs, cl2xi_types, ell_max, angle_lims_rad,
                             noise_only=noise_only )
                         cl_cov_noise_noise = cl_cov.get_cov_diag_ijkl( cl_spec_i.name, 
                             cl_spec_j.name, bin_pair_i, bin_pair_j, ell_max, noise_only=True )
-                        cl_cov_block_signal_mixed = cl_cov_block - cl_cov_noise_noise 
-                        xi_cov_block_signal_mixed_upsampled = np.matmul( F_i_l, 
+                        # Check if either spectrum has ell-dependent noise (e.g. CMB lensing).
+                        # If so, skip the analytic noise term and transform everything numerically.
+                        pair_types = set(cl_spec_i.types) | set(cl_spec_j.types)
+                        use_analytic_noise = not bool(pair_types & l_dep_noise_types)
+                        if use_analytic_noise:
+                            cl_cov_block_signal_mixed = cl_cov_block - cl_cov_noise_noise
+                        else:
+                            cl_cov_block_signal_mixed = cl_cov_block
+                        xi_cov_block_signal_mixed_upsampled = np.matmul( F_i_l,
                                                               np.matmul( np.diag(cl_cov_block_signal_mixed), 
                                                               F_j_l.T ) )
-                        #For the analytic calculation, we use the fact that 
-                        #\int l J_nu(l theta) J_nu(l theta) = 1/theta.
-                        #The noise term is 
-                        #(1/4 pi^2) \int dtheta \int l J_nu(l theta) J_nu(l theta) * noise = noise / theta / 4pi^2
-                        noise = cl_cov_noise_noise[0] #This is 2*cl_noise^2/fsky. 
-                        #if shear-shear, we need to multiply this noise by 2, since we have noise from both E and B-modes.
-                        #Feel like a hack adding it at this stage...maybe there is a more motivated way...
-                        if (cl2xi_i==cl2xi_j) and (cl2xi_i in ["22+","22-"]):
-                            noise *= 2
-                        else:
-                            assert cl2xi_i in CL2XI_TYPES
-
-                        #For gg, npairs = pi*theta*dtheta*n_gal^2*area = 4*pi^2*fsky*n_gal^2*theta*dtheta
-                        # cl_noise = 1./n_gal^2, so npairs = 4 * pi^2 * theta * dtheta / (cl_noise^2 / fsky)
-                        # = 8 * pi^2 * theta * dtheta / (2 * cl_noise^2 / fsky)
-                        # = 8 * pi^2 * theta * dtheta / noise
-                        xi_cov_block_noise_noise_diag = (noise/angle_mids_rad/(8*np.pi*np.pi)/dangle )
-                        xi_cov_block_signal_mixed, angle_mids = downsample_block( angle_lims_rad_upsampled, 
+                        xi_cov_block_signal_mixed, angle_mids = downsample_block( angle_lims_rad_upsampled,
                             angle_mids_rad_upsampled, xi_cov_block_signal_mixed_upsampled, ntheta )
-                        xi_cov_block = xi_cov_block_signal_mixed + np.diag(xi_cov_block_noise_noise_diag)
+                        if use_analytic_noise:
+                            #For the analytic calculation, we use the fact that
+                            #\int l J_nu(l theta) J_nu(l theta) = 1/theta.
+                            #The noise term is
+                            #(1/4 pi^2) \int dtheta \int l J_nu(l theta) J_nu(l theta) * noise = noise / theta / 4pi^2
+                            noise = cl_cov_noise_noise[0] #This is 2*cl_noise^2/fsky.
+                            #if shear-shear, we need to multiply this noise by 2, since we have noise from both E and B-modes.
+                            #Feel like a hack adding it at this stage...maybe there is a more motivated way...
+                            if (cl2xi_i==cl2xi_j) and (cl2xi_i in ["22+","22-"]):
+                                noise *= 2
+                            else:
+                                assert cl2xi_i in CL2XI_TYPES
+
+                            #For gg, npairs = pi*theta*dtheta*n_gal^2*area = 4*pi^2*fsky*n_gal^2*theta*dtheta
+                            # cl_noise = 1./n_gal^2, so npairs = 4 * pi^2 * theta * dtheta / (cl_noise^2 / fsky)
+                            # = 8 * pi^2 * theta * dtheta / (2 * cl_noise^2 / fsky)
+                            # = 8 * pi^2 * theta * dtheta / noise
+                            xi_cov_block_noise_noise_diag = (noise/angle_mids_rad/(8*np.pi*np.pi)/dangle )
+                            xi_cov_block = xi_cov_block_signal_mixed + np.diag(xi_cov_block_noise_noise_diag)
+                        else:
+                            xi_cov_block = xi_cov_block_signal_mixed
                     cov_blocks[i_xi, j_xi, i_bp, j_bp] = xi_cov_block
 
     #construct full covariance

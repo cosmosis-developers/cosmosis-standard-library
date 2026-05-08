@@ -1,11 +1,9 @@
-#Type_1                     Type_2                       Section             x     y 
+#Type_1                     Type_2                       Section             x     y
 galaxy_position_fourier     galaxy_position_fourier      galaxy_cl           ell   bin_{0}_{1}
 galaxy_shear_emode_fourier  galaxy_shear_emode_fourier   shear_cl            ell   bin_{0}_{1}
 galaxy_position_fourier     galaxy_shear_emode_fourier   galaxy_shear_cl     ell   bin_{0}_{1}
-galaxy_shear_emode_fourier  cmb_kappa_emode_fourier      shear_cmbkappa_cl   ell   bin_{0}_{1}
-cmb_shear_emode_fourier     galaxy_shear_emode_fourier   shear_cmbkappa_cl   ell   bin_{1}_{0}
-galaxy_position_fourier     cmb_kappa_emode_fourier      galaxy_cmbkappa_cl  ell   bin_{0}_{1}
-cmb_shear_emode_fourier     galaxy_position_fourier      galaxy_cmbkappa_cl  ell   bin_{1}_{0}
+galaxy_shear_emode_fourier  cmb_kappa_fourier            shear_cmbkappa_cl   ell   bin_{0}_{1}
+galaxy_position_fourier     cmb_kappa_fourier            galaxy_cmbkappa_cl  ell   bin_{0}_{1}
 galaxy_shear_plus_real      galaxy_shear_plus_real       shear_xi_plus       theta bin_{0}_{1}
 galaxy_shear_plus_real      galaxy_shear_plus_real       shear_xi_plus       theta bin_{0}_{1}
 galaxy_shear_minus_real     galaxy_shear_minus_real      shear_xi_minus      theta bin_{0}_{1}
@@ -14,4 +12,4 @@ galaxy_position_real	    galaxy_shear_plus_real	     galaxy_shear_xi     theta b
 galaxy_position_real        cmb_kappa_real               galaxy_cmbkappa_xi  theta bin_{0}_{1}
 cmb_kappa_real              cmb_kappa_real		         cmbkappa_xi         theta bin_{0}_{1}
 galaxy_shear_plus_real      cmb_kappa_real               shear_cmbkappa_xi   theta bin_{0}_{1}
-cmb_kappa_emode_fourier     cmb_kappa_emode_fourier      cmbkappa_cl         ell   bin_{0}_{1}
+cmb_kappa_fourier           cmb_kappa_fourier            cmbkappa_cl         ell   bin_{0}_{1}

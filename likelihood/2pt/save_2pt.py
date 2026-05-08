@@ -84,7 +84,16 @@ def setup(options):
     }
 
     def read_list(key, default=""):
-        s = options.get_string(option_section, key, default)
+        try:
+            s = options.get_string(option_section, key, default)
+        except Exception:
+            # Values like "00 00 00" (all integer-like tokens) get stored as
+            # an int array in the CosmoSIS datablock. Convert back to strings.
+            val = options[option_section, key]
+            if hasattr(val, '__iter__') and not isinstance(val, str):
+                s = " ".join(str(int(v)).zfill(2) for v in val)
+            else:
+                s = str(int(val)).zfill(2)
         return s.split()
 
     #Get the spectrum section names to be saved
@@ -202,6 +211,63 @@ def setup(options):
             config['upsample_cov'] = None
         config['ell_max'] = options.get_int(option_section, "ell_max")
         config['high_l_filter'] = options.get_double(option_section, "high_l_filter", 0.75)
+        cmb_lensing_noise_file = options.get_string(option_section, 'cmb_lensing_noise_file', '')
+        config['cmb_lensing_noise_interp'] = None
+        if cmb_lensing_noise_file:
+            from scipy.interpolate import interp1d
+            if cmb_lensing_noise_file.endswith('.npy'):
+                # Dict-based npy file (e.g. SO/Planck noise files stored as pickled dicts).
+                # Use cmb_lensing_ells_key and cmb_lensing_noise_key to select the arrays.
+                noise_dict = np.load(cmb_lensing_noise_file, allow_pickle=True,
+                                     encoding='latin1').item()
+                ells_key = options.get_string(option_section, 'cmb_lensing_ells_key', 'els')
+                noise_key = options.get_string(option_section, 'cmb_lensing_noise_key', 'Nl_MV')
+                ells_nl = np.array(noise_dict[ells_key]).real
+                nl = np.array(noise_dict[noise_key]).real
+            else:
+                # Plain text file: if 1D (ell = index), or 2D (first column is ell)
+                noise_data = np.loadtxt(cmb_lensing_noise_file)
+                if noise_data.ndim == 1:
+                    ells_nl = np.arange(len(noise_data), dtype=float)
+                    nl = noise_data
+                else:
+                    n_cols = noise_data.shape[1]
+                    if not options.has_value(option_section, 'cmb_lensing_noise_col'):
+                        raise ValueError(
+                            "cmb_lensing_noise_file '%s' has %d columns. "
+                            "You must set cmb_lensing_noise_col to select the noise column "
+                            "(0-indexed, excluding col 0 which is ell). "
+                            "E.g. for the SO nlkk files the MV estimator is col 7."
+                            % (cmb_lensing_noise_file, n_cols))
+                    cmb_lensing_noise_col = options.get_int(option_section, 'cmb_lensing_noise_col')
+                    if cmb_lensing_noise_col == 0:
+                        raise ValueError(
+                            "cmb_lensing_noise_col=0 would select the ell column. "
+                            "Use a non-zero column index for the noise.")
+                    if cmb_lensing_noise_col >= n_cols or cmb_lensing_noise_col < -n_cols:
+                        raise ValueError(
+                            "cmb_lensing_noise_col=%d is out of range for file '%s' "
+                            "which has %d columns (0-indexed)."
+                            % (cmb_lensing_noise_col, cmb_lensing_noise_file, n_cols))
+                    print("Reading CMB lensing noise from column %d of %d in '%s'"
+                          % (cmb_lensing_noise_col % n_cols, n_cols, cmb_lensing_noise_file))
+                    ells_nl = noise_data[:, 0]
+                    nl = noise_data[:, cmb_lensing_noise_col]
+            # Remove NaN/inf entries (e.g. below lmin where noise is undefined)
+            valid = np.isfinite(ells_nl) & np.isfinite(nl)
+            ells_nl = ells_nl[valid]
+            nl = nl[valid]
+            # Raise at setup time if the file does not cover the required ell range
+            if config['ell_max'] > ells_nl[-1]:
+                raise ValueError(
+                    "cmb_lensing_noise_file '%s' only provides noise up to ell=%d, "
+                    "but ell_max=%d is required for the covariance. "
+                    "Either use a file with higher ell coverage or reduce ell_max."
+                    % (cmb_lensing_noise_file, int(ells_nl[-1]), config['ell_max']))
+            # fill_value for ell below the file's lmin (e.g. ell=0,1 below lmin=100):
+            # use nl[0]. Values above ell_max are guaranteed covered by the check above.
+            config['cmb_lensing_noise_interp'] = interp1d(ells_nl, nl, kind='cubic',
+                                                           bounds_error=False, fill_value=(nl[0], nl[-1]))
 
     # name of the output file and whether to overwrite it.
     config['filename'] = options.get_string(option_section, "filename")
@@ -375,6 +441,10 @@ def execute(block, config):
                                  zip(config['sigma_e_total'],config['number_density_shear_rad2']) ])
                     elif cl_spec.types[0].name == "galaxy_position_fourier":
                         noise = [ 1./n for n in config['number_density_lss_rad2'] ]
+                    elif cl_spec.types[0].name == "cmb_kappa_fourier":
+                        if config['cmb_lensing_noise_interp'] is None:
+                            raise ValueError("Set cmb_lensing_noise_file in [save_2pt] to compute covariance with CMB kappa")
+                        noise = [config['cmb_lensing_noise_interp']]
                     else:
                         print("Tried to, but can't generate noise for spectrum %s"%cl_section)
                         raise ValueError
