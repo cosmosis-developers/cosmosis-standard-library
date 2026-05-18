@@ -14,6 +14,15 @@ Reads a pkl file produced by compute_lensing_ratios.ipynb containing:
 The choice of basis (CMB-only vs GGL+CMB) is encoded in the file itself —
 pass the appropriate pkl path as ratio_file.
 
+Neutrino mass handling
+----------------------
+When ``mnu`` is present in the cosmological_parameters block (total mass in eV),
+the module builds the astropy cosmology with astropy's full neutrino treatment:
+Om0 is set to cold matter only (CDM + baryons) and m_nu carries the neutrino
+masses explicitly, so astropy correctly transitions from the relativistic to
+the non-relativistic regime.  ``omega_nu`` must also be in the block (written
+by CAMB); if absent it is approximated from mnu and h0.
+
 Cosmosis ini options
 --------------------
 ratio_file        : path to the pkl file
@@ -137,12 +146,33 @@ def execute(block, config):
     d = config["data"]
 
     h0  = block[names.cosmological_parameters, "h0"]
-    om0 = block[names.cosmological_parameters, "omega_m"]
+    om0 = block[names.cosmological_parameters, "omega_m"]   # total matter: CDM + b + ν
     w   = block[names.cosmological_parameters, "w"]       if block.has_value(names.cosmological_parameters, "w")       else -1.0
     wa  = block[names.cosmological_parameters, "wa"]      if block.has_value(names.cosmological_parameters, "wa")      else  0.0
     ok0 = block[names.cosmological_parameters, "omega_k"] if block.has_value(names.cosmological_parameters, "omega_k") else 0.0
+    mnu = block[names.cosmological_parameters, "mnu"]     if block.has_value(names.cosmological_parameters, "mnu")     else 0.0
+
     ode0 = 1.0 - om0 - ok0
-    cosmo = w0waCDM(H0=h0 * 100.0, Om0=om0, Ode0=ode0, w0=w, wa=wa, Tcmb0=2.725)
+
+    if mnu > 0.0:
+        # om0 already includes omega_nu (CosmoSIS convention: omega_m = omega_b + omega_c + omega_nu).
+        # Subtract omega_nu so that astropy's Om0 is cold matter only; pass m_nu so
+        # astropy handles the relativistic-to-non-relativistic transition correctly.
+        if not block.has_value(names.cosmological_parameters, "omega_nu"):
+            raise RuntimeError(
+                "[lensing_ratio_like_geom] mnu > 0 but omega_nu is not in the block. "
+                "Ensure CAMB runs before this module so omega_nu is written."
+            )
+        omega_nu = block[names.cosmological_parameters, "omega_nu"]
+        om0_cold = om0 - omega_nu
+        n_massive = int(round(block[names.cosmological_parameters, "num_massive_neutrinos"])) \
+                    if block.has_value(names.cosmological_parameters, "num_massive_neutrinos") else 3
+        cosmo = w0waCDM(H0=h0 * 100.0, Om0=om0_cold, Ode0=ode0, w0=w, wa=wa,
+                        Tcmb0=2.725, Neff=3.046,
+                        m_nu=np.full(n_massive, mnu / n_massive) * u.eV)
+    else:
+        cosmo = w0waCDM(H0=h0 * 100.0, Om0=om0, Ode0=ode0, w0=w, wa=wa,
+                        Tcmb0=2.725, Neff=3.046)
 
     n_lens   = d["nbin_lens"]
     n_source = d["nbin_source"]

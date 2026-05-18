@@ -17,6 +17,14 @@ Unlike strong_cmb_prior.py this module adds a SOFT Gaussian likelihood term
 and does NOT solve for or overwrite omega_m / h0.  Those must be sampled free
 parameters in the chain (4-D: omega_m, h0, w, omega_k).
 
+Neutrino mass handling
+----------------------
+When ``mnu`` is present in the block, omega_bc is computed from cold matter
+only (CDM + baryons), and D_M is computed via astropy with full neutrino
+physics.  ``omega_nu`` must also be in the block (written by CAMB), so CAMB
+must run before this module when mnu > 0.  The sound horizon integral already
+treats massive neutrinos as radiation via the N_eff factor.
+
 Required block parameters (all must be sampled)
 ------------------------------------------------
   cosmological_parameters/omega_m
@@ -26,8 +34,9 @@ Required block parameters (all must be sampled)
 
 Pipeline ordering
 -----------------
-Does not depend on any other module output; can run first:
-    modules = fits_nz compressed_cmb_prior lensing_ratio_like_geom
+When mnu = 0: does not depend on any other module output; can run first.
+When mnu > 0: CAMB must run before this module (to provide omega_nu):
+    modules = camb compressed_cmb_prior ...
 
 CosmoSIS ini options
 --------------------
@@ -141,7 +150,7 @@ def setup(options):
 
 
 def execute(block, config):
-    om0 = block[names.cosmological_parameters, "omega_m"]
+    om0 = block[names.cosmological_parameters, "omega_m"]   # total matter: CDM + b + ν
     h0  = block[names.cosmological_parameters, "h0"]
     w   = (block[names.cosmological_parameters, "w"]
            if block.has_value(names.cosmological_parameters, "w") else -1.0)
@@ -149,18 +158,41 @@ def execute(block, config):
            if block.has_value(names.cosmological_parameters, "wa") else 0.0)
     ok0 = (block[names.cosmological_parameters, "omega_k"]
            if block.has_value(names.cosmological_parameters, "omega_k") else 0.0)
+    mnu = (block[names.cosmological_parameters, "mnu"]
+           if block.has_value(names.cosmological_parameters, "mnu") else 0.0)
 
     if block.has_value(names.cosmological_parameters, "omega_b"):
         # omega_b is being sampled; block stores Omega_b (capital), convert to physical density
         omega_b = block[names.cosmological_parameters, "omega_b"] * h0**2
     else:
         omega_b = config["omega_b"]
-    omega_bc = om0 * h0**2
 
-    r_s, z_rec = _compute_r_star(omega_bc, omega_b)
+    ode0 = 1.0 - om0 - ok0
 
-    ode0  = 1.0 - om0 - ok0
-    cosmo = w0waCDM(H0=h0 * 100.0, Om0=om0, Ode0=ode0, w0=w, wa=wa, Tcmb0=2.725)
+    if mnu > 0.0:
+        # om0 includes omega_nu; subtract it so that omega_bc and Om0 are cold matter only.
+        # omega_r in _compute_r_star already accounts for all neutrinos as massless radiation
+        # via the N_eff factor, so no change to _compute_r_star is needed.
+        if not block.has_value(names.cosmological_parameters, "omega_nu"):
+            raise RuntimeError(
+                "[compressed_cmb_prior] mnu > 0 but omega_nu is not in the block. "
+                "Ensure CAMB runs before this module so omega_nu is written."
+            )
+        omega_nu = block[names.cosmological_parameters, "omega_nu"]
+        om0_cold = om0 - omega_nu
+        omega_bc = om0_cold * h0**2
+        n_massive = int(round(block[names.cosmological_parameters, "num_massive_neutrinos"])) \
+                    if block.has_value(names.cosmological_parameters, "num_massive_neutrinos") else 3
+        r_s, z_rec = _compute_r_star(omega_bc, omega_b)
+        cosmo = w0waCDM(H0=h0 * 100.0, Om0=om0_cold, Ode0=ode0, w0=w, wa=wa,
+                        Tcmb0=2.725, Neff=3.046,
+                        m_nu=np.full(n_massive, mnu / n_massive) * u.eV)
+    else:
+        omega_bc = om0 * h0**2
+        r_s, z_rec = _compute_r_star(omega_bc, omega_b)
+        cosmo = w0waCDM(H0=h0 * 100.0, Om0=om0, Ode0=ode0, w0=w, wa=wa,
+                        Tcmb0=2.725, Neff=3.046)
+
     D_M   = cosmo.comoving_transverse_distance(z_rec).to_value(u.Mpc)
 
     theta_star = r_s / D_M
