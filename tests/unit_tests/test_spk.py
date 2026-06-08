@@ -6,7 +6,8 @@ import os
 
 this_dir = os.path.split(__file__)[0]
 import sys
-sys.path.append(this_dir + "../../structure/spk")
+print(this_dir + "/../../structure/spk")
+sys.path.append(this_dir + "/../../structure/spk")
 import spk_interface as spk_module
 
 
