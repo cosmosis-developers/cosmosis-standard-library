@@ -11,41 +11,58 @@ Reads a pkl file produced by compute_lensing_ratios.ipynb containing:
   ratio_cov                             (joint covariance, [GGL|CMB] ordering)
   n_ggl_combos, n_cmb_combos           (sizes)
 
-The choice of basis (CMB-only vs GGL+CMB) is encoded in the file itself —
-pass the appropriate pkl path as ratio_file.
+Distance computation
+--------------------
+Distances are read directly from the ``distances`` section of the data block
+(written by CAMB or any background module).  This makes the module fully
+model-agnostic: any dark energy model handled by the upstream background
+module is automatically supported with no changes here.
+
+Required block entries (written by CAMB):
+  distances/z   — redshift grid
+  distances/d_m — comoving transverse distance D_M(0→z) [Mpc]
+
+The grid must extend to at least z_cmb (default 1089.80) so that the CMB
+source plane is covered.  Set ``zmax_background >= 1200`` in the [camb] ini
+section.  The module raises a clear error if the requirement is not met.
+
+CAMB must run before this module in every pipeline.
 
 Neutrino mass handling
 ----------------------
-When ``mnu`` is present in the cosmological_parameters block (total mass in eV),
-the module builds the astropy cosmology with astropy's full neutrino treatment:
-Om0 is set to cold matter only (CDM + baryons) and m_nu carries the neutrino
-masses explicitly, so astropy correctly transitions from the relativistic to
-the non-relativistic regime.  ``omega_nu`` must also be in the block (written
-by CAMB); if absent it is approximated from mnu and h0.
+Handled automatically: CAMB integrates H(z) with the correct neutrino
+physics and writes the resulting distances to the block.  No special
+treatment is needed here.
 
 Cosmosis ini options
 --------------------
 ratio_file        : path to the pkl file
-z_cmb             : CMB last-scattering redshift (default 1089.80, Planck 2018 z*)
+z_cmb             : CMB last-scattering redshift (default 1089.80)
 lens_nz_section   : block section for lens n(z)  (default nz_lens)
 source_nz_section : block section for source n(z) (default nz_source)
 """
 
 import pickle
 import numpy as np
-from astropy import constants as const
-from astropy import units as u
-from astropy.cosmology import w0waCDM
 from cosmosis.datablock import option_section, names
 
 
 # ---------------------------------------------------------------------------
-# Geometry helpers (self-contained, no external project dependency)
+# Physical constant
+# ---------------------------------------------------------------------------
+
+# 4πG/c² in Mpc/Msun — prefactor for Σ_crit^{-1} = (4πG/c²) × D_l [Mpc] × β
+_FOUR_PI_G_OVER_C2 = (4.0 * np.pi * 6.674e-11      # G [m³ kg⁻¹ s⁻²]
+                      / 2.99792458e8**2              # / c² [m² s⁻²] → [m/kg]
+                      * 1.98892e30 / 3.08568e22)     # × (kg/Msun)/(m/Mpc) → [Mpc/Msun]
+
+
+# ---------------------------------------------------------------------------
+# n(z) helpers
 # ---------------------------------------------------------------------------
 
 def _normalize_nz(z, nz):
-    area = np.trapz(nz, z)
-    return nz / area
+    return nz / np.trapz(nz, z)
 
 
 def _normalize_nz_collection(z, nzs):
@@ -53,39 +70,88 @@ def _normalize_nz_collection(z, nzs):
     return np.vstack([_normalize_nz(z, row) for row in nzs])
 
 
-def _sigma_crit_inverse_grid(z_l, z_s, cosmo):
-    """
-    Return Sigma_crit^{-1}(z_l, z_s) on a (n_lens, n_source) grid [Mpc^2/Msun].
-    Uses angular diameter distances — correct for curved cosmology.
-    """
-    d_l = cosmo.angular_diameter_distance(z_l).to_value(u.Mpc)    # D_A(z_l), (n_l,)
-    d_s = cosmo.angular_diameter_distance(z_s).to_value(u.Mpc)    # D_A(z_s), (n_s,)
+# ---------------------------------------------------------------------------
+# Distance helper — block-based, curvature-correct
+# ---------------------------------------------------------------------------
 
-    # D_A(z_l, z_s) on a (n_l, n_s) grid — vectorised via flat arrays
-    z_l_rep = np.repeat(z_l, z_s.size)
-    z_s_tile = np.tile(z_s, z_l.size)
-    d_ls = cosmo.angular_diameter_distance_z1z2(z_l_rep, z_s_tile).to_value(u.Mpc)
-    d_ls = d_ls.reshape(z_l.size, z_s.size)                       # (n_l, n_s)
+def _da_z1z2_from_block(z1, z2, z_grid, dm_grid, ok, h0):
+    """
+    Angular diameter distance D_A(z1→z2) in Mpc from tabulated D_M(0→z).
 
+    Handles flat, open, and closed cosmologies.  D_M is the comoving
+    transverse distance as written by CAMB to ``distances/d_m``.
+
+    Algorithm
+    ---------
+    1. Interpolate D_M at z1, z2 from the block grid.
+    2. Invert to radial comoving distance D_C (which is additive):
+         flat:   D_C = D_M
+         open:   D_C = (D_H/K) arcsinh(K D_M),  K = sqrt(Ωk) / D_H
+         closed: D_C = (D_H/K) arcsin(K D_M),   K = sqrt(|Ωk|) / D_H
+    3. Subtract:  D_C(z1→z2) = D_C(z2) − D_C(z1)
+    4. Re-apply curvature to get D_M(z1→z2).
+    5. D_A(z1→z2) = D_M(z1→z2) / (1+z2),  clipped to zero when z2 ≤ z1.
+    """
+    z1 = np.asarray(z1, dtype=float)
+    z2 = np.asarray(z2, dtype=float)
+
+    dh = 2997.92458 / h0          # c/H0 [Mpc]
+
+    dm1 = np.interp(z1, z_grid, dm_grid)
+    dm2 = np.interp(z2, z_grid, dm_grid)
+
+    if abs(ok) < 1e-6:            # flat
+        dc1, dc2 = dm1, dm2
+    elif ok > 0:                   # open
+        K   = np.sqrt(ok) / dh
+        dc1 = np.arcsinh(dm1 * K) / K
+        dc2 = np.arcsinh(dm2 * K) / K
+    else:                          # closed
+        K   = np.sqrt(-ok) / dh
+        dc1 = np.arcsin(np.clip(dm1 * K, -1.0, 1.0)) / K
+        dc2 = np.arcsin(np.clip(dm2 * K, -1.0, 1.0)) / K
+
+    dc12 = dc2 - dc1              # additive radial separation
+
+    if abs(ok) < 1e-6:
+        dm12 = dc12
+    elif ok > 0:
+        K    = np.sqrt(ok) / dh
+        dm12 = np.sinh(K * dc12) / K
+    else:
+        K    = np.sqrt(-ok) / dh
+        dm12 = np.sin(np.clip(K * dc12, -np.pi / 2.0, np.pi / 2.0)) / K
+
+    return np.maximum(dm12, 0.0) / (1.0 + z2)
+
+
+# ---------------------------------------------------------------------------
+# Sigma_crit geometry
+# ---------------------------------------------------------------------------
+
+def _sigma_crit_inverse_grid(d_l, d_s, d_ls):
+    """
+    Sigma_crit^{-1} on a (n_l_z, n_s_z) grid [Mpc^2/Msun].
+
+    d_l  : (n_l_z,)         D_A(0→z_l) [Mpc]
+    d_s  : (n_s_z,)         D_A(0→z_s) [Mpc]
+    d_ls : (n_l_z, n_s_z)  D_A(z_l→z_s) [Mpc]
+    """
     d_s_g = d_s[np.newaxis, :]
     d_l_g = d_l[:, np.newaxis]
+    beta = np.where(
+        d_s_g > 0.0,
+        np.maximum(d_ls, 0.0) / np.where(d_s_g > 0.0, d_s_g, 1.0),
+        0.0,
+    )
+    return _FOUR_PI_G_OVER_C2 * d_l_g * beta
 
-    # beta = D_A(z_l, z_s) / D_A(z_s); zero when z_s <= z_l
-    beta = np.where(d_s_g > 0.0, np.maximum(d_ls, 0.0) / np.where(d_s_g > 0.0, d_s_g, 1.0), 0.0)
 
-    prefactor = 4.0 * np.pi * const.G / const.c**2
-    return (prefactor * (d_l_g * u.Mpc) * beta).to(u.Mpc**2 / u.Msun).value
-
-
-def _sigma_crit_eff_grid(z_l, lens_nzs, z_s, source_nzs, cosmo):
-    """
-    Effective Sigma_crit^{-1} for every (lens bin, source bin) pair [Mpc^2/Msun].
-    lens_nzs   : (n_lens, len(z_l))
-    source_nzs : (n_source, len(z_s))
-    """
+def _sigma_crit_eff_grid(z_l, lens_nzs, z_s, source_nzs, d_l, d_s, d_ls):
+    """Effective Sigma_crit^{-1} for every (lens bin, source bin) pair [Mpc^2/Msun]."""
     lens_nzs   = _normalize_nz_collection(z_l, lens_nzs)
     source_nzs = _normalize_nz_collection(z_s, source_nzs)
-    kernel = _sigma_crit_inverse_grid(z_l, z_s, cosmo)   # (n_lens_z, n_source_z)
+    kernel = _sigma_crit_inverse_grid(d_l, d_s, d_ls)    # (n_l_z, n_s_z)
 
     out = np.zeros((lens_nzs.shape[0], source_nzs.shape[0]))
     for i, n_l in enumerate(lens_nzs):
@@ -95,21 +161,21 @@ def _sigma_crit_eff_grid(z_l, lens_nzs, z_s, source_nzs, cosmo):
     return out
 
 
-def _sigma_crit_eff_cmb(z_l, lens_nzs, z_cmb, cosmo):
+def _sigma_crit_eff_cmb(z_l, lens_nzs, d_l, d_cmb, d_l_cmb):
     """
     Effective Sigma_crit^{-1} for each lens bin to the CMB source plane [Mpc^2/Msun].
+
+    d_cmb   : scalar   D_A(0→z_cmb) [Mpc]
+    d_l_cmb : (n_l_z,) D_A(z_l→z_cmb) [Mpc]
     """
     lens_nzs = _normalize_nz_collection(z_l, lens_nzs)
-    kernel   = _sigma_crit_inverse_grid(z_l, np.array([z_cmb]), cosmo)[:, 0]  # (n_lens_z,)
-
-    out = np.zeros(lens_nzs.shape[0])
-    for i, n_l in enumerate(lens_nzs):
-        out[i] = np.trapz(n_l * kernel, z_l)
-    return out
+    beta     = np.where(d_cmb > 0.0, np.maximum(d_l_cmb, 0.0) / d_cmb, 0.0)
+    kernel   = _FOUR_PI_G_OVER_C2 * d_l * beta
+    return np.array([np.trapz(n_l * kernel, z_l) for n_l in lens_nzs])
 
 
 # ---------------------------------------------------------------------------
-# Cosmosis interface
+# CosmoSIS interface
 # ---------------------------------------------------------------------------
 
 def setup(options):
@@ -146,45 +212,54 @@ def execute(block, config):
     d = config["data"]
 
     h0  = block[names.cosmological_parameters, "h0"]
-    om0 = block[names.cosmological_parameters, "omega_m"]   # total matter: CDM + b + ν
-    w   = block[names.cosmological_parameters, "w"]       if block.has_value(names.cosmological_parameters, "w")       else -1.0
-    wa  = block[names.cosmological_parameters, "wa"]      if block.has_value(names.cosmological_parameters, "wa")      else  0.0
-    ok0 = block[names.cosmological_parameters, "omega_k"] if block.has_value(names.cosmological_parameters, "omega_k") else 0.0
-    mnu = block[names.cosmological_parameters, "mnu"]     if block.has_value(names.cosmological_parameters, "mnu")     else 0.0
+    ok0 = (block[names.cosmological_parameters, "omega_k"]
+           if block.has_value(names.cosmological_parameters, "omega_k") else 0.0)
+    z_cmb = config["z_cmb"]
 
-    ode0 = 1.0 - om0 - ok0
+    # ---- Block distances (required) -----------------------------------------
+    if not block.has_value("distances", "z"):
+        raise RuntimeError(
+            "[lensing_ratio_like_geom] 'distances/z' not found in block. "
+            "CAMB must run before this module. Add 'camb' to modules= before "
+            "lensing_ratio_geom_like in your ini file."
+        )
+    z_grid  = block["distances", "z"]
+    dm_grid = block["distances", "d_m"]
+    if float(z_grid[-1]) < z_cmb:
+        raise RuntimeError(
+            f"[lensing_ratio_like_geom] block distance grid only reaches "
+            f"z={z_grid[-1]:.1f} but z_cmb={z_cmb:.2f} is required. "
+            f"Set zmax_background >= 1200 in the [camb] ini section."
+        )
 
-    if mnu > 0.0:
-        # om0 already includes omega_nu (CosmoSIS convention: omega_m = omega_b + omega_c + omega_nu).
-        # Subtract omega_nu so that astropy's Om0 is cold matter only; pass m_nu so
-        # astropy handles the relativistic-to-non-relativistic transition correctly.
-        if not block.has_value(names.cosmological_parameters, "omega_nu"):
-            raise RuntimeError(
-                "[lensing_ratio_like_geom] mnu > 0 but omega_nu is not in the block. "
-                "Ensure CAMB runs before this module so omega_nu is written."
-            )
-        omega_nu = block[names.cosmological_parameters, "omega_nu"]
-        om0_cold = om0 - omega_nu
-        n_massive = int(round(block[names.cosmological_parameters, "num_massive_neutrinos"])) \
-                    if block.has_value(names.cosmological_parameters, "num_massive_neutrinos") else 3
-        cosmo = w0waCDM(H0=h0 * 100.0, Om0=om0_cold, Ode0=ode0, w0=w, wa=wa,
-                        Tcmb0=2.725, Neff=3.046,
-                        m_nu=np.full(n_massive, mnu / n_massive) * u.eV)
-    else:
-        cosmo = w0waCDM(H0=h0 * 100.0, Om0=om0, Ode0=ode0, w0=w, wa=wa,
-                        Tcmb0=2.725, Neff=3.046)
-
-    n_lens   = d["nbin_lens"]
-    n_source = d["nbin_source"]
-
+    # ---- n(z) ---------------------------------------------------------------
     z_l = block[config["lens_section"],   "z"]
     z_s = block[config["source_section"], "z"]
+    n_lens   = d["nbin_lens"]
+    n_source = d["nbin_source"]
     lens_nzs   = np.vstack([block[config["lens_section"],   f"bin_{i+1}"] for i in range(n_lens)])
     source_nzs = np.vstack([block[config["source_section"], f"bin_{i+1}"] for i in range(n_source)])
 
-    sig_inv_grid = _sigma_crit_eff_grid(z_l, lens_nzs, z_s, source_nzs, cosmo)  # (n_lens, n_source)
-    sig_inv_cmb  = _sigma_crit_eff_cmb(z_l, lens_nzs, config["z_cmb"], cosmo)   # (n_lens,)
+    # ---- Distances from block -----------------------------------------------
+    d_l = np.interp(z_l, z_grid, dm_grid) / (1.0 + z_l)
+    d_s = np.interp(z_s, z_grid, dm_grid) / (1.0 + z_s)
 
+    z_l_rep  = np.repeat(z_l, z_s.size)
+    z_s_tile = np.tile(z_s, z_l.size)
+    d_ls = _da_z1z2_from_block(
+        z_l_rep, z_s_tile, z_grid, dm_grid, ok0, h0
+    ).reshape(z_l.size, z_s.size)
+
+    d_cmb   = float(np.interp(z_cmb, z_grid, dm_grid)) / (1.0 + z_cmb)
+    d_l_cmb = _da_z1z2_from_block(
+        z_l, np.full(z_l.size, z_cmb), z_grid, dm_grid, ok0, h0
+    )
+
+    # ---- Sigma_crit effective integrals -------------------------------------
+    sig_inv_grid = _sigma_crit_eff_grid(z_l, lens_nzs, z_s, source_nzs, d_l, d_s, d_ls)
+    sig_inv_cmb  = _sigma_crit_eff_cmb(z_l, lens_nzs, d_l, d_cmb, d_l_cmb)
+
+    # ---- Theory ratios ------------------------------------------------------
     theory_parts = []
 
     if d["n_ggl_combos"] > 0:
