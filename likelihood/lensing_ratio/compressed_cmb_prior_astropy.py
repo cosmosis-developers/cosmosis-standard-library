@@ -15,59 +15,46 @@ DESI DR2 BAO cosmology (arXiv:2503.14738, Appendix, Eqs. 18-19).
 
 Unlike strong_cmb_prior.py this module adds a SOFT Gaussian likelihood term
 and does NOT solve for or overwrite omega_m / h0.  Those must be sampled free
-parameters in the chain.
-
-Distance computation
---------------------
-D_M(z_*) is read directly from the ``distances`` section of the data block
-(written by CAMB).  This makes the module model-agnostic for any dark energy
-model handled upstream.  CAMB must run before this module in every pipeline,
-and the grid must extend to z >= z_* ~ 1090.  Set ``n_logz >= 100`` in the
-[camb] ini section (which appends log-spaced points from zmax_background to
-zmax_logz=1100 by default).  The module raises a clear error if the grid
-does not cover z_*.
-
-Note: at z ~ 1090, dark energy is completely negligible so D_M is insensitive
-to the dark energy model.  Block-reading still ensures full consistency with
-whatever background module is upstream.
-
-Sound horizon
--------------
-r_* is computed by numerical integration of c_s/H in the matter+radiation
-dominated regime (dark energy negligible at z > 100), using the Hu & Sugiyama
-(1996) fitting formula for z_*.  This is unchanged from the astropy version.
+parameters in the chain (4-D: omega_m, h0, w, omega_k).
 
 Neutrino mass handling
 ----------------------
 When ``mnu`` is present in the block, omega_bc is computed from cold matter
-only (CDM + baryons) — needed for the prior constraint on omega_bc.
-``omega_nu`` must be in the block (written by CAMB), which is already
-required since CAMB runs before this module.  D_M(z_*) from the block
-already includes the correct neutrino contribution to H(z).
+only (CDM + baryons), and D_M is computed via astropy with full neutrino
+physics.  ``omega_nu`` must also be in the block (written by CAMB), so CAMB
+must run before this module when mnu > 0.  The sound horizon integral already
+treats massive neutrinos as radiation via the N_eff factor.
 
-Required block inputs (written by CAMB, which must run first)
--------------------------------------------------------------
-  distances/z    — redshift grid extending to z >= z_* ~ 1090
-  distances/d_m  — comoving transverse distance D_M(0→z) [Mpc]
-  cosmological_parameters/omega_nu  — when mnu > 0
-
-Sampled parameters (must be free in the chain)
-----------------------------------------------
+Required block parameters (all must be sampled)
+------------------------------------------------
   cosmological_parameters/omega_m
   cosmological_parameters/h0
   cosmological_parameters/w        (optional, default -1)
   cosmological_parameters/omega_k  (optional, default  0)
 
+Pipeline ordering
+-----------------
+When mnu = 0: does not depend on any other module output; can run first.
+When mnu > 0: CAMB must run before this module (to provide omega_nu):
+    modules = camb compressed_cmb_prior ...
+
 CosmoSIS ini options
 --------------------
-omega_b_h2    : fixed physical baryon density (default 0.02223)
-mu_theta_star : override prior mean for theta_*   (default: 0.01041)
+omega_b_h2    : fixed physical baryon density omega_b = Omega_b h^2
+                (default 0.02223, from the Lemos & Lewis / DESI DR2 compression mean)
+mu_theta_star : override prior mean for theta_*   (default: 0.01041, real Planck/DESI DR2)
 mu_omega_b    : override prior mean for omega_b   (default: 0.02223)
 mu_omega_bc   : override prior mean for omega_bc  (default: 0.14208)
+
+For simulated/forecast chains set these to the values at the fiducial cosmology to
+avoid tension between the prior and simulated BAO/SN data vectors. The covariance
+(Planck measurement precision) is kept unchanged in both cases.
 """
 
 import numpy as np
 from scipy.integrate import quad
+from astropy import units as u
+from astropy.cosmology import w0waCDM
 from cosmosis.datablock import option_section, names
 
 
@@ -77,8 +64,13 @@ from cosmosis.datablock import option_section, names
 #         as quoted in DESI DR2 (arXiv:2503.14738, Appendix, Eqs. 18-19)
 # ---------------------------------------------------------------------------
 
+# Mean vector:  mu = (theta_*, omega_b, omega_bc)
+#   theta_* = 0.01041  (i.e. 100 theta_* = 1.0410)
+#   omega_b = 0.02223
+#   omega_bc = 0.14208
 _MU = np.array([0.01041, 0.02223, 0.14208])
 
+# Covariance (x 10^-9):
 _COV = 1e-9 * np.array([
     [ 0.006621,   0.12444,  -1.1929],
     [ 0.12444,   21.344,   -94.001],
@@ -90,12 +82,18 @@ _COV = 1e-9 * np.array([
 # Sound horizon at recombination
 # ---------------------------------------------------------------------------
 
-_OMEGA_GAMMA = 2.47282e-5   # photon physical density for T_CMB = 2.7255 K
-_C_KM_S      = 2.998e5      # speed of light [km/s]
+# Photon physical density for T_CMB = 2.7255 K
+_OMEGA_GAMMA = 2.47282e-5
+
+# Speed of light (km/s)
+_C_KM_S = 2.998e5
 
 
 def _z_star(omega_cb, omega_b):
-    """Redshift of recombination via Hu & Sugiyama (1996) fitting formula."""
+    """
+    Redshift of recombination via Hu & Sugiyama (1996) fitting formula.
+    Inputs are physical densities (omega = Omega * h^2).
+    """
     g1 = 0.0783 * omega_b**(-0.238) / (1.0 + 39.5 * omega_b**0.763)
     g2 = 0.560 / (1.0 + 21.1 * omega_b**1.81)
     return 1048.0 * (1.0 + 0.00124 * omega_b**(-0.738)) * (1.0 + g1 * omega_cb**g2)
@@ -103,15 +101,18 @@ def _z_star(omega_cb, omega_b):
 
 def _compute_r_star(omega_cb, omega_b, N_eff=3.044):
     """
-    Comoving sound horizon at recombination r_* [Mpc].
+    Comoving sound horizon at recombination r_* (Mpc).
 
-    Integrates c_s(z)/H(z) from z_* to infinity using the matter+radiation
-    approximation (dark energy completely negligible at z > 100).
+    Numerical integration of c_s(z) / H(z) from z_* to z_max, exploiting
+    that dark energy is completely negligible at z > 100:
+
+        H(z) = 100 km/s/Mpc * sqrt(omega_cb*(1+z)^3 + omega_r*(1+z)^4)
+        c_s(z) = c / sqrt(3 * (1 + R(z))),  R(z) = 3*omega_b / (4*omega_gamma*(1+z))
 
     Returns (r_star_Mpc, z_star).
     """
     omega_r = _OMEGA_GAMMA * (1.0 + 0.2271 * N_eff)
-    z_rec   = _z_star(omega_cb, omega_b)
+    z_rec = _z_star(omega_cb, omega_b)
 
     def integrand(z):
         R   = 3.0 * omega_b / (4.0 * _OMEGA_GAMMA * (1.0 + z))
@@ -131,6 +132,8 @@ def setup(options):
     config = {}
     config["omega_b"] = options.get_double(option_section, "omega_b_h2", 0.02223)
 
+    # Allow per-chain override of the prior mean for simulated/forecast chains.
+    # Defaults are the real Lemos & Lewis (2023) / DESI DR2 values.
     mu = _MU.copy()
     mu[0] = options.get_double(option_section, "mu_theta_star", _MU[0])
     mu[1] = options.get_double(option_section, "mu_omega_b",    _MU[1])
@@ -147,49 +150,51 @@ def setup(options):
 
 
 def execute(block, config):
-    om0 = block[names.cosmological_parameters, "omega_m"]
+    om0 = block[names.cosmological_parameters, "omega_m"]   # total matter: CDM + b + ν
     h0  = block[names.cosmological_parameters, "h0"]
+    w   = (block[names.cosmological_parameters, "w"]
+           if block.has_value(names.cosmological_parameters, "w") else -1.0)
+    wa  = (block[names.cosmological_parameters, "wa"]
+           if block.has_value(names.cosmological_parameters, "wa") else 0.0)
+    ok0 = (block[names.cosmological_parameters, "omega_k"]
+           if block.has_value(names.cosmological_parameters, "omega_k") else 0.0)
     mnu = (block[names.cosmological_parameters, "mnu"]
            if block.has_value(names.cosmological_parameters, "mnu") else 0.0)
 
     if block.has_value(names.cosmological_parameters, "omega_b"):
+        # omega_b is being sampled; block stores Omega_b (capital), convert to physical density
         omega_b = block[names.cosmological_parameters, "omega_b"] * h0**2
     else:
         omega_b = config["omega_b"]
 
-    # omega_bc: cold matter only (CDM + baryons), needed for the prior constraint
+    ode0 = 1.0 - om0 - ok0
+
     if mnu > 0.0:
+        # om0 includes omega_nu; subtract it so that omega_bc and Om0 are cold matter only.
+        # omega_r in _compute_r_star already accounts for all neutrinos as massless radiation
+        # via the N_eff factor, so no change to _compute_r_star is needed.
         if not block.has_value(names.cosmological_parameters, "omega_nu"):
             raise RuntimeError(
                 "[compressed_cmb_prior] mnu > 0 but omega_nu is not in the block. "
                 "Ensure CAMB runs before this module so omega_nu is written."
             )
         omega_nu = block[names.cosmological_parameters, "omega_nu"]
-        omega_bc = (om0 - omega_nu) * h0**2
+        om0_cold = om0 - omega_nu
+        omega_bc = om0_cold * h0**2
+        n_massive = int(round(block[names.cosmological_parameters, "num_massive_neutrinos"])) \
+                    if block.has_value(names.cosmological_parameters, "num_massive_neutrinos") else 3
+        r_s, z_rec = _compute_r_star(omega_bc, omega_b)
+        cosmo = w0waCDM(H0=h0 * 100.0, Om0=om0_cold, Ode0=ode0, w0=w, wa=wa,
+                        Tcmb0=2.725, Neff=3.046,
+                        m_nu=np.full(n_massive, mnu / n_massive) * u.eV)
     else:
         omega_bc = om0 * h0**2
+        r_s, z_rec = _compute_r_star(omega_bc, omega_b)
+        cosmo = w0waCDM(H0=h0 * 100.0, Om0=om0, Ode0=ode0, w0=w, wa=wa,
+                        Tcmb0=2.725, Neff=3.046)
 
-    # ---- Sound horizon (analytic, dark energy negligible at z > 100) --------
-    r_s, z_rec = _compute_r_star(omega_bc, omega_b)
+    D_M   = cosmo.comoving_transverse_distance(z_rec).to_value(u.Mpc)
 
-    # ---- D_M(z_*) from block ------------------------------------------------
-    if not block.has_value("distances", "z"):
-        raise RuntimeError(
-            "[compressed_cmb_prior] 'distances/z' not found in block. "
-            "CAMB must run before this module. Add 'camb' to modules= before "
-            "compressed_cmb_prior in your ini file."
-        )
-    z_grid  = block["distances", "z"]
-    dm_grid = block["distances", "d_m"]
-    if float(z_grid[-1]) < z_rec:
-        raise RuntimeError(
-            f"[compressed_cmb_prior] block distance grid only reaches "
-            f"z={z_grid[-1]:.1f} but z_*={z_rec:.1f} is required. "
-            f"Set n_logz >= 100 in the [camb] ini section."
-        )
-    D_M = float(np.interp(z_rec, z_grid, dm_grid))
-
-    # ---- Compressed CMB prior -----------------------------------------------
     theta_star = r_s / D_M
 
     vec   = np.array([theta_star, omega_b, omega_bc])
