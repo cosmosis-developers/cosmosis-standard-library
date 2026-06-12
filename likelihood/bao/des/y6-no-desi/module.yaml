@@ -1,14 +1,14 @@
 #This is a template for module description files
-name: des-y6-bao-dr1tilesnoDESI
+name: des-y6-bao-noDESI
 version: '1.0'
 category: BAO Likelihoods
-purpose: Compute the likelihood of DES Y6 BAO data removing the DESI-DR1 area. This likelihood is meant to be combined with DESI DR1 or DR2 BAO, but not with future DESI releases.
+purpose: Compute the likelihood for the DES Y6 BAO sample after removing the area overlapping with either the DESI DR1 footprint or the expected DESI DR4 footprint, as specified by the selected flag. This likelihood is intended to be combined with DESI DR1/DR2 BAO or DESI DR3/DR4 BAO measurements, respectively.
 url: ''
-interface: bao_y6_dr1tilesnoDESI_like.py
+interface: bao_y6_noDESI_like.py
 attribution: [DES Collaboration]
 rules: ''
 cite:
--   "Mena-Fernandez, J. et al, Physical Review D, TBD"
+-   "Mena-Fernández, J. et al., Phys. Rev. D 113, 123521 (2026)"
 
 assumptions:
 -   BAO chi2
@@ -28,10 +28,10 @@ params:
         meaning: Directory to find data file
         type: str
         default: Module directory
-    chi2_file:
-        meaning: Name of CSV data file within chi2_dir
+    desi_release:
+        meaning: DESI data release used to define footprint overlap removal (dr1/dr2 or dr3/dr4)
         type: str
-        default: likelihood_DESY6_DR1tiles_noDESI.csv
+        default: dr2
     chi2_column:
         meaning: Column to read for alpha from the file
         type: int

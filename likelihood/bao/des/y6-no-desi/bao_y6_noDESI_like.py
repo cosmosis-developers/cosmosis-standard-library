@@ -1,8 +1,9 @@
 """
-DES Y6 BAO likelihood removing the DESI-DR1 area. This likelihood is meant to 
-be combined with DESI DR1 or DR2 BAO, but not with future DESI releases.
+DES Y6 BAO likelihood removing the area overlapping with either the DESI DR1 footprint or the
+expected DESI DR4 footprint, as specified by the selected flag. This likelihood is intended 
+to be combined with DESI DR1/DR2 BAO or DESI DR3/DR4 BAO measurements, respectively.
 
-Note that this is not a Gaussian likelihood so we cannot use the standard
+Note that this is not a Gaussian likelihood, so we cannot use the standard
 cosmosis machinery for those.
 
 """
@@ -17,23 +18,30 @@ likes = section_names.likelihoods
 
 ROOT_DIR = os.path.split(os.path.abspath(__file__))[0]
 
-
-# combined measurement. Not actually used here.
-MEAN = 0.9690
-SIGMA = 0.0296
-
 REDSHIFT = 0.851
 
 # alpha likelihood file:
 default_chi2_dir = ROOT_DIR
-default_chi2_file = 'likelihood_DESY6_DR1tiles_noDESI.csv'
 
 def setup(options):
 	section = option_section
 
+	desi_release = options.get_string(section, "desi_release", default="dr2")
+
+	if desi_release in ["dr1", "dr2"]:
+		chi2_file = "likelihood_DESY6_DR1tiles_noDESI.csv"
+	elif desi_release in ["dr3", "dr4"]:
+		chi2_file = "likelihood_DESY6_deccut_noDESI.csv"
+	else:
+		raise ValueError(
+			f"Unknown desi_release='{desi_release}'. "
+			"Expected 'dr1', 'dr2', 'dr3' or 'dr4'."
+		)
+
+	print(f"Using {chi2_file} as chi2 file (assuming combination with DESI {desi_release.upper()}).")
+
 	# Determine the path to the chi2(alpha) file and load it
 	chi2_dir = options.get_string(section,"chi2_dir", default=default_chi2_dir)
-	chi2_file = options.get_string(section,"chi2_file", default=default_chi2_file)
 	chi2_path = os.path.join(chi2_dir, chi2_file)
 	chi2_data = np.loadtxt(chi2_path, delimiter=',', skiprows=1).T
 
@@ -93,7 +101,7 @@ def execute(block, config):
 
 	#Get the log likelihood from the chi2
 	like = -chi2_alpha_predicted / 2.
-	block[likes, 'des_y6_bao_dr1tilesnoDESI_like'] = like
+	block[likes, 'des_y6_bao_noDESI_like'] = like
 
 	#If required, print out some info
 	if feedback:
