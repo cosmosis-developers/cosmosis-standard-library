@@ -274,10 +274,7 @@ def execute(block, config):
 
     p_nl_mod = p_nl * suppression
 
-    if output_section == input_section:
-        block.replace_grid(output_section, "k_h", k, "z", z_array, "P_k", p_nl_mod)
-    else:
-        _write_grid(block, output_section, k, z_array, p_nl_mod, "P_k")
+    _write_grid(block, output_section, k, z_array, p_nl_mod, "P_k")
 
     if suppression_section:
         _write_grid(block, suppression_section, k, z_array, suppression, "S_k")
