@@ -37,9 +37,11 @@ class DummyOptions:
 class FakePySpk:
     def __init__(self):
         self.build_calls = 0
+        self.last_z_out_of_range = None
 
-    def build_sup_model_evaluator(self, SO, relation_kind, k_array):
+    def build_sup_model_evaluator(self, SO, relation_kind, k_array, z_out_of_range="raise"):
         self.build_calls += 1
+        self.last_z_out_of_range = z_out_of_range
         k_local = np.array(k_array, copy=True)
 
         def evaluator(**kwargs):
@@ -111,6 +113,15 @@ def test_setup_requires_pyspk(monkeypatch):
         spk_module.setup(options)
 
 
+def test_setup_rejects_invalid_z_out_of_range(monkeypatch):
+    fake = FakePySpk()
+    monkeypatch.setattr(spk_module, "spk", fake)
+
+    options = DummyOptions({"SO": 500, "z_out_of_range": "invalid"})
+    with pytest.raises(ValueError, match="z_out_of_range"):
+        spk_module.setup(options)
+
+
 def test_execute_writes_output_and_suppression(monkeypatch, power_block):
     fake = FakePySpk()
     monkeypatch.setattr(spk_module, "spk", fake)
@@ -154,6 +165,18 @@ def test_execute_reuses_cached_evaluator(monkeypatch, power_block):
     assert first == 0
     assert second == 0
     assert fake.build_calls == 1
+
+
+def test_execute_forwards_z_out_of_range_to_evaluator(monkeypatch, power_block):
+    fake = FakePySpk()
+    monkeypatch.setattr(spk_module, "spk", fake)
+
+    options = DummyOptions({"SO": 500, "z_out_of_range": "nan"})
+    config = spk_module.setup(options)
+    status = spk_module.execute(power_block, config)
+
+    assert status == 0
+    assert fake.last_z_out_of_range == "nan"
 
 
 def test_execute_matches_direct_pyspk_power_law():

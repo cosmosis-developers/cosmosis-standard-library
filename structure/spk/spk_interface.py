@@ -17,6 +17,7 @@ _PYSPK_IMPORT_ERROR: ImportError | None = None
 
 SPK_SECTION = "spk"
 SPK_PARAMS = ("fb_a", "fb_pow", "fb_pivot", "epsilon", "alpha", "beta", "gamma", "m_pivot")
+Z_OUT_OF_RANGE_POLICIES = ("raise", "nan")
 
 
 def _spk_or_raise():
@@ -30,7 +31,7 @@ def _spk_or_raise():
     if _PYSPK_IMPORT_ERROR is not None:
         raise ImportError(
             "[SPK] Missing required dependency 'pyspk'. "
-            "Install with: pip install pyspk"
+            "Install with: pip install 'pyspk>=2.0.1'"
         ) from _PYSPK_IMPORT_ERROR
 
     try:
@@ -39,7 +40,7 @@ def _spk_or_raise():
         _PYSPK_IMPORT_ERROR = import_error
         raise ImportError(
             "[SPK] Missing required dependency 'pyspk'. "
-            "Install with: pip install pyspk"
+            "Install with: pip install 'pyspk>=2.0.1'"
         ) from import_error
 
     spk = pyspk_module
@@ -90,6 +91,13 @@ def setup(options):
         fb_table = None
         interpolator = None
 
+    z_out_of_range = options.get_string(option_section, "z_out_of_range", default="raise").strip().lower()
+    if z_out_of_range not in Z_OUT_OF_RANGE_POLICIES:
+        valid = ", ".join(Z_OUT_OF_RANGE_POLICIES)
+        raise ValueError(
+            f"[SPK] z_out_of_range must be one of: {valid}. Received '{z_out_of_range}'."
+        )
+
     return {
         "verbose": options.get_bool(option_section, "verbose", default=False),
         "SO": so,
@@ -98,6 +106,7 @@ def setup(options):
         "suppression_section": suppression_section,
         "fb_table": fb_table,
         "extrapolate": options.get_bool(option_section, "extrapolate", default=False),
+        "z_out_of_range": z_out_of_range,
         "interpolator": interpolator,
         "evaluator_cache": {},
     }
@@ -172,7 +181,10 @@ def _get_or_build_evaluator(config, relation_kind, k_array):
         return cached["evaluator"]
 
     evaluator = pyspk.build_sup_model_evaluator(
-        SO=config["SO"], relation_kind=relation_kind, k_array=k_array
+        SO=config["SO"],
+        relation_kind=relation_kind,
+        k_array=k_array,
+        z_out_of_range=config["z_out_of_range"],
     )
     cache[relation_kind] = {"k": np.array(k_array, copy=True), "evaluator": evaluator}
     return evaluator

@@ -10,8 +10,8 @@ cite:
     - "https://doi.org/10.1093/mnras/stad1474"
 
 assumptions:
-    - "Requires external package pyspk (>=2.0) and its dependencies"
-    - "Install with: pip install pyspk"
+    - "Requires external package pyspk (>=2.0.1) and its dependencies"
+    - "Install with: pip install 'pyspk>=2.0.1'"
 
 explanation: |
         SP(k) model and relation parameters.
@@ -83,6 +83,10 @@ params:
         meaning: Allow SP(k) interpolation/extrapolation for binned mode when masses fall outside table range.
         type: bool
         default: False
+    z_out_of_range:
+        meaning: Behavior for z above pyspk calibrated range in fast evaluator mode. Use 'raise' (strict) or 'nan' (return NaN suppression).
+        type: str
+        default: raise
 
 inputs:
     fb_a:

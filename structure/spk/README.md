@@ -8,7 +8,7 @@ spectrum grid in a CosmoSIS pipeline.
 Install pyspk in the active environment:
 
 ```bash
-pip install pyspk
+pip install "pyspk>=2.0.1"
 ```
 
 If `pyspk` is not installed, module setup raises an informative import error.
@@ -31,6 +31,7 @@ Default behavior is in-place modification of `matter_power_nl`.
 - `verbose` (bool, default `False`): pyspk verbose mode.
 - `fb_table` (str, default empty): CSV table for binned mode.
 - `extrapolate` (bool, default `False`): binned-mode extrapolation behavior.
+- `z_out_of_range` (str, default `raise`): behavior for `z > 3` in pyspk evaluator (`raise` or `nan`).
 
 ## Relation Modes
 
