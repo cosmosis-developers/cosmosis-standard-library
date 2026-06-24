@@ -71,9 +71,9 @@ def setup(options):
     if config["rd_mode"] != "fitting":
         raise ValueError(f"[binned_de] unsupported rd_mode '{config['rd_mode']}' (only 'fitting')")
 
-    config["z"] = build_grid(config["edges"], config["zmax_background"],
-                             config["nz_background"], config["n_logz"],
-                             config["zmax_logz"])
+    z = build_grid(config["edges"], config["zmax_background"],
+                   config["nz_background"], config["n_logz"], config["zmax_logz"])
+    config["z"] = z
 
     print(f"[binned_de] mode={config['mode']}  n_bins={config['n_bins']}  edges={config['edges']}")
     print(f"[binned_de] grid: {z.size} points, z_max={z[-1]:.1f}, "
