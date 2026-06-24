@@ -42,7 +42,7 @@ sys.path.insert(0, os.path.dirname(__file__))
 from binned_de_core import (                       # noqa: E402
     _make_fde_from_w, _make_w_func, _make_fde_step,
     r_drag_brieden, z_star_hu_sugiyama,
-    build_cosmology, compute_distances,
+    build_cosmology, compute_distances, build_grid,
 )
 
 
@@ -58,7 +58,7 @@ def setup(options):
 
     config["zmax_background"] = options.get_double(option_section, "zmax_background", 4.0)
     config["nz_background"] = options.get_int(option_section, "nz_background", 400)
-    config["n_logz"] = options.get_int(option_section, "n_logz", 100)
+    config["n_logz"] = options.get_int(option_section, "n_logz", 400)
     config["zmax_logz"] = options.get_double(option_section, "zmax_logz", 1100.0)
 
     config["tcmb"] = options.get_double(option_section, "tcmb", 2.7255)
@@ -71,13 +71,9 @@ def setup(options):
     if config["rd_mode"] != "fitting":
         raise ValueError(f"[binned_de] unsupported rd_mode '{config['rd_mode']}' (only 'fitting')")
 
-    z_lin = np.linspace(0.0, config["zmax_background"], config["nz_background"])
-    if config["n_logz"] > 0:
-        z_log = np.geomspace(config["zmax_background"], config["zmax_logz"], config["n_logz"])
-        z = np.append(z_lin, z_log[1:])
-    else:
-        z = z_lin
-    config["z"] = z
+    config["z"] = build_grid(config["edges"], config["zmax_background"],
+                             config["nz_background"], config["n_logz"],
+                             config["zmax_logz"])
 
     print(f"[binned_de] mode={config['mode']}  n_bins={config['n_bins']}  edges={config['edges']}")
     print(f"[binned_de] grid: {z.size} points, z_max={z[-1]:.1f}, "

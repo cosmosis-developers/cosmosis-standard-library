@@ -39,13 +39,17 @@ de = c._make_fde_from_w(edges, np.full(7, W), w_tail=W)
 wf = c._make_w_func(edges, np.full(7, W), w_tail=W)
 cosmo, Onu0 = c.build_cosmology(H0, OM0, OK0, MNU, NMASS, TCMB, NEFF, de, wf)
 
-DM_bin = cosmo.comoving_transverse_distance(z_test).value
-DA_bin = cosmo.angular_diameter_distance(z_test).value
-H_bin = (cosmo.H(z_test).value) / 299792.458
-DV_bin = ((1 + z_test)**2 * z_test * DA_bin**2 / H_bin)**(1.0/3.0)
+# Use the actual module path: build_grid + compute_distances (trapezoid integration),
+# then interpolate to the test redshifts — this validates what the module writes.
+grid = c.build_grid(edges)
+dist = c.compute_distances(cosmo, grid)
+DM_bin = np.interp(z_test, grid, dist["D_M"])
+DA_bin = np.interp(z_test, grid, dist["D_A"])
+H_bin = np.interp(z_test, grid, dist["H"])
+DV_bin = np.interp(z_test, grid, dist["D_V"])
 omega_bc = (OM0 - Onu0) * h**2
 rdrag_bin = c.r_drag_brieden(OB * h**2, omega_bc, NEFF)
-DM_star_bin = cosmo.comoving_transverse_distance(z_star_planck).value
+DM_star_bin = np.interp(z_star_planck, grid, dist["D_M"])
 
 
 def report(name, a, b):

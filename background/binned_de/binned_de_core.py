@@ -163,12 +163,34 @@ def build_cosmology(H0, Om0, Ok0, mnu, n_massive, tcmb, neff, de_func, w_func):
     return cosmo, Onu0
 
 
+def build_grid(edges, zmax_background=4.0, nz_background=400,
+               n_logz=400, zmax_logz=1100.0):
+    """
+    Redshift grid: linear 0..zmax_background + log-spaced to zmax_logz, with the
+    bin edges inserted as exact nodes so no integration cell straddles a kink/step.
+    """
+    z = np.linspace(0.0, zmax_background, nz_background)
+    if n_logz > 0:
+        z = np.append(z, np.geomspace(zmax_background, zmax_logz, n_logz)[1:])
+    edges = np.asarray(edges, dtype=float)
+    edges = edges[(edges > 0.0) & (edges < z[-1])]
+    return np.unique(np.concatenate([z, edges]))
+
+
 def compute_distances(cosmo, z):
     """
     Return dict of distance arrays on grid z (Mpc, plus H in 1/Mpc).
     Handles flat/open/closed via D_C -> D_M.
+
+    D_C is obtained by cumulative trapezoidal integration of 1/E(z) on the grid
+    (vectorized, no per-point quadrature). This is fast and avoids astropy's
+    adaptive quad failing on the binned de_density_scale (kinks for w_bins,
+    steps for fde_bins) — provided the bin edges are nodes of z (see build_grid).
     """
-    D_C = cosmo.comoving_distance(z).to_value(u.Mpc)
+    dh = cosmo.hubble_distance.to_value(u.Mpc)
+    inv_e = np.asarray(cosmo.inv_efunc(z), dtype=float)        # 1/E(z), no integration
+    incr = 0.5 * (inv_e[1:] + inv_e[:-1]) * np.diff(z)
+    D_C = dh * np.concatenate([[0.0], np.cumsum(incr)])
 
     Ok0 = cosmo.Ok0
     if abs(Ok0) < 1e-8:
