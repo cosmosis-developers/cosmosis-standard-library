@@ -1,7 +1,7 @@
 from __future__ import print_function
 from builtins import range
 import numpy as np
-from scipy.special import lpn
+from scipy.special import legendre_p_all as lpn
 
 PI=np.pi
 
