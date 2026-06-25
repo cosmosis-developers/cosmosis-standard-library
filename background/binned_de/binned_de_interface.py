@@ -106,14 +106,22 @@ def execute(block, config):
     cosmo, Onu0 = build_cosmology(100.0 * h0, om0, ok0, mnu, n_massive,
                                   config["tcmb"], config["neff"], de_func, w_func)
 
-    z = config["z"]
+    z_int = config["z"]                      # integration grid (split edges for fde_bins)
     with np.errstate(invalid="ignore", divide="ignore"):
-        dist = compute_distances(cosmo, z)
+        dist = compute_distances(cosmo, z_int)
 
     # fde_bins with prior U(-1,3) can drive E(z)^2 < 0 (negative DE density) -> NaN
     # distances. Reject such unphysical points so nautilus discards them (-inf).
     if not (np.isfinite(dist["D_M"]).all() and np.isfinite(dist["H"]).all()):
         return 1
+
+    # Drop the near-coincident split nodes (edge-) before writing to the block: the
+    # ~machine-width spacing is fine for the trapezoid integration (already done) but
+    # breaks downstream cubic interpolation of the block grid (e.g. des_sn's interp1d).
+    # Distances at the kept nodes are the accurate integrated values.
+    keep = np.concatenate([np.diff(z_int) > 1e-12, [True]])
+    z = z_int[keep]
+    dist = {k: v[keep] for k, v in dist.items()}
 
     # Cold matter (CDM + baryons) physical density. For mnu>0 remove the massive
     # neutrino density; for mnu=0 all of omega_m is cold (Onu0 is radiation-like).
