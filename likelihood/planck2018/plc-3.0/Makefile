@@ -176,10 +176,10 @@ endif
 else
 DEFINES = $(DEFINESLINUX) $(DEFINESCOMMON)
 ifndef CM64
-CM64 = -m64
+CM64 = -march=native
 endif
 ifndef FM64
-FM64 = -m64
+FM64 = -march=native
 endif
 endif
 
