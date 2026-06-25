@@ -700,3 +700,61 @@ def real_space_cov( cl_cov, cl_specs, cl2xi_types, ell_max, angle_lims_rad,
     print("condition number:", np.linalg.cond(covmat))
 
     return cov_blocks, covmat, xi_starts, xi_lengths
+
+
+def real_space_cov_contributions(cl_cov, cl_specs, cl2xi_types, ell_max, angle_lims_rad,
+                                  upsample=None, high_l_filter=0.75):
+    """
+    Decompose the real-space covariance into contributions from individual noise sources.
+
+    Returns a dict with keys:
+      'signal'            : covariance with all noise zeroed (cosmic variance only)
+      'shot_noise'        : contribution from galaxy shot noise
+      'shape_noise'       : contribution from source shape noise
+      'cmb_lensing_noise' : contribution from CMB lensing reconstruction noise
+
+    Each noise contribution is defined as cov(signal + that_noise) - cov(signal_only),
+    so it includes both the linear (signal x noise) and quadratic (noise x noise) terms
+    for that noise source.  The sum of the four contributions may differ from the full
+    covariance by small cross-noise terms (e.g. shot x shape), which are typically
+    negligible compared to the dominant contributions.
+    """
+    import copy
+
+    noise_type_labels = {
+        "galaxy_position_fourier": "shot_noise",
+        "galaxy_shear_emode_fourier": "shape_noise",
+        "cmb_kappa_fourier": "cmb_lensing_noise",
+    }
+
+    def clone_cl_cov_keep(keep_type_names):
+        """Return a ClCov with noise zeroed for all tracer types NOT in keep_type_names."""
+        new_spectra = []
+        for spec in cl_cov.theory_spectra:
+            if (spec.noise_var_per_mode is not None
+                    and spec.types[0].name not in keep_type_names):
+                new_spec = copy.copy(spec)
+                # Use zeros list (not None) to keep get_noise_spec_values indexing intact
+                new_spec.noise_var_per_mode = [0.0] * len(spec.noise_var_per_mode)
+                new_spectra.append(new_spec)
+            else:
+                new_spectra.append(spec)
+        return ClCov(new_spectra, fsky=cl_cov.fsky)
+
+    def run_cov(cl_cov_subset):
+        _, covmat, _, _ = real_space_cov(
+            cl_cov_subset, cl_specs, cl2xi_types,
+            ell_max, angle_lims_rad,
+            upsample=upsample, high_l_filter=high_l_filter)
+        return covmat
+
+    print("Computing signal-only covariance contribution...")
+    cov_signal = run_cov(clone_cl_cov_keep([]))
+    contributions = {"signal": cov_signal}
+
+    for type_name, label in noise_type_labels.items():
+        print(f"Computing {label} covariance contribution...")
+        cov_with_noise = run_cov(clone_cl_cov_keep([type_name]))
+        contributions[label] = cov_with_noise - cov_signal
+
+    return contributions

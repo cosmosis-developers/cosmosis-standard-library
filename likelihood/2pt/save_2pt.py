@@ -10,10 +10,11 @@ from builtins import range
 from builtins import object
 from cosmosis.datablock import option_section, names
 import numpy as np
+import os
 import twopoint
 from twopoint_cosmosis import type_table
 import gaussian_covariance
-from spec_tools import TheorySpectrum, real_space_cov, perarcmin2_to_perrad2, ClCov, arcmin_to_rad, convert_angle
+from spec_tools import TheorySpectrum, real_space_cov, real_space_cov_contributions, perarcmin2_to_perrad2, ClCov, arcmin_to_rad, convert_angle
 
 
 def get_scales( x_min, x_max, nbins, logspaced=True, integer_lims=False, two_thirds_midpoint=False):
@@ -72,6 +73,8 @@ def setup(options):
     copy_covariance = options.get_string(option_section, "copy_covariance", "")
     angle_units = options.get_string(option_section, "angle_units", "")
     two_thirds_midpoint = options.get_bool(option_section, "two_thirds_midpoint", False)
+    save_cov_contributions = options.get_bool(option_section, "save_cov_contributions", False)
+    cov_contributions_dir = options.get_string(option_section, "cov_contributions_dir", "")
 
     if copy_covariance and make_covariance:
         raise ValueError("You can only set one of make_covariance and copy_covariance")
@@ -79,8 +82,10 @@ def setup(options):
     config = {
         "make_covariance": make_covariance,
         "copy_covariance": copy_covariance,
-        "logspaced": logspaced, 
+        "logspaced": logspaced,
         "angle_units": angle_units,
+        "save_cov_contributions": save_cov_contributions,
+        "cov_contributions_dir": cov_contributions_dir,
     }
 
     def read_list(key, default=""):
@@ -467,13 +472,27 @@ def execute(block, config):
                 spec_meas_list[spec_index].cut_bin_pair( (b1,b2), complain=True )
                 cl_theory_spec_list[spec_index].cut_bin_pair( (b1,b2) )
 
-            cov_blocks, covmat, xi_starts, xi_lengths = real_space_cov( cl_cov, 
-                cl_theory_spec_list, config['cl_to_xi_types'], 
-                config['ell_max'], config['angle_lims'], 
-                upsample=config['upsample_cov'], 
+            cov_blocks, covmat, xi_starts, xi_lengths = real_space_cov( cl_cov,
+                cl_theory_spec_list, config['cl_to_xi_types'],
+                config['ell_max'], config['angle_lims'],
+                upsample=config['upsample_cov'],
                 high_l_filter = config['high_l_filter'] )
-            covmat_info = twopoint.CovarianceMatrixInfo( 'COVMAT', [s.name for s in spec_meas_list], 
+            covmat_info = twopoint.CovarianceMatrixInfo( 'COVMAT', [s.name for s in spec_meas_list],
                                                          xi_lengths, covmat )
+
+            if config['save_cov_contributions']:
+                print("Computing covariance contributions by noise source...")
+                contributions = real_space_cov_contributions(
+                    cl_cov, cl_theory_spec_list, config['cl_to_xi_types'],
+                    config['ell_max'], config['angle_lims'],
+                    upsample=config['upsample_cov'],
+                    high_l_filter=config['high_l_filter'])
+                out_dir = config['cov_contributions_dir'] or os.path.dirname(os.path.abspath(filename))
+                base = os.path.splitext(os.path.basename(filename))[0]
+                for label, cov_contrib in contributions.items():
+                    out_path = os.path.join(out_dir, "{}_cov_{}.npy".format(base, label))
+                    np.save(out_path, cov_contrib)
+                    print("  Saved {} contribution to {}".format(label, out_path))
 
         else:
             # Otherwise just convert directly to 2pt format
