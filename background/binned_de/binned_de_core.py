@@ -164,17 +164,25 @@ def build_cosmology(H0, Om0, Ok0, mnu, n_massive, tcmb, neff, de_func, w_func):
 
 
 def build_grid(edges, zmax_background=4.0, nz_background=400,
-               n_logz=400, zmax_logz=1100.0):
+               n_logz=400, zmax_logz=1100.0, split_edges=False):
     """
     Redshift grid: linear 0..zmax_background + log-spaced to zmax_logz, with the
     bin edges inserted as exact nodes so no integration cell straddles a kink/step.
+
+    split_edges (fde_bins): also insert edge⁻ = nextafter(edge, 0) for each interior
+    edge, so a discontinuous f_DE(z) is integrated exactly — edge⁻ carries the
+    left-bin value, edge the right-bin value (searchsorted side="right"), and the
+    ~machine-width cell between them contributes ≈0.  Harmless for w_bins.
     """
     z = np.linspace(0.0, zmax_background, nz_background)
     if n_logz > 0:
         z = np.append(z, np.geomspace(zmax_background, zmax_logz, n_logz)[1:])
     edges = np.asarray(edges, dtype=float)
     edges = edges[(edges > 0.0) & (edges < z[-1])]
-    return np.unique(np.concatenate([z, edges]))
+    extra = [edges]
+    if split_edges:
+        extra.append(np.nextafter(edges, 0.0))
+    return np.unique(np.concatenate([z] + extra))
 
 
 def compute_distances(cosmo, z):

@@ -72,7 +72,8 @@ def setup(options):
         raise ValueError(f"[binned_de] unsupported rd_mode '{config['rd_mode']}' (only 'fitting')")
 
     z = build_grid(config["edges"], config["zmax_background"],
-                   config["nz_background"], config["n_logz"], config["zmax_logz"])
+                   config["nz_background"], config["n_logz"], config["zmax_logz"],
+                   split_edges=(config["mode"] == "fde_bins"))
     config["z"] = z
 
     print(f"[binned_de] mode={config['mode']}  n_bins={config['n_bins']}  edges={config['edges']}")
@@ -106,7 +107,13 @@ def execute(block, config):
                                   config["tcmb"], config["neff"], de_func, w_func)
 
     z = config["z"]
-    dist = compute_distances(cosmo, z)
+    with np.errstate(invalid="ignore", divide="ignore"):
+        dist = compute_distances(cosmo, z)
+
+    # fde_bins with prior U(-1,3) can drive E(z)^2 < 0 (negative DE density) -> NaN
+    # distances. Reject such unphysical points so nautilus discards them (-inf).
+    if not (np.isfinite(dist["D_M"]).all() and np.isfinite(dist["H"]).all()):
+        return 1
 
     # Cold matter (CDM + baryons) physical density. For mnu>0 remove the massive
     # neutrino density; for mnu=0 all of omega_m is cold (Onu0 is radiation-like).

@@ -10,6 +10,7 @@ from astropy.cosmology import FlatLambdaCDM, FlatwCDM, wCDM
 
 from binned_de_core import (
     PiecewiseDECosmology, _make_fde_from_w, _make_w_func, _make_fde_step,
+    build_grid, build_cosmology, compute_distances,
 )
 
 EDGES = np.array([0.0, 0.1, 0.4, 0.6, 0.8, 1.1, 1.6, 4.2])
@@ -108,6 +109,26 @@ def main():
           f"f_DE(0.5)={f_hi:.3f} (want 1.0)")
     ok &= abs(f0 - 1.0) < 1e-12 and abs(f_lo - 1.5) < 1e-12 and abs(f_hi - 1.0) < 1e-12
     print(f"  [{'PASS' if ok else 'FAIL'}] step values")
+
+    print("Test 8: fde_bins step integration — production grid vs fine reference")
+    amps8 = np.array([1.0, 1.3, 1.1, 1.0, 1.0, 1.0, 1.0])   # positive (E^2>0)
+    de8, wf8 = _make_fde_step(edges_fde, amps8)
+    cosmo8, _ = build_cosmology(H0, OM0, 0.0, 0.0, 3, TCMB, NEFF, de8, wf8)
+    grid_prod = build_grid(edges_fde, 4.0, 400, 400, 1100.0, split_edges=True)
+    grid_ref  = build_grid(edges_fde, 4.0, 40000, 4000, 1100.0, split_edges=True)
+    dm_prod = np.interp(Z_TEST, grid_prod, compute_distances(cosmo8, grid_prod)["D_M"])
+    dm_ref  = np.interp(Z_TEST, grid_ref,  compute_distances(cosmo8, grid_ref)["D_M"])
+    ok &= _check("D_M (prod grid vs fine ref)", dm_prod, dm_ref, 1e-4)
+
+    print("Test 9: fde_bins negative amp => E(z)^2<0 => non-finite distances (rejected)")
+    amps9 = np.array([1.0, -1.0, 1.0, 1.0, 1.0, 1.0, 1.0])  # f_DE=-1 in [0.1,0.4)
+    de9, wf9 = _make_fde_step(edges_fde, amps9)
+    cosmo9, _ = build_cosmology(H0, OM0, 0.0, 0.0, 3, TCMB, NEFF, de9, wf9)
+    with np.errstate(invalid="ignore"):
+        dist9 = compute_distances(cosmo9, build_grid(edges_fde, split_edges=True))
+    nonfinite = not np.isfinite(dist9["D_M"]).all()
+    print(f"        D_M has non-finite values: {nonfinite} (want True)")
+    ok &= nonfinite
 
     print()
     print("ALL PASS" if ok else "SOME FAILED")
