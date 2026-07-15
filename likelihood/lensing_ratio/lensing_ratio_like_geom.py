@@ -3,7 +3,19 @@ Cosmosis likelihood module: lensing ratio geometry-only prediction.
 
 Theory ratios are computed purely from effective Sigma_crit^{-1} integrals
 over the lens and source n(z)s in the block, so the only sensitivity is
-to photo-z shifts and cosmological distances.
+to photo-z shifts, cosmological distances, and (optionally) multiplicative
+shear calibration.
+
+Multiplicative shear calibration (optional nuisance)
+----------------------------------------------------
+If the values file samples m1..mN in [shear_calibration_parameters] (the
+same convention as CSL's shear_m_bias), the theory prediction is scaled to
+model miscalibrated shears in the measured ratios:
+  GGL ratios  gamma_t(l,si)/gamma_t(l,sref)     -> theory * (1+m_si)/(1+m_sref)
+  CMB ratios  xi_gk(l)/gamma_t(l,sj)            -> theory / (1+m_sj)
+(the CMB ratio has Sigma_crit^{-1}(CMB) in the numerator, so the shear enters
+its denominator). Parameters absent from the block default to m=0, leaving
+existing chains bit-identical.
 
 Reads a pkl file produced by compute_lensing_ratios.ipynb containing:
   measured_ratios, cmb_measured_ratios  (scalar ratio vectors)
@@ -259,18 +271,26 @@ def execute(block, config):
     sig_inv_grid = _sigma_crit_eff_grid(z_l, lens_nzs, z_s, source_nzs, d_l, d_s, d_ls)
     sig_inv_cmb  = _sigma_crit_eff_cmb(z_l, lens_nzs, d_l, d_cmb, d_l_cmb)
 
+    # ---- Multiplicative shear calibration (optional; m=0 when not sampled) --
+    m_calib = np.array([
+        block.get_double("shear_calibration_parameters", f"m{j + 1}", 0.0)
+        for j in range(n_source)
+    ])
+
     # ---- Theory ratios ------------------------------------------------------
     theory_parts = []
 
     if d["n_ggl_combos"] > 0:
         theory_parts.append(np.array([
             sig_inv_grid[l - 1, si - 1] / sig_inv_grid[l - 1, sref - 1]
+            * (1.0 + m_calib[si - 1]) / (1.0 + m_calib[sref - 1])
             for l, si, sref in d["ggl_combinations"]
         ]))
 
     if d["n_cmb_combos"] > 0:
         theory_parts.append(np.array([
             sig_inv_cmb[l - 1] / sig_inv_grid[l - 1, sj - 1]
+            / (1.0 + m_calib[sj - 1])
             for l, sj in d["cmb_combinations"]
         ]))
 
