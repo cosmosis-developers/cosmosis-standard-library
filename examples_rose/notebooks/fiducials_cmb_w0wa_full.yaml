@@ -1,0 +1,37 @@
+cosmological_parameters--omch2: 
+  p0: 0.12011
+  latex: '\omega_{\rm c}'
+  range: [0.05, 0.18] 
+cosmological_parameters--h0: 
+  p0: 0.68 
+  latex: 'h_0'
+  range: [0.66, 0.69]
+cosmological_parameters--ombh2: 
+  p0: 0.022383 
+  latex: '\omega_{\rm b}'
+  range: [0.01, 0.03]
+cosmological_parameters--n_s: 
+  p0: 0.97 
+  latex: 'n_{\rm s}'
+  range: [0.95, 1.0]
+cosmological_parameters--w:  
+  p0: -0.838 
+  latex: 'w_0'
+  range: [-2., -0.3]
+cosmological_parameters--wa: 
+  p0: -0.62 
+  latex: 'w_a'
+  range: [-2., 0.5]
+cosmological_parameters--log1e10as: 
+  p0: 3.044 
+  latex: '\ln(10^{10}A_{\rm s})'
+  range: [2.9, 3.2] #[1.6, 4.]
+cosmological_parameters--tau: 
+  p0: 0.0543 
+  latex: '\tau_{\rm reio}'
+  range: [0.01, 0.08] 
+
+supernova_params--m: 
+  p0: 19.29
+  latex: 'M'
+  range: [19.2, 19.4]
