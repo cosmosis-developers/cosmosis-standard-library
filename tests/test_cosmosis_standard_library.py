@@ -173,6 +173,18 @@ def test_euclid_emulator(capsys):
     assert os.path.exists("output/euclid-emulator/matter_power_nl/p_k.txt")
     check_no_camb_warnings(capsys)
 
+
+def test_spk_example(capsys):
+    try:
+        import pyspk  # noqa: F401
+    except ImportError:
+        pytest.skip("pyspk not installed")
+
+    run_cosmosis("examples/spk.ini")
+    assert os.path.exists("output/spk/matter_power_nl/p_k.txt")
+    assert os.path.exists("output/spk/spk_suppression/s_k.txt")
+    check_no_camb_warnings(capsys)
+
 def test_log_w_example(capsys):
     run_cosmosis("examples/w_model.ini")
     check_no_camb_warnings(capsys)

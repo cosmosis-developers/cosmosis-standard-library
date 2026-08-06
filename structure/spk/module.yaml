@@ -1,0 +1,156 @@
+name: "spk"
+version: "v2.0"
+category: Baryons
+purpose: "A hydrodynamical simulation-based model for the impact of baryon physics on the non-linear matter power spectrum"
+url: "https://github.com/jemme07/pyspk/"
+interface: "spk_interface.py"
+attribution: [Jaime Salcido, Ian McCarthy, Juliana Kwan, Amol Upadhye, Andreea Font]
+rules: "Please cite the papers below if you use this code in your research."
+cite:
+    - "https://doi.org/10.1093/mnras/stad1474"
+
+assumptions:
+    - "Requires external package pyspk (>=2.0.1) and its dependencies"
+    - "Install with: pip install 'pyspk>=2.0.1'"
+
+explanation: |
+        SP(k) model and relation parameters.
+
+        References:
+        - SP(k) model: arXiv:2305.09710 (https://arxiv.org/abs/2305.09710)
+        - MNRAS 523, 2247 (2023): https://doi.org/10.1093/mnras/stad1474
+        - Mode details and examples: https://github.com/jemme07/pyspk
+
+        This CosmoSIS interface applies SP(k) suppression to an input nonlinear
+        matter power grid. Exactly one SP(k) relation mode must be active per
+        sample.
+
+        SP(k) modes supported by this interface:
+        - power_law:
+            fb / (Omega_b/Omega_m) = a * (M_SO/M_pivot)^b
+            with a=fb_a, b=fb_pow, M_pivot=fb_pivot (optional).
+
+        - cosmo_power_law (redshift-dependent power law):
+            fb / (Omega_b/Omega_m) = (exp(alpha)/100)
+                                                            * (M_500c / 1e14 M_sun)^(beta-1)
+                                                            * (E(z)/E(0.3))^gamma
+            with alpha=alpha, beta=beta, gamma=gamma.
+
+        - double_power_law (redshift-dependent double power law):
+            fb / (Omega_b/Omega_m) = 0.5 * epsilon
+                                                            * ((M_500c/M_pivot)^alpha + (M_500c/M_pivot)^beta)
+                                                            * (E(z)/E(0.3))^gamma
+            with epsilon=epsilon, alpha=alpha, beta=beta, gamma=gamma,
+            M_pivot=m_pivot.
+
+        - binned:
+            fb(M,z) provided by fb_table (z, M_halo, fb).
+
+        If requested parameters are outside pyspk calibration support, pyspk may
+        return NaNs; those samples should be treated as invalid by the pipeline.
+
+
+params:
+    SO:
+        meaning: The spherical overdensity, which must be 200 or 500. The halo mass then corresponds to the 
+                 mass with a radius where the mean density is 200 or 500 times the critical density of the Universe.
+        type: int
+        default: 500
+    input_section:
+        meaning: Datablock section containing the input matter power grid.
+        type: str
+        default: matter_power_nl
+    output_section:
+        meaning: Datablock section to write the baryon-modified matter power grid.
+        type: str
+        default: matter_power_nl
+    suppression_section:
+        meaning: Optional section to write the SP(k) suppression grid as S_k. Leave empty to disable.
+        type: str
+        default:
+    verbose:
+        meaning: Run in verbose mode
+        type: bool
+        default: False
+    fb_table:
+        meaning: Optional for binned mode only. Name of file containing baryon fraction as a function of halo mass and redshift.
+                 Format - Redshift, Halo mass [M_sun], Baryon fraction (normalised by the Universal baryon fraction)
+                 The file BAHAMAS_fb_M200.csv provides this data from the BAHAMAS simulations (McCarthy et al. 2017).
+                 If provided, do not set any SP(k) input parameters in [spk] values.
+        type: str
+        default: 
+    extrapolate:
+        meaning: Allow SP(k) interpolation/extrapolation for binned mode when masses fall outside table range.
+        type: bool
+        default: False
+    z_out_of_range:
+        meaning: Behavior for z above pyspk calibrated range in fast evaluator mode. Use 'raise' (strict) or 'nan' (return NaN suppression).
+        type: str
+        default: raise
+
+inputs:
+    fb_a:
+        meaning: Power-law mode normalization. Set only with fb_pow (optional fb_pivot).
+        type: float
+        default:
+    fb_pow:
+        meaning: Power-law mode exponent. Set only with fb_a (optional fb_pivot).
+        type: float
+        default:
+    fb_pivot:
+        meaning: Power-law mode pivot mass in M_sun units.
+        type: float
+        default: 1.0
+    alpha:
+        meaning: Cosmology power-law normalization or double power-law low-mass slope.
+        type: float
+        default:
+    beta:
+        meaning: Cosmology power-law slope or double power-law high-mass slope.
+        type: float
+        default:
+    gamma:
+        meaning: Redshift dependence for cosmology power-law or double power-law mode.
+        type: float
+        default:
+    epsilon:
+        meaning: Double power-law normalization.
+        type: float
+        default:
+    m_pivot:
+        meaning: Double power-law pivot mass in M_sun units.
+        type: float
+        default:
+    matter_power_nl:
+        z:
+            meaning: Redshifts of samples.
+            type: real 1d
+        k_h:
+            meaning: Wavenumbers k of samples in Mpc/h.
+            type: real 1d
+        P_k:
+            meaning: Non-linear power spectrum at samples in (Mpc/h)^-3 before SP(k) correction.
+            type: real 2d
+
+
+outputs:
+    output_section:
+        z:
+            meaning: Redshifts of samples. 
+            type: real 1d
+        k_h:
+            meaning: Wavenumbers k of samples in Mpc/h.
+            type: real 1d
+        P_k:
+            meaning: Non-linear power spectrum at samples in (Mpc/h)^-3, including SP(k) baryon correction.
+            type: real 2d
+    suppression_section:
+        z:
+            meaning: Redshifts of samples.
+            type: real 1d
+        k_h:
+            meaning: Wavenumbers k of samples in Mpc/h.
+            type: real 1d
+        S_k:
+            meaning: SP(k) multiplicative suppression factor.
+            type: real 2d
