@@ -84,7 +84,7 @@ jobs:
 
       - name: Install dependencies with conda
         shell: bash -l {0}
-        run: mamba install -c conda-forge "cosmosis>=3.25" cosmosis-build-standard-library pytest "camb=1.*" "numpy>=2,<2.5"
+        run: mamba install -c conda-forge "cosmosis>=3.25" cosmosis-build-standard-library pytest "numpy>=2"
       
       - name: Get Cached Planck
         uses: actions/cache/restore@v3
@@ -158,6 +158,8 @@ jobs:
     strategy:
       matrix:
         python-version: ["3.10", "3.11", "3.12", "3.13"]
+        numpy-version: ["2.3", "2.5"]
+        camb-version: ["1.6.5", "2.0"]
 
     steps:
     - name: Checkout repository
@@ -224,15 +226,15 @@ jobs:
       id: cache-pip
       with:
         path: ~/.cache/pip
-        key: ${{ runner.os }}-pip-${{ matrix.python-version }}-${{ hashFiles('**/setup.py') }}-v2
+        key: ${{ runner.os }}-pip-${{ matrix.python-version }}-${{ matrix.numpy-version }}-${{ matrix.camb-version }}-${{ hashFiles('**/setup.py') }}-v2
 
 
     - name: Install python dependencies
       run: |
         python -m pip install --upgrade pip wheel setuptools
-        pip install cosmosis "nautilus-sampler==1.0.1" "scipy" "numpy>=2,<2.5"
-        pip install -v --no-cache-dir --no-binary=mpi4py,camb mpi4py "camb==1.*"
-        pip install astropy fast-pt "Cython>=3.0" jupyter sacc "act_dr6_lenslike>=1.0.2" "git+https://github.com/carronj/planck_PR4_lensing"
+        pip install cosmosis "nautilus-sampler==1.0.1" "scipy" "numpy==${{ matrix.numpy-version }}"
+        pip install -v --no-cache-dir --no-binary=mpi4py,camb mpi4py "camb==${{ matrix.camb-version }}"
+        pip install astropy fast-pt "Cython>=3.0" jupyter sacc "act_dr6_lenslike>=1.0.2" "git+https://github.com/carronj/planck_PR4_lensing" pyspk==2.0.1
     
     - name: Install recent python dependencies
       run: |
