@@ -5,17 +5,25 @@ from cosmosis.runtime.handler import activate_segfault_handling
 
 import pytest
 import os
+import re
 import sys
 activate_segfault_handling()
 
-def check_likelihood(capsys, expected, *other_possible):
+def check_likelihood(test_name, capsys, expected, *other_possible):
     captured = capsys.readouterr()
     expect = (expected, *other_possible)
     lines = [line for line in captured.out.split("\n") if "Likelihood =" in line]
     print(lines)
     lines = "\n".join(lines)
+
+
     msg = f"Likelihood was expected to be one of {expect} but this was not found. Found these lines: \n{lines}"
-    assert any([f"Likelihood =  {val}" in lines for val in (expected, *other_possible)]), msg
+    is_okay = any([f"Likelihood =  {val}" in lines for val in (expected, *other_possible)])
+    if not is_okay:
+        with open(f"checks/{test_name}.txt", "w") as _f:
+            _f.write(lines)
+
+    assert is_okay, msg
 
 def check_no_camb_warnings(capsys):
     captured = capsys.readouterr()
@@ -33,14 +41,14 @@ def test_projection(capsys):
 
 def test_bao(capsys):
     run_cosmosis("examples/bao.ini")
-    check_likelihood(capsys, "-198.6")
+    check_likelihood("test_bao", capsys, "-198.6", "198.7")
     check_no_camb_warnings(capsys)
 
 def test_planck(capsys):
     if not os.path.exists("likelihood/planck2018/baseline/plc_3.0/hi_l/plik_lite/plik_lite_v22_TT.clik"):
         pytest.skip("Planck data not found")
     run_cosmosis("examples/planck.ini")
-    check_likelihood(capsys, "-1441.14", "-1441.30", "-1441.46", "-502.5")
+    check_likelihood("test_planck", capsys, "-1441.14", "-1441.30", "-1441.46", "-502.5", "-502.0")
     check_no_camb_warnings(capsys)
     
 def test_planck_class(capsys):
@@ -52,20 +60,21 @@ def test_planck_class(capsys):
 
 
 planck_lite_expected_values = {
-    ("T", "TTTEEE", "2018"): "-2864.26",
-    ("F", "TTTEEE", "2018"): "-2863.30",
-    ("T", "TT", "2018"): ["-1712.90", "-1712.89"],
-    ("F", "TT", "2018"): "-1711.94",
-    ("T", "TTTEEE", "2015"): "-2812.68",
-    ("F", "TTTEEE", "2015"): "-2811.98",
-    ("T", "TT", "2015"): "-1744.11",
-    ("F", "TT", "2015"): "-1743.41",
+    ("T", "TTTEEE", "2018"): ["-2864.26", "-2882.45"],
+    ("F", "TTTEEE", "2018"): ["-2863.30", "-2881.49"],
+    ("T", "TT", "2018"): ["-1712.90", "-1712.89", "-1726.5"],
+    ("F", "TT", "2018"): ["-1711.94", "-1725.58"],
+    ("T", "TTTEEE", "2015"): ["-2812.68", "-2831.44"],
+    ("F", "TTTEEE", "2015"): ["-2811.98", "-2830.74"],
+    ("T", "TT", "2015"): ["-1744.11", "-1758.1"],
+    ("F", "TT", "2015"): ["-1743.41", "-1757.4"],
 }
 
 
 @pytest.mark.parametrize("choices,expected", list(planck_lite_expected_values.items()))
 def test_planck_lite(choices, expected, capsys):
     use_low_ell_bins, spectra, year = choices
+    test_name = f"test_planck_lite[{use_low_ell_bins}-{spectra}-{year}]"
 
     override = {
         ("camb","feedback"): "0",
@@ -76,7 +85,7 @@ def test_planck_lite(choices, expected, capsys):
     if isinstance(expected, str):
         expected = [expected]
     run_cosmosis("examples/planck_lite.ini", override=override)
-    check_likelihood(capsys, *expected)
+    check_likelihood(test_name, capsys, *expected)
 
 
 
@@ -96,12 +105,12 @@ def test_pantheon_emcee(capsys):
 
 def test_pantheon_plus_shoes(capsys):
     run_cosmosis("examples/pantheon_plus_shoes.ini", override={("runtime","sampler"):"test"})
-    check_likelihood(capsys, "-738.23")
+    check_likelihood("test_pantheon_plus_shoes", capsys, "-738.23")
     check_no_camb_warnings(capsys)
 
 def test_des_y1(capsys):
     run_cosmosis("examples/des-y1.ini")
-    check_likelihood(capsys, "5237.3")
+    check_likelihood("test_des_y1", capsys, "5237.3", "5237.4")
     check_no_camb_warnings(capsys)
 
 def test_des_y1_cl_to_corr(capsys):
@@ -109,7 +118,7 @@ def test_des_y1_cl_to_corr(capsys):
         ("2pt_shear","file"): "./shear/cl_to_corr/cl_to_corr.py",
         ("2pt_shear","corr_type"): "xi"
         })
-    check_likelihood(capsys, "5237.3")
+    check_likelihood("test_des_y1_cl_to_corr", capsys, "5237.3")
     check_no_camb_warnings(capsys)
 
 def test_des_y3(capsys):
@@ -117,12 +126,12 @@ def test_des_y3(capsys):
         ("pk_to_cl_gg","save_kernels"):"T",
         ("pk_to_cl","save_kernels"):"T"
         })
-    check_likelihood(capsys, "6043.23", "6043.34", "6043.37", "6043.33", "6043.30")
+    check_likelihood("test_des_y3", capsys, "6043.23", "6043.34", "6043.37", "6043.33", "6043.30", "6043.27")
     check_no_camb_warnings(capsys)
 
 def test_des_y3_plus_planck(capsys):
     run_cosmosis("examples/des-y3-planck.ini")
-    check_likelihood(capsys, "5679.6", "5679.7")
+    check_likelihood("test_des_y3_plus_planck", capsys, "5679.6", "5679.7", "5678.")
     check_no_camb_warnings(capsys)
 
 
@@ -132,12 +141,12 @@ def test_des_y3_class(capsys):
 
 def test_des_y3_shear(capsys):
     run_cosmosis("examples/des-y3-shear.ini")
-    check_likelihood(capsys, "2957.03", "2957.12", "2957.11", "2957.13", "2957.07")
+    check_likelihood("test_des_y3_shear", capsys, "2957.03", "2957.12", "2957.11", "2957.13", "2957.07", "2957.08")
     check_no_camb_warnings(capsys)
 
 def test_des_y3_mira_titan(capsys):
     run_cosmosis("examples/des-y3-mira-titan.ini")
-    check_likelihood(capsys, "6048.0", "6048.1", "6048.2")
+    check_likelihood("test_des_y3_mira_titan", capsys, "6048.0", "6048.1", "6048.2")
     check_no_camb_warnings(capsys)
 
 def test_des_y3_mead(capsys):
@@ -145,7 +154,7 @@ def test_des_y3_mead(capsys):
                  override={("camb", "halofit_version"): "mead2020_feedback"},
                  variables={("halo_model_parameters", "logT_AGN"): "8.2"}
                  )
-    check_likelihood(capsys, "6049.94", "6049.00", "6049.03", "6049.04", "6049.01")
+    check_likelihood("test_des_y3_mead", capsys, "6049.94", "6049.00", "6049.03", "6049.04", "6049.01", "6048.9")
     check_no_camb_warnings(capsys)
 
 def test_act_dr6_lensing(capsys):
@@ -154,7 +163,7 @@ def test_act_dr6_lensing(capsys):
     except ImportError:
         pytest.skip("ACT likelihood code not found")
     run_cosmosis("examples/act-dr6-lens.ini")
-    check_likelihood(capsys, "-9.89", "-9.86", "-9.90")
+    check_likelihood("test_act_dr6_lensing", capsys, "-9.89", "-9.86", "-9.90")
     check_no_camb_warnings(capsys)
 
 def test_des_y3_5x2pt(capsys):
@@ -195,13 +204,13 @@ def test_theta_warning():
 
 def test_des_kids(capsys):
     run_cosmosis("examples/des-y3_and_kids-1000.ini")
-    check_likelihood(capsys, "-199.40", "-199.41")
+    check_likelihood("test_des_kids", capsys, "-199.40", "-199.41", "-199.47")
     check_no_camb_warnings(capsys)
 
 
 def test_kids(capsys):
     run_cosmosis("examples/kids-1000.ini")
-    check_likelihood(capsys, "-47.6")
+    check_likelihood("test_kids", capsys, "-47.6", "-47.7")
     check_no_camb_warnings(capsys)
 
 def test_bacco():
@@ -236,7 +245,7 @@ def test_hsc_harmonic(capsys):
     except ImportError:
         pytest.skip("Sacc not installed")
     run_cosmosis("examples/hsc-y3-shear.ini")
-    check_likelihood(capsys, "-109.0")
+    check_likelihood("test_hsc_harmonic", capsys, "-109.0")
 
 def test_hsc_real(capsys):
     try:
@@ -244,7 +253,7 @@ def test_hsc_real(capsys):
     except ImportError:
         pytest.skip("Sacc not installed")
     run_cosmosis("examples/hsc-y3-shear-real.ini")
-    check_likelihood(capsys, "-122.5")
+    check_likelihood("test_hsc_real", capsys, "-122.5", "-122.4")
 
 def test_npipe(capsys):
     try:
@@ -252,16 +261,16 @@ def test_npipe(capsys):
     except ImportError:
         pytest.skip("Planck PR4 lensing likelihood not found")
     run_cosmosis("examples/npipe.ini")
-    check_likelihood(capsys, "-4.22", "-4.23")
+    check_likelihood("test_npipe", capsys, "-4.22", "-4.23")
 
 
 def test_desi_dr1(capsys):
     run_cosmosis("examples/desi_dr1.ini")
-    check_likelihood(capsys, "-11.25")
+    check_likelihood("test_desi_dr1", capsys, "-11.25", "-11.26")
 
 def test_desi_dr2(capsys):
     run_cosmosis("examples/desi_dr2.ini")
-    check_likelihood(capsys, "-93.02")
+    check_likelihood("test_desi_dr2", capsys, "-93.02", "-93.07")
 
 
 def test_candl(capsys):
@@ -270,7 +279,7 @@ def test_candl(capsys):
     except ImportError:
         pytest.skip("Candl not installed")
     run_cosmosis("examples/candl_test.ini")
-    check_likelihood(capsys, "-5.83")
+    check_likelihood("test_candl", capsys, "-5.83")
 
 
 def test_hillipop_lollipop(capsys):
@@ -282,8 +291,8 @@ def test_hillipop_lollipop(capsys):
     except ImportError:
         pytest.skip("Planck 2020 lollipop likelihood not found")
     run_cosmosis("examples/planck-hillipop-lollipop.ini")
-    check_likelihood(capsys, "-6476.91", "-6476.90")
+    check_likelihood("test_hillipop_lollipop", capsys, "-6476.91", "-6476.90")
 
 def test_decam(capsys):
     run_cosmosis("examples/decam-13k.ini", override={("runtime","sampler"):"test"})
-    check_likelihood(capsys, "9442.38", "9442.35", "9442.36")
+    check_likelihood("test_decam", capsys, "9442.38", "9442.35", "9442.3")

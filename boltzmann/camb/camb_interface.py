@@ -251,7 +251,6 @@ def extract_recombination_params(block, config, more_config):
         min_a_evolve_Tm = block.get_double('recfast', 'min_a_evolve_Tm', default=default_recomb.min_a_evolve_Tm)
         RECFAST_fudge = block.get_double('recfast', 'RECFAST_fudge', default=default_recomb.RECFAST_fudge)
         RECFAST_fudge_He = block.get_double('recfast', 'RECFAST_fudge_He', default=default_recomb.RECFAST_fudge_He)
-        RECFAST_Heswitch = block.get_int('recfast', 'RECFAST_Heswitch', default=default_recomb.RECFAST_Heswitch)
         RECFAST_Hswitch = block.get_bool('recfast', 'RECFAST_Hswitch', default=default_recomb.RECFAST_Hswitch)
         AGauss1 = block.get_double('recfast', 'AGauss1', default=default_recomb.AGauss1)
         AGauss2 = block.get_double('recfast', 'AGauss2', default=default_recomb.AGauss2)
@@ -264,7 +263,6 @@ def extract_recombination_params(block, config, more_config):
             min_a_evolve_Tm = min_a_evolve_Tm, 
             RECFAST_fudge = RECFAST_fudge, 
             RECFAST_fudge_He = RECFAST_fudge_He, 
-            RECFAST_Heswitch = RECFAST_Heswitch, 
             RECFAST_Hswitch = RECFAST_Hswitch, 
             AGauss1 = AGauss1, 
             AGauss2 = AGauss2, 

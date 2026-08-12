@@ -43,6 +43,14 @@ def _spk_or_raise():
             "Install with: pip install 'pyspk>=2.0.1'"
         ) from import_error
 
+    # check that version is new enough
+    if pyspk_module.__version__ < "2.0.1":
+        raise ImportError(
+            "[SPK] pyspk version must be >= 2.0.1, "
+            f"found {pyspk_module.__version__}. "
+            "Upgrade with: pip install --upgrade 'pyspk>=2.0.1'"
+        )
+
     spk = pyspk_module
     return pyspk_module
 
