@@ -1,6 +1,7 @@
 name: onepower_interface
 version: Jul2025
 purpose: Calculates power spectra using halo model.
+category: Structure
 url: "https://kids-wl.github.io/onepower/"
 interface: onepower_interface.py
 attribution: [Andrej Dvornik, Marika Asgari, Maria-Cristina Fortuna]
