@@ -89,38 +89,39 @@ params:
         default: raise
 
 inputs:
-    fb_a:
-        meaning: Power-law mode normalization. Set only with fb_pow (optional fb_pivot).
-        type: float
-        default:
-    fb_pow:
-        meaning: Power-law mode exponent. Set only with fb_a (optional fb_pivot).
-        type: float
-        default:
-    fb_pivot:
-        meaning: Power-law mode pivot mass in M_sun units.
-        type: float
-        default: 1.0
-    alpha:
-        meaning: Cosmology power-law normalization or double power-law low-mass slope.
-        type: float
-        default:
-    beta:
-        meaning: Cosmology power-law slope or double power-law high-mass slope.
-        type: float
-        default:
-    gamma:
-        meaning: Redshift dependence for cosmology power-law or double power-law mode.
-        type: float
-        default:
-    epsilon:
-        meaning: Double power-law normalization.
-        type: float
-        default:
-    m_pivot:
-        meaning: Double power-law pivot mass in M_sun units.
-        type: float
-        default:
+    spk:
+        fb_a:
+            meaning: Power-law mode normalization. Set only with fb_pow (optional fb_pivot).
+            type: float
+            default:
+        fb_pow:
+            meaning: Power-law mode exponent. Set only with fb_a (optional fb_pivot).
+            type: float
+            default:
+        fb_pivot:
+            meaning: Power-law mode pivot mass in M_sun units.
+            type: float
+            default: 1.0
+        alpha:
+            meaning: Cosmology power-law normalization or double power-law low-mass slope.
+            type: float
+            default:
+        beta:
+            meaning: Cosmology power-law slope or double power-law high-mass slope.
+            type: float
+            default:
+        gamma:
+            meaning: Redshift dependence for cosmology power-law or double power-law mode.
+            type: float
+            default:
+        epsilon:
+            meaning: Double power-law normalization.
+            type: float
+            default:
+        m_pivot:
+            meaning: Double power-law pivot mass in M_sun units.
+            type: float
+            default:
     matter_power_nl:
         z:
             meaning: Redshifts of samples.

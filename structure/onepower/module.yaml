@@ -10,8 +10,7 @@ cite:
     - "https://arxiv.org/abs/2003.02700"
     - "https://arxiv.org/abs/2210.03110"
 
-assumptions:
-    -
+assumptions: []
 
 explanation: |
   A module for calculating 3D power spectra using the halo model approach:
