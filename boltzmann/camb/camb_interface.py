@@ -119,6 +119,21 @@ def cosmopower_k():
     k = np.concatenate([np.geomspace(start, stop, num=num, endpoint=False) for start, stop, num in ranges])
     return k
 
+def get_camb_version():
+    try:
+        camb_version = int(camb.__version__.split(".")[0])
+    except:
+        # we must have some odd or atypical installation of camb.
+        # There's not much we can do to figure out what's going on here.
+        # Let's warn the user
+        if options.has_value("compatible_camb_version"):
+            camb_version = options.get_int("compatible_camb_version")
+        else:
+            warnings.warn("Could not determine camb version. Assuming compatible with v2."
+                           "Set compatible_camb_version to override")
+            camb_version = 2
+    return camb_version
+
 def setup(options):
     mode = options.get_string(opt, 'mode', default="all")
     if not mode in MODES:
@@ -157,11 +172,24 @@ def setup(options):
     more_config['want_chistar'] = options.get_bool(opt, 'want_chistar', default=True)
     more_config['n_logz'] = options.get_int(opt, 'n_logz', default=0)
     more_config['zmax_logz'] = options.get_double(opt, 'zmax_logz', default = 1100.)
+
+    camb_version = get_camb_version()
+    more_config["camb_version"] = camb_version
+
+    old_margin_name = "lens_margin"
+    new_margin_name = "lens_output_margin"
     
     more_config["lmax_params"] = get_optional_params(options, opt, ["max_eta_k", "lens_potential_accuracy",
-                                                                    "lens_margin", "k_eta_fac", "lens_k_eta_reference",
+                                                                    old_margin_name, new_margin_name, "k_eta_fac", "lens_k_eta_reference",
                                                                     #"min_l", "max_l_tensor", "Log_lvalues", , "max_eta_k_tensor"
                                                                      ])
+    if old_margin_name in more_config["lmax_params"] and new_margin_name in more_config["lmax_params"]:
+        raise ValueError("You have both the old lens_margin and the new lens_output_margin options set. Please use only lens_output_margin.")
+
+    if old_margin_name in more_config["lmax_params"] and camb_version >= 2:
+        warnings.warn("The lens_margin option is now called lens_output_margin lens_output_margin in camb v2. Updating name now but please rename.")
+        more_config["lmax_params"][new_margin_name] = more_config["lmax_params"].pop(old_margin_name)
+
     # lmax is required
     more_config["lmax_params"]["lmax"] = options.get_int(opt, "lmax", default=2600)                                                  
     
@@ -258,6 +286,12 @@ def extract_recombination_params(block, config, more_config):
         zGauss2 = block.get_double('recfast', 'zGauss2', default=default_recomb.zGauss2)
         wGauss1 = block.get_double('recfast', 'wGauss1', default=default_recomb.wGauss1)
         wGauss2 = block.get_double('recfast', 'wGauss2', default=default_recomb.wGauss2)
+        if more_config["camb_version"] == 1:
+            RECFAST_Heswitch = block.get_bool('recfast', 'RECFAST_Heswitch', default=default_recomb.RECFAST_Heswitch)
+            extra = {"RECFAST_Heswitch": RECFAST_Heswitch}
+        else:
+            extra = {}
+
         
         recomb = camb.recombination.Recfast(
             min_a_evolve_Tm = min_a_evolve_Tm, 
@@ -270,6 +304,7 @@ def extract_recombination_params(block, config, more_config):
             zGauss2 = zGauss2, 
             wGauss1 = wGauss1, 
             wGauss2 = wGauss2, 
+            **extra
         )
 
     #Not yet supporting CosmoRec by default, but not too hard to compile in camb yourself if needed.
