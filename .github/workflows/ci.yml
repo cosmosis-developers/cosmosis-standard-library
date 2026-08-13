@@ -237,7 +237,7 @@ jobs:
         python -m pip install --upgrade pip wheel setuptools
         pip install cosmosis "nautilus-sampler==1.0.1" "scipy" "numpy==${{ matrix.numpy-version }}"
         pip install -v --no-cache-dir --no-binary=mpi4py,camb mpi4py "camb==${{ matrix.camb-version }}"
-        pip install astropy fast-pt "Cython>=3.0" jupyter sacc "act_dr6_lenslike>=1.0.2" "git+https://github.com/carronj/planck_PR4_lensing" pyspk==2.0.1
+        pip install astropy git+https://github.com/joezuntz/FAST-PT "Cython>=3.0" jupyter sacc "act_dr6_lenslike>=1.0.2" "git+https://github.com/carronj/planck_PR4_lensing" pyspk==2.0.1
     
     - name: Install recent python dependencies
       run: |

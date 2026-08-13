@@ -156,7 +156,7 @@ def test_act_dr6_lensing(capsys):
     except ImportError:
         pytest.skip("ACT likelihood code not found")
     run_cosmosis("examples/act-dr6-lens.ini")
-    check_likelihood("test_act_dr6_lensing", capsys, "-9.89", "-9.86", "-9.90")
+    check_likelihood("test_act_dr6_lensing", capsys, "-9.89", "-9.86", "-9.90", "-9.85")
     check_no_camb_warnings(capsys)
 
 def test_des_y3_5x2pt(capsys):
