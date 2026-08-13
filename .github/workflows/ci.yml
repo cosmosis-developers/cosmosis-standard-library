@@ -160,6 +160,9 @@ jobs:
         python-version: ["3.13"]
         numpy-version: ["2.3", "2.5"]
         camb-version: ["1.6.5", "2.0"]
+        exclude:
+          - numpy-version: "2.5"
+            camb-version: "1.6.5"
 
     steps:
     - name: Checkout repository
