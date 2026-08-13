@@ -5,7 +5,6 @@ from cosmosis.runtime.handler import activate_segfault_handling
 
 import pytest
 import os
-import re
 import sys
 activate_segfault_handling()
 
@@ -15,14 +14,8 @@ def check_likelihood(test_name, capsys, expected, *other_possible):
     lines = [line for line in captured.out.split("\n") if "Likelihood =" in line]
     print(lines)
     lines = "\n".join(lines)
-
-
     msg = f"Likelihood was expected to be one of {expect} but this was not found. Found these lines: \n{lines}"
     is_okay = any([f"Likelihood =  {val}" in lines for val in (expected, *other_possible)])
-    if not is_okay:
-        with open(f"checks/{test_name}.txt", "w") as _f:
-            _f.write(lines)
-
     assert is_okay, msg
 
 def check_no_camb_warnings(capsys):
