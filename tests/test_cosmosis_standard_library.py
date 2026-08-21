@@ -12,10 +12,13 @@ def check_likelihood(test_name, capsys, expected, *other_possible):
     captured = capsys.readouterr()
     expect = (expected, *other_possible)
     lines = [line for line in captured.out.split("\n") if "Likelihood =" in line]
-    print(lines)
-    lines = "\n".join(lines)
-    msg = f"Likelihood was expected to be one of {expect} but this was not found. Found these lines: \n{lines}"
-    is_okay = any([f"Likelihood =  {val}" in lines for val in (expected, *other_possible)])
+    if len(lines) == 0:
+        raise AssertionError(f"Likelihood was expected to be one of {expect} but no likelihood lines were found in the output - error must have happened")
+    elif len(lines) > 1:
+        raise AssertionError(f"Likelihood was expected to be one of {expect} but multiple likelihood lines were found in the output: {lines}")
+    value = lines[0].lstrip("Likelihood =").strip()
+    msg = f"Likelihood was expected to be one of {expect} but was: {value}"
+    is_okay = any([value == e for e in expect])
     assert is_okay, msg
 
 def check_no_camb_warnings(capsys):
