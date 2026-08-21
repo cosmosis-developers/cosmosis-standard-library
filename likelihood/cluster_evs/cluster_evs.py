@@ -30,17 +30,17 @@ def setup(options):
 def massfunction(m, zz, rbs):
     z = round(zz, 2)
     # This spline can be produce Nan or negative values for fm below if the mf has been saved on a coarse grid. soln is to increase nsteps in massfunction module
-    return (rbs.ev(m, z))
+    return rbs.ev(m, z)
 
 
 def dndmint(logm, zz, rbs):
     m = np.exp(logm)
     integrand = massfunction(m, zz, rbs)
-    return integrand
+    return integrand[0]
 
 
 def dvdm_zint(zz, m, omega_matter, h0, interp_da, rbs):
-    return dVcdz(zz, omega_matter, h0, interp_da) * (1. / m) * massfunction(m, zz, rbs)
+    return (dVcdz(zz, omega_matter, h0, interp_da) * (1. / m) * massfunction(m, zz, rbs))[0]
 
 
 def dvdzdndmint(zz, Mmin, Mmax, omega_matter, h0, interp_da, rbs):
