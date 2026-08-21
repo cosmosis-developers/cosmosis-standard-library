@@ -160,6 +160,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: Download_Data
     strategy:
+      fail-fast: false
       matrix:
         python-version: ["3.13"]
         numpy-version: ["2.3", "2.5"]
