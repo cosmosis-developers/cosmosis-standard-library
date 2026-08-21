@@ -287,7 +287,7 @@ def extract_recombination_params(block, config, more_config):
         wGauss1 = block.get_double('recfast', 'wGauss1', default=default_recomb.wGauss1)
         wGauss2 = block.get_double('recfast', 'wGauss2', default=default_recomb.wGauss2)
         if more_config["camb_version"] == 1:
-            RECFAST_Heswitch = block.get_bool('recfast', 'RECFAST_Heswitch', default=default_recomb.RECFAST_Heswitch)
+            RECFAST_Heswitch = block.get_int('recfast', 'RECFAST_Heswitch', default=default_recomb.RECFAST_Heswitch)
             extra = {"RECFAST_Heswitch": RECFAST_Heswitch}
         else:
             extra = {}

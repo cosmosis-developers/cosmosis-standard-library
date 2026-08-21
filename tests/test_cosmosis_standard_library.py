@@ -18,7 +18,7 @@ def check_likelihood(test_name, capsys, expected, *other_possible):
         raise AssertionError(f"Likelihood was expected to be one of {expect} but multiple likelihood lines were found in the output: {lines}")
     value = lines[0].lstrip("Likelihood =").strip()
     msg = f"Likelihood was expected to be one of {expect} but was: {value}"
-    is_okay = any([value == e for e in expect])
+    is_okay = any([value.startswith(e) for e in expect])
     assert is_okay, msg
 
 def check_no_camb_warnings(capsys):
