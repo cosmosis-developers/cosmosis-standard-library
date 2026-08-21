@@ -36,11 +36,16 @@ def massfunction(m, zz, rbs):
 def dndmint(logm, zz, rbs):
     m = np.exp(logm)
     integrand = massfunction(m, zz, rbs)
+    if integrand.ndim == 0:
+        return integrand
     return integrand[0]
 
 
 def dvdm_zint(zz, m, omega_matter, h0, interp_da, rbs):
-    return (dVcdz(zz, omega_matter, h0, interp_da) * (1. / m) * massfunction(m, zz, rbs))[0]
+    val = (dVcdz(zz, omega_matter, h0, interp_da) * (1. / m) * massfunction(m, zz, rbs))
+    if val.ndim == 0:
+        return val
+    return val[0]
 
 
 def dvdzdndmint(zz, Mmin, Mmax, omega_matter, h0, interp_da, rbs):
