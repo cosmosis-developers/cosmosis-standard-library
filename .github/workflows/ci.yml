@@ -81,6 +81,8 @@ jobs:
             camb-version: "1.6.5"
           - scipy-version: "1.18"
             pyversion: "3.11"
+          - numpy-version: "2.5"
+            pyversion: "3.11"
           - camb-version: "2.0"
             pyversion: "3.11"
     steps:
