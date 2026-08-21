@@ -70,7 +70,15 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, macos-latest]
-        pyversion: ["3.11", "3.12", "3.13"]
+        pyversion: ["3.11", "3.12", "3.13", "3.14"]
+        numpy-version: ["2.4", "2.5"]
+        camb-version: ["1.6.5", "2.0"]
+        scipy-version: ["1.17", "1.18"]
+        exclude:
+          - numpy-version: "2.4"
+            camb-version: "2.0"
+          - scipy-version: "1.17"
+            camb-version: "1.6.5"
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -85,7 +93,7 @@ jobs:
       - name: Install dependencies with conda
         shell: bash -l {0}
         run: |
-          mamba install -c conda-forge "cosmosis>=3.25" cosmosis-build-standard-library pytest "numpy>=2" "scipy=1.17.*" "camb=2.*"
+          mamba install -c conda-forge "cosmosis>=3.25" cosmosis-build-standard-library pytest "numpy=${{ matrix.numpy-version }}" "scipy=${{ matrix.scipy-version }}" "camb=${{ matrix.camb-version }}"
           # replace fastpt version forcibly
           mamba uninstall --force fast-pt
           pip install "git+https://github.com/joezuntz/FAST-PT/"
