@@ -79,6 +79,8 @@ jobs:
             camb-version: "2.0"
           - scipy-version: "1.17"
             camb-version: "1.6.5"
+          - scipy-version: "1.18"
+            pyversion: "3.11"
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
