@@ -70,7 +70,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, macos-latest]
-        pyversion: ["3.10", "3.11", "3.12", "3.13"]
+        pyversion: ["3.11", "3.12", "3.13"]
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -84,7 +84,11 @@ jobs:
 
       - name: Install dependencies with conda
         shell: bash -l {0}
-        run: mamba install -c conda-forge "cosmosis>=3.25" cosmosis-build-standard-library pytest "numpy>=2"
+        run: |
+          mamba install -c conda-forge "cosmosis>=3.25" cosmosis-build-standard-library pytest "numpy>=2" "scipy=1.17.*" "camb=2.*"
+          # replace fastpt version forcibly
+          mamba uninstall --force fast-pt
+          pip install "git+https://github.com/joezuntz/FAST-PT/"
       
       - name: Get Cached Planck
         uses: actions/cache/restore@v3
