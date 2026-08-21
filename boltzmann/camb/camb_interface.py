@@ -184,7 +184,7 @@ def setup(options):
                                                                     #"min_l", "max_l_tensor", "Log_lvalues", , "max_eta_k_tensor"
                                                                      ])
     if old_margin_name in more_config["lmax_params"] and new_margin_name in more_config["lmax_params"]:
-        raise ValueError("You have both the old lens_margin and the new lens_output_margin options set. Please use only lens_output_margin.")
+        raise ValueError("You have both the old lens_margin and the new lens_output_margin options set. Please use only lens_output_margin for camb v2 or lens_margin for camb v1.")
 
     if old_margin_name in more_config["lmax_params"] and camb_version >= 2:
         warnings.warn("The lens_margin option is now called lens_output_margin lens_output_margin in camb v2. Updating name now but please rename.")
