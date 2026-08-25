@@ -503,7 +503,8 @@ class Spectrum(object):
         # Call the exact calculation with linear P(k) spline
         c_ell = exact_integral(ell, K1, K2, lin_z0_logk_spline, lin_growth_spline,
             chimin, chimax, dlogchi, chi_pad_upper=chi_pad_upper,
-            chi_pad_lower=chi_pad_lower)
+            chi_pad_lower=chi_pad_lower,
+            transform_cache=self.source.interpolation_cache)
 
         # Now call Limber integral with P_nl-P_lin
         P_sublin_spline = self.get_power_sublin(block, bin1, bin2)
@@ -665,12 +666,14 @@ class LingalLingalSpectrum(Spectrum):
             chimin, chimax, dlogchi, do_rsd=True, b1_1=self.lin_bias_values_a[bin1],
             b1_2=self.lin_bias_values_b[bin2], f_interp=f_of_chi_spline,
             chi_pad_upper=chi_pad_upper, chi_pad_lower=chi_pad_lower,
+                transform_cache=self.source.interpolation_cache,
                 )
         else:
             c_ell = exact_integral(ell, K1, K2, lin_z0_logk_spline, lin_growth_spline,
                  chimin, chimax, dlogchi, do_rsd=False, b1_1=self.lin_bias_values_a[bin1],
                  b1_2=self.lin_bias_values_b[bin2], chi_pad_upper=chi_pad_upper,
-                chi_pad_lower=chi_pad_lower)
+                chi_pad_lower=chi_pad_lower,
+                transform_cache=self.source.interpolation_cache)
 
         # Limber with P_nl - P_lin
         P_sublin_spline = self.get_power_sublin(block, bin1, bin2)

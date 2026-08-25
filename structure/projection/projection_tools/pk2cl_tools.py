@@ -8,7 +8,7 @@ from scipy.interpolate import interp1d, RectBivariateSpline
 from scipy.integrate import quad
 import sys
 import time
-from .LOG_HT import fft_log
+from .LOG_HT import fft_log, u_m_vals_new
 from .fftlog import Fftlog
 
 inv_sqrt2pi = 1./np.sqrt(2*np.pi)
@@ -17,6 +17,40 @@ def nearest_power_of_2(x):
     return 2**int(np.ceil(np.log2(x)))
     #Find nearest, greater power of 2 to x. 
     # return 1<<(int(x)-1).bit_length()
+
+
+class FFTLogTransform(object):
+    """Reusable parts of the logarithmic Hankel transform.
+
+    ``fft_log`` rebuilds the Fourier-space input and all of its index arrays
+    for every Bessel order.  In an exact projection the same radial function
+    is transformed several times per ell (and for each tomographic pair).
+    This class keeps the order-independent work and only performs the
+    order-dependent multiplier and inverse FFT for each requested transform.
+    """
+
+    def __init__(self, k, f_k):
+        self.N = f_k.size
+        self.delta_L = (np.log(np.max(k)) - np.log(np.min(k))) / float(self.N - 1)
+        self.L = np.log(np.max(k)) - np.log(np.min(k))
+        self.log_k0 = np.log(k[self.N // 2])
+        self.c_m = np.fft.rfft(f_k)
+        self.m = np.fft.rfftfreq(self.N, d=1.) * float(self.N)
+        m_r = np.arange(-self.N // 2, self.N // 2)
+        self.indices = np.fft.fftshift(m_r)
+        self.s_base = (-self.delta_L * m_r)[self.indices]
+
+    def transform(self, mu, kr=None, return_grid=True):
+        if kr is None:
+            kr = mu + 0.5
+        u_m = u_m_vals_new(self.m, mu, 0, kr, self.L)
+        result = np.fft.irfft(self.c_m * u_m)[self.indices]
+        result = result[::-1]
+        if return_grid:
+            log_r0 = np.log(kr) - self.log_k0
+            r = 10**((self.s_base + log_r0) / np.log(10))
+            return r[::-1], result
+        return None, result
 
 def get_dlogchi(dchi, chimax):
     """
@@ -45,7 +79,7 @@ def exact_integral(ells, kernel1_interp, kernel2_interp,
     pk0_interp_logk, growth_interp, chimin, chimax, dlogchi, 
     do_rsd=False, b1_1=None, b1_2=None, f_interp=None, 
     chi_pad_upper=2., chi_pad_lower=2., 
-    verbose=False ):
+    verbose=False, transform_cache=None ):
     """
     Do the exact P(k,chi)->C_l projection integral
     The full integral is 
@@ -161,54 +195,83 @@ def exact_integral(ells, kernel1_interp, kernel2_interp,
                 print("do_rsd_2 is true, but b1_2=None")
                 raise(e)
 
+    def get_fftlog(kernel, weights, cache_name):
+        if transform_cache is None:
+            return FFTLogTransform(chi_vals, weights)
+        key = ("exact_fftlog", cache_name, id(kernel), id(growth_interp),
+               id(f_interp), float(chimin), float(chimax), float(dlogchi),
+               float(chi_pad_lower), float(chi_pad_upper))
+        fftlog = transform_cache.get(key)
+        if fftlog is None:
+            fftlog = FFTLogTransform(chi_vals, weights)
+            transform_cache[key] = fftlog
+        return fftlog
+
+    def get_transform(fftlog, ell_order, kr=None, return_grid=True):
+        if transform_cache is None:
+            return fftlog.transform(ell_order, kr=kr, return_grid=return_grid)
+        key = ("exact_transform", id(fftlog), float(ell_order),
+               None if kr is None else float(kr), return_grid)
+        result = transform_cache.get(key)
+        if result is None:
+            result = fftlog.transform(ell_order, kr=kr, return_grid=return_grid)
+            transform_cache[key] = result
+        return result
+
     cell = np.zeros_like(ells)
 
+    fftlog_1 = get_fftlog(kernel1_interp, w1_vals, "normal")
+    if do_rsd_1:
+        fftlog_rsd_1 = get_fftlog(kernel1_interp, w1_rsd_vals, "rsd")
+    if not auto:
+        fftlog_2 = get_fftlog(kernel2_interp, w2_vals, "normal")
+        if do_rsd_2:
+            fftlog_rsd_2 = get_fftlog(kernel2_interp, w2_rsd_vals, "rsd")
+
     for i_ell, ell in enumerate(ells):
-        k_vals, F_1 = fft_log(chi_vals, w1_vals, 0, ell+0.5)
+        k_vals, F_1 = get_transform(fftlog_1, ell+0.5)
 
         #multiply this term by bias 
         if b1_1 is not None:
-            F_1 *= b1_1
+            F_1 = F_1 * b1_1
 
         #Now rsd part.
         if do_rsd_1:
-            k_vals_check, F_1_0 = fft_log(chi_vals, 
-                w1_rsd_vals, 0, ell+0.5)
+            _, F_1_0 = get_transform(fftlog_rsd_1, ell+0.5,
+                return_grid=False)
             if ell>1:
-                k_vals_check, F_1_m2 = fft_log(chi_vals, 
-                    w1_rsd_vals, 0, ell-1.5, kr=ell+1)
+                _, F_1_m2 = get_transform(fftlog_rsd_1,
+                    ell-1.5, kr=ell+1, return_grid=False)
             else:
                 F_1_m2 = 0.
-            assert np.allclose(k_vals_check, k_vals)
-            k_vals_check, F_1_p2 = fft_log(chi_vals, 
-                w1_rsd_vals, 0, ell+2.5, kr=ell+1)
-            assert np.allclose(k_vals_check, k_vals)
+            _, F_1_p2 = get_transform(fftlog_rsd_1,
+                ell+2.5, kr=ell+1, return_grid=False)
             F_1_rsd = L_0s[i_ell]*F_1_0 + L_m2s[i_ell]*F_1_m2 + L_p2s[i_ell]*F_1_p2
-            F_1 += F_1_rsd
+            F_1 = F_1 + F_1_rsd
 
         if auto:
             F_2 = F_1
         else:
-            _, F_2 = fft_log(chi_vals, w2_vals, 0, ell+0.5)
+            _, F_2 = get_transform(fftlog_2, ell+0.5)
 
             #multiply normal term by bias
             if b1_2 is not None:
-                F_2 *= b1_2
+                F_2 = F_2 * b1_2
             
             if do_rsd_2:
                 #Now rsd part
-                k_vals_check, F_2_0 = fft_log(chi_vals, 
-                    w2_rsd_vals, 0, ell+0.5)
+                _, F_2_0 = get_transform(fftlog_rsd_2,
+                    ell+0.5, return_grid=False)
                 if ell>1:
-                    k_vals_check, F_2_m2 = fft_log(chi_vals, 
-                        w2_rsd_vals, 0, ell-1.5, kr=ell+1)
+                    _, F_2_m2 = get_transform(fftlog_rsd_2,
+                        ell-1.5, kr=ell+1, return_grid=False)
                 else:
                     F_2_m2 = 0.
-                k_vals_check, F_2_p2 = fft_log(chi_vals, 
-                    w2_rsd_vals, 0, ell+2.5, kr=ell+1)
+                _, F_2_p2 = get_transform(fftlog_rsd_2,
+                    ell+2.5, kr=ell+1, return_grid=False)
                 F_2_rsd = (L_0s[i_ell]*F_2_0 + L_m2s[i_ell]*F_2_m2 
                     + L_p2s[i_ell]*F_2_p2)
-                F_2 += F_2_rsd
+                F_2 = F_2 + F_2_rsd
 
         logk_vals = np.log(k_vals)
         pk_vals = pk0_interp_logk(logk_vals)
@@ -442,38 +505,49 @@ def limber_integral(ells, kernel1, kernel2, pk_interp_logk, chimin, chimax, dchi
     c_ells, c_ell_errs = np.zeros_like(ells), np.nan * np.ones_like(ells)
 
     #Get chi values and evaluate kernels
-    chi_vals = np.arange(chimin, chimax+dchi, dchi)
-    kernel1_vals = kernel1(chi_vals)
-    kernel2_vals = kernel2(chi_vals)
-    k1k2 = kernel1_vals * kernel2_vals
+    if interpolation_cache is None:
+        chi_vals = np.arange(chimin, chimax+dchi, dchi)
+        k1k2 = kernel1(chi_vals) * kernel2(chi_vals)
+    else:
+        grid_key = ("chi_grid", float(chimin), float(chimax), float(dchi))
+        chi_vals = interpolation_cache.get(grid_key)
+        if chi_vals is None:
+            chi_vals = np.arange(chimin, chimax+dchi, dchi)
+            interpolation_cache[grid_key] = chi_vals
+
+        kernel_key = ("kernel_product", float(chimin), float(chimax),
+                      float(dchi), id(kernel1), id(kernel2))
+        k1k2 = interpolation_cache.get(kernel_key)
+        if k1k2 is None:
+            k1k2 = kernel1(chi_vals) * kernel2(chi_vals)
+            interpolation_cache[kernel_key] = k1k2
 
 
     #Go ahead and do integral
     if method == "trapz":
         #Trapz method uses the trapezium rule to do all
         #ell simulatenously
-        K_VALS = (ells[:, np.newaxis]+0.5) / chi_vals
-        CHI_VALS = (chi_vals[:, np.newaxis]).T * np.ones((ells.shape[0], chi_vals.shape[0]))
-        K1K2 = (k1k2[:, np.newaxis]).T * np.ones_like(CHI_VALS)
-
         # This bit takes up the majority of the time in the project_2d module.
         # It's a call to rectbivariatespline, so we cache it where possible.
         # Only some combinations of spectra actually re-use the same everything
         # here, so its time saving will vary depending what you're doing.
         if interpolation_cache is None:
+            K_VALS = (ells[:, np.newaxis]+0.5) / chi_vals
+            CHI_VALS = np.broadcast_to(chi_vals, K_VALS.shape)
             PK_VALS = pk_interp_logk(CHI_VALS, np.log(K_VALS), grid=False)
         else:
             key = (float(chimin), float(chimax), float(dchi), hash(ells.tobytes()), id(pk_interp_logk))
             PK_VALS = interpolation_cache.get(key)
             if PK_VALS is None:
+                K_VALS = (ells[:, np.newaxis]+0.5) / chi_vals
+                CHI_VALS = np.broadcast_to(chi_vals, K_VALS.shape)
                 PK_VALS = pk_interp_logk(CHI_VALS, np.log(K_VALS), grid=False)
                 interpolation_cache[key] = PK_VALS
 
 
         #compute integral via trapezium rule
-        integrands = K1K2 * PK_VALS / CHI_VALS / CHI_VALS
-        DCHI = CHI_VALS[:,1:] - CHI_VALS[:,:-1]
-        integrands = DCHI * 0.5 * (integrands[:,1:] + integrands[:,:-1])
+        integrands = k1k2 * PK_VALS / chi_vals**2
+        integrands = np.diff(chi_vals) * 0.5 * (integrands[:,1:] + integrands[:,:-1])
         c_ells = np.sum(integrands, axis=1)
         c_ell_errs = np.nan * np.ones_like(c_ells)
 
