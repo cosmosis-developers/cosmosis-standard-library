@@ -4,7 +4,7 @@ try:
     import candl_data
 except ImportError:
     raise RuntimeError(
-        'Cannot import candl. Try running: pip install "candl-like=2.*" '
+        'Cannot import candl. Try running: pip install "candl-like==2.*" '
         "git+https://github.com/Lbalkenhol/candl_data.git"
     )
 
