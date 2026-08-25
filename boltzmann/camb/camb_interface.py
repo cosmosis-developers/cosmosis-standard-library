@@ -119,7 +119,7 @@ def cosmopower_k():
     k = np.concatenate([np.geomspace(start, stop, num=num, endpoint=False) for start, stop, num in ranges])
     return k
 
-def get_camb_version():
+def get_camb_version(options):
     try:
         camb_version = int(camb.__version__.split(".")[0])
     except:
@@ -173,7 +173,7 @@ def setup(options):
     more_config['n_logz'] = options.get_int(opt, 'n_logz', default=0)
     more_config['zmax_logz'] = options.get_double(opt, 'zmax_logz', default = 1100.)
 
-    camb_version = get_camb_version()
+    camb_version = get_camb_version(options)
     more_config["camb_version"] = camb_version
 
     old_margin_name = "lens_margin"
