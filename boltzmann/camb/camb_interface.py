@@ -190,6 +190,11 @@ def setup(options):
         warnings.warn("The lens_margin option is now called lens_output_margin lens_output_margin in camb v2. Updating name now but please rename.")
         more_config["lmax_params"][new_margin_name] = more_config["lmax_params"].pop(old_margin_name)
 
+    if new_margin_name in more_config["lmax_params"] and camb_version < 2:
+        warnings.warn(f"You are using the parameter name {new_margin_name} which is designed for camb v2, but you have camb v1. Replacing with {old_margin_name}")
+        more_config["lmax_params"][old_margin_name] = more_config["lmax_params"].pop(new_margin_name)
+
+
     # lmax is required
     more_config["lmax_params"]["lmax"] = options.get_int(opt, "lmax", default=2600)                                                  
     

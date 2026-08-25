@@ -44,7 +44,8 @@ def _spk_or_raise():
         ) from import_error
 
     # check that version is new enough
-    if pyspk_module.__version__ < "2.0.1":
+    version = pyspk_module.__version__.split('.')
+    if version[0] == "1" or version == (2, 0, 0):
         raise ImportError(
             "[SPK] pyspk version must be >= 2.0.1, "
             f"found {pyspk_module.__version__}. "
