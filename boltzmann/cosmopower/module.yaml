@@ -1,6 +1,6 @@
 name: cosmopower
 version: 1.0
-category: Emulators
+category: Structure
 purpose: Interface to cosmopower emulators for fast cosmological calculations, a drop-in replacement for camb.
 url: https://github.com/alessiospuriomancini/cosmopower
 interface: cosmopower_interface.py
