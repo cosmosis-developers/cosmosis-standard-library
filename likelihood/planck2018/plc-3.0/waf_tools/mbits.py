@@ -25,7 +25,7 @@ def configure(ctx):
     if ctx.options.m32:    
       mopt += ["-arch", "i386"]    
   else:
-    mopt = ["-m64"]
+    mopt = ["-march=native"]
     if ctx.options.m32:
       mopt = ["-m32"]
       

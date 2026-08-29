@@ -170,8 +170,8 @@ def gfortran_conf(ctx):
       ctx.env.append_value('FCFLAGS','-m32')
       mopt = ["-m32"]
     else:
-      ctx.env.append_value('FCFLAGS','-m64')
-      mopt = ["-m64"]
+      ctx.env.append_value('FCFLAGS','-march=native')
+      mopt = ["-march=native"]
   else:
     ctx.env.append_value('FCFLAGS',ctx.env.mopt)
   ctx.start_msg("Check gfortran version") 
