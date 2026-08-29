@@ -21,12 +21,9 @@ explanation: |
     in a wide cosmological parameter space, including dynamical dark energy and massive neutrinos. 
     These emulators were developed as part of the Bacco project.
     
-    We imported the Bacco Emulator code into this directory because the PyPI version of the code is not recent,
-    and it has some dependencies that we would like to install from conda-forge rather than PyPI (tensorflow).
-    We have to make one change to it to make it work on python 3.8 and 3.9 - replacing the progressbar2
-    library with TQDM. A patch file with this change is included.
-    
     The license for this package says copyright belongs to the python packaging authority, but that seems unlikely.
+
+    See https://baccoemu.readthedocs.io for the full Baccoemu documentation.
 
 # List of parameters that can go in the params.ini file in the section for this module    
 params:
@@ -34,7 +31,19 @@ params:
         meaning:
             What to emulate; the NL DM-only power, the baryonic boost, or both. Choose from 'nonlinear', 'baryons', 'nonlinear+baryons'. If 'baryons' is chosen then the NL power is read from the block (e.g. from camb). Otherwise the NL power is emulated.
         type: str
-        default: pk_nl_only
+        default: nonlinear
+    nonlinear_model:
+        meaning: Which model to use for the nonlinear matter power spectrum. Options are 'Angulo2021' or 'Arico2023'
+        type: str
+        default: Arico2023
+    baryon_model:
+        meaning: Which model to use for the baryonic boost. Options are 'Arico2021' or 'Burger2025'
+        type: str
+        default: Arico2021
+    extrapolate_bcm_cosmo_parameters:
+        meaning: Extrapolate cosmology parameters when computing baryonic boost (keeps baryon fraction constant)
+        type: bool
+        default: False
 
 #Inputs for a given choice of a parameter, from the values.ini or from other modules
 #If no such choices, just do one of these omitting mode=something part:
