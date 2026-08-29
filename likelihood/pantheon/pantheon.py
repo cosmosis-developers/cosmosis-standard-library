@@ -28,6 +28,13 @@ class PantheonLikelihood(GaussianLikelihood):
     y_name = "mu"
     like_name = "pantheon"
 
+    def __init__(self, options):
+        super().__init__(options)
+        self.marginalize_m = self.options.get_bool("marginalize_m", default=False)
+
+        if self.marginalize_m:
+            self.marginalize_c_term = self.inv_cov.sum()
+            self.marginalize_const_term = 0.5 * np.log(2 * np.pi / self.marginalize_c_term)
 
     def build_data(self):
         """
@@ -112,9 +119,55 @@ class PantheonLikelihood(GaussianLikelihood):
         # Actually do the interpolation at the data redshifts
         theory = np.atleast_1d(f(self.data_x))
 
-        # Add the absolute supernova magnitude and return
-        M = block[names.supernova_params, "M"]
-        return theory + M
+
+        if self.marginalize_m:
+            # This is a bit of a hack to avoid having to modify the 
+            # gaussian likelihood in cosmosis to support the marginalization
+            # In likelihood_only=T mode the theory vector is currently
+            # stored anywhere, but we need it for the marginalization
+            # below.
+            self.marge_theory_tmp = theory
+        else:
+            # Add the absolute supernova magnitude and return
+            theory += block[names.supernova_params, "M"]
+
+        return theory
+
+    def do_likelihood(self, block):
+        # Run the basic Gaussian likelihood
+        super().do_likelihood(block)
+
+        if not self.marginalize_m:
+            return
+
+        # Now apply the marginalization correction
+        # log(P) -> log(P) - B^2 / C + D
+        # where
+        # B = I @ C^{-1} @ (d - mu)
+        # C = I @ C^{-1} @ I
+        # D = (1/2) log(2 pi / C)
+        # where I is a vector of 1s
+
+        B = (self.inv_cov @ (self.marge_theory_tmp - self.data_y)).sum()
+        C = self.marginalize_c_term
+        D = self.marginalize_const_term
+
+        M_best_fit = - B / C
+        change = -B ** 2 / C - 2 * D
+
+        block[names.data_vector, self.like_name+"_CHI2"] += change
+        block[names.likelihoods, self.like_name+"_LIKE"] += -0.5 * change
+        block[names.supernova_params, "M"] = M_best_fit
+
+        if self.likelihood_only:
+            return
+
+        # If we are also saving some additional data we modify that too
+        block[names.data_vector, self.like_name + "_theory"] += M_best_fit
+        if self.cov is not None:
+            block[names.data_vector, self.like_name + "_simulation"] -= M_best_fit
+
+
 
 
 # This takes our class and turns it into 
