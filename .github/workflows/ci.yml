@@ -72,18 +72,18 @@ jobs:
         os: [ubuntu-latest, macos-latest]
         pyversion: ["3.11", "3.12", "3.13", "3.14"]
         numpy-version: ["2.4", "2.5"]
-        camb-version: ["1.6.5", "2.0"]
+        camb-version: ["1.6.5", "2.0.1"]
         scipy-version: ["1.17", "1.18"]
         exclude:
           - numpy-version: "2.4"
-            camb-version: "2.0"
+            camb-version: "2.0.1"
           - scipy-version: "1.18"
             camb-version: "1.6.5"
           - scipy-version: "1.18"
             pyversion: "3.11"
           - numpy-version: "2.5"
             pyversion: "3.11"
-          - camb-version: "2.0"
+          - camb-version: "2.0.1"
             pyversion: "3.11"
     steps:
       - name: Checkout repository
@@ -121,7 +121,7 @@ jobs:
         # We want to test the installation and build process on all the environment
         # combinations, but the actual numerical tests are quite slow, especially on MacOS,
         # so we only run the rest of the process on ubuntu, except for one combination
-        if: (matrix.os == 'ubuntu-latest') || (matrix.pyversion == '3.13' && matrix.numpy-version == '2.5' && matrix.camb-version == '2.0' && matrix.scipy-version == '1.18')
+        if: (matrix.os == 'ubuntu-latest') || (matrix.pyversion == '3.13' && matrix.numpy-version == '2.5' && matrix.camb-version == '2.0.1' && matrix.scipy-version == '1.18')
         uses: actions/cache/restore@v3
         with:
           path: COM_Likelihood_Data-baseline_R3.00.tar.gz
@@ -129,7 +129,7 @@ jobs:
           fail-on-cache-miss: true
 
       - name: Get Cached WMAP
-        if: (matrix.os == 'ubuntu-latest') || (matrix.pyversion == '3.13' && matrix.numpy-version == '2.5' && matrix.camb-version == '2.0' && matrix.scipy-version == '1.18')
+        if: (matrix.os == 'ubuntu-latest') || (matrix.pyversion == '3.13' && matrix.numpy-version == '2.5' && matrix.camb-version == '2.0.1' && matrix.scipy-version == '1.18')
         uses: actions/cache/restore@v3
         with:
           path: wmap_likelihood_full_v5.tar.gz
@@ -137,7 +137,7 @@ jobs:
           fail-on-cache-miss: true
 
       - name: Get Cached ACT
-        if: (matrix.os == 'ubuntu-latest') || (matrix.pyversion == '3.13' && matrix.numpy-version == '2.5' && matrix.camb-version == '2.0' && matrix.scipy-version == '1.18')
+        if: (matrix.os == 'ubuntu-latest') || (matrix.pyversion == '3.13' && matrix.numpy-version == '2.5' && matrix.camb-version == '2.0.1' && matrix.scipy-version == '1.18')
         uses: actions/cache/restore@v3
         with:
           path: ACT_dr6_likelihood_v1.1.tgz
@@ -145,7 +145,7 @@ jobs:
           fail-on-cache-miss: true
 
       - name: Extract data
-        if: (matrix.os == 'ubuntu-latest') || (matrix.pyversion == '3.13' && matrix.numpy-version == '2.5' && matrix.camb-version == '2.0' && matrix.scipy-version == '1.18')
+        if: (matrix.os == 'ubuntu-latest') || (matrix.pyversion == '3.13' && matrix.numpy-version == '2.5' && matrix.camb-version == '2.0.1' && matrix.scipy-version == '1.18')
         shell: bash -l {0}
         run: |
           # WMAP
@@ -164,14 +164,14 @@ jobs:
           popd
 
       - name: Run Tests
-        if: (matrix.os == 'ubuntu-latest') || (matrix.pyversion == '3.13' && matrix.numpy-version == '2.5' && matrix.camb-version == '2.0' && matrix.scipy-version == '1.18')
+        if: (matrix.os == 'ubuntu-latest') || (matrix.pyversion == '3.13' && matrix.numpy-version == '2.5' && matrix.camb-version == '2.0.1' && matrix.scipy-version == '1.18')
         shell: bash -l {0}
         run: |
           source cosmosis-configure
           pytest -vv --durations=0 tests/test_cosmosis_standard_library.py
 
       - name: Run Demos
-        if: (matrix.os == 'ubuntu-latest') || (matrix.pyversion == '3.13' && matrix.numpy-version == '2.5' && matrix.camb-version == '2.0' && matrix.scipy-version == '1.18')
+        if: (matrix.os == 'ubuntu-latest') || (matrix.pyversion == '3.13' && matrix.numpy-version == '2.5' && matrix.camb-version == '2.0.1' && matrix.scipy-version == '1.18')
         shell: bash -l {0}
         run: |
           source cosmosis-configure
@@ -187,7 +187,7 @@ jobs:
       matrix:
         python-version: ["3.13"]
         numpy-version: ["2.3", "2.5"]
-        camb-version: ["1.6.5", "2.0"]
+        camb-version: ["1.6.5", "2.0.1"]
         exclude:
           - numpy-version: "2.5"
             camb-version: "1.6.5"
