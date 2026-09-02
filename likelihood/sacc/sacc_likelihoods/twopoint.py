@@ -90,7 +90,6 @@ def extract_spectrum_prediction(sacc_data, block, data_type, section, **kwargs):
                 try:
                     theta_nominal_unit = d['theta_unit']
                 except KeyError:
-                    print("Theta unit not found in the data file, I will assume it is in arcmin.")
                     theta_nominal_unit = 'arcmin'
                 # Make sure that the theta units match, if not, convert.
                 # Code adapted from twopoint in 2pt likelihood.
