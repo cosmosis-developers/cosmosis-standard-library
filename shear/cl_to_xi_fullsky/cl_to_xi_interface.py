@@ -342,6 +342,7 @@ def execute(block, config):
         block[o, "sample_a"] = block[cl_section, "sample_a"]
         block[o, "sample_b"] = block[cl_section, "sample_b"]
         block[o, "is_auto"] = block[cl_section, "is_auto"]
+        block[o, "auto_only"] = block[cl_section, "auto_only"]
         block[o, "cl_section"] = cl_section
         block[o, "theta"] = thetas
         block.put_metadata(o, "theta", "unit", "radians")
