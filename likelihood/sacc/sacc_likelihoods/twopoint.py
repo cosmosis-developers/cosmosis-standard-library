@@ -1,4 +1,5 @@
 import numpy as np
+import math
 from cosmosis.datablock import BlockError
 import pathlib
 import sys
@@ -17,6 +18,8 @@ def extract_spectrum_prediction(sacc_data, block, data_type, section, **kwargs):
         x_theory = block[section, "ell"]
     elif category == "real":
         x_theory = block[section, "theta"]
+        theta_theory_unit = block.get_metadata(section, "theta", "unit")
+    
     #TO-DO: Decide on final nomenclature for cosebis and psi-stats!
     # Given current cosebis module in standard library, the x_nominal should be simply n
     elif category == "cosebis":
@@ -79,15 +82,46 @@ def extract_spectrum_prediction(sacc_data, block, data_type, section, **kwargs):
         for d in sacc_data.get_data_points(data_type, (b1, b2)):
             if category == "spectrum":
                 x_nominal = d['ell']
+                x_name = "ell"
             elif category == "real":
                 x_nominal = d['theta']
+                x_name = "theta"
+                # Check if the sacc file has the theta unit stored, if not, assume it is in arcmin.
+                try:
+                    theta_nominal_unit = d['theta_unit']
+                except KeyError:
+                    theta_nominal_unit = 'arcmin'
+                # Make sure that the theta units match, if not, convert.
+                # Code adapted from twopoint in 2pt likelihood.
+                if theta_nominal_unit != theta_theory_unit:
+                    warnings.warn(f"theta_nominal_unit ({theta_nominal_unit}) differs from "
+                                  f"theta_theory_unit ({theta_theory_unit}); converting.")
+                    old_theta_unit = ANGULAR_UNITS[theta_nominal_unit]
+                    new_theta_unit = ANGULAR_UNITS[theta_theory_unit]
+                    x_nominal = (x_nominal * old_theta_unit).to(new_theta_unit).value
+                    theta_nominal_unit = theta_theory_unit
             #TO-DO: Decide on final nomenclature for cosebis and psi-stats!
             # Given current cosebis module in standard library, the x_nominal should be simply n
             elif category == "cosebis":
                 x_nominal = d['n']
+                x_name = "n"
 
             if window is None:
-                binned_theory = theory_spline(x_nominal)
+                tol = 1e-6
+                # Added a tolerance test because the likelihood was failing due to floating error.
+                if math.isclose(x_nominal, x_theory[0], abs_tol=tol):
+                    x_nominal_checked = x_theory[0]
+                elif math.isclose(x_nominal, x_theory[-1], abs_tol=tol):
+                    x_nominal_checked = x_theory[-1]
+                elif x_nominal < x_theory[0] or x_nominal > x_theory[-1]:
+                    raise ValueError(
+                        f"{x_name} = {x_nominal} is outside the theory range "
+                        f"[{x_theory[0]}, {x_theory[-1]}] for data_set = {data_type}, "
+                        f"bins = ({b1},{b2}) by more than tolerance {tol}. ")
+                else:
+                    x_nominal_checked = x_nominal
+
+                binned_theory = theory_spline(x_nominal_checked)
             else:
                 index = d['window_ind']
                 weight = window.weight[:, index]

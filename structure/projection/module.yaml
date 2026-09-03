@@ -113,25 +113,25 @@ params:
     verbose:
         meaning: Print more output.
         type: bool
-        default: false
+        default: False
     fatal_errors:
         meaning: Raise an error instead of returning non-zero on error loading splines. Handy for debugging.
         type: bool
-        default: false
+        default: False
     save_kernels:
-        meaning: Save the kernels n(chi) and w(chi) to the block
+        meaning: Save the kernels n(chi) and w(chi) to the block.
         type: bool
-        default: false
+        default: False
     do_exact:
-        meaning: Spectra for which to do exact (non-limber) calculation at low ell (space-separated)
+        meaning: Spectra for which to do exact (non-limber) calculation at low ell (space-separated).
         type: str
         default: ""
     auto_only:
-        meaning: Spectra for which to only compute auto-correlations, not inter-bin correlations (space-separated)
+        meaning: Spectra for which to only compute auto-correlations, not inter-bin correlations (space-separated).
         type: str
         default: ""
     clip_chi_kernels:
-        meaning: Fraction of the integration kernel peaks below which to set the kernel to zero
+        meaning: Fraction of the integration kernel peaks below which to set the kernel to zero.
         type: float
         default: 1.0e-6
     sig_over_dchi:
@@ -139,59 +139,59 @@ params:
         type: float
         default: 50.0
     shear_kernel_dchi:
-        meaning: Sample spacing for shear kernels
+        meaning: Sample spacing for shear kernels.
         type: float
         default: 5.0
     limber_ell_start:
-        meaning: For spectra listed in do_exact, the minimum ell to switch to Limber
+        meaning: For spectra listed in do_exact, the minimum ell to switch to Limber.
         type: int
         default: 300
     ell_min_logspaced:
-        meaning: Minimum ell value for log-spaced values (usually higher than linear)
+        meaning: Minimum ell value for log-spaced values (usually higher than linear).
         type: real
         default: -1
     ell_max_logspaced:
-        meaning: Maximum ell value for log-spaced values (usually higher than linear)
+        meaning: Maximum ell value for log-spaced values (usually higher than linear).
         type: real
         default: -1
     n_ell_logspaced:
-        meaning: Number of log-spaced C_ell values produced
+        meaning: Number of log-spaced C_ell values produced.
         type: real
         default: -1
     ell_min_linspaced:
-        meaning: Minimum ell value for linearly-spaced values (usually lower than log-spaced)
+        meaning: Minimum ell value for linearly-spaced values (usually lower than log-spaced).
         type: real
         default: -1
     ell_max_linspaced:
-        meaning: Maximum ell value for linearly-spaced values (usually higher than log-spaced)
+        meaning: Maximum ell value for linearly-spaced values (usually higher than log-spaced).
         type: real
         default: -1
     n_ell_linspaced:
-        meaning: Number of linearly-spaced C_ell values produced
+        meaning: Number of linearly-spaced C_ell values produced.
         type: real
         default:
     dlogchi:
-        meaning: spacing in log-chi for exact non-limber calculation (or -1 to auto-set)
+        meaning: spacing in log-chi for exact non-limber calculation (or -1 to auto-set).
         type: int
         default: -1
     chi_pad_upper:
-        meaning: Upper padding fraction in chi for non-limber calculation
+        meaning: Upper padding fraction in chi for non-limber calculation.
         type: float
         default: 2.0
     chi_pad_upper:
-        meaning: Lower padding fraction in chi for non-limber calculation
+        meaning: Lower padding fraction in chi for non-limber calculation.
         type: float
         default: 2.0
     shear-shear:
-        meaning: See note in the explanation above for this and related parameters
+        meaning: See note in the explanation above for this and related parameters.
         type: str or bool
         default:
     limber_abs_tol:
-        meaning: Absolute tolerance for the Limber integral
+        meaning: Absolute tolerance for the Limber integral.
         type: real
         default: 0.0
     limber_rel_tol:
-        meaning: Relative tolerance for the Limber integral
+        meaning: Relative tolerance for the Limber integral.
         type: real
         default: 0.001
     lin_bias_prefix:
@@ -199,7 +199,7 @@ params:
         type: str
         default: b
     do_rsd:
-        meaning: Whether to compute RSD in non-limber calculations
+        meaning: Whether to compute RSD in non-limber calculations.
         type: bool
         default: False
     fz_from_block:
@@ -214,11 +214,11 @@ inputs:
             type: real 1d
             default:
         z:
-            meaning: Redshift of nonlinear spectrum samples
+            meaning: Redshift of nonlinear spectrum samples.
             type: real 1d
             default:
         P_k:
-            meaning: Nonlinear spectrum in (Mpc/h)^{-3}
+            meaning: Nonlinear spectrum in (Mpc/h)^{-3}.
             type: real 2d
             default:
     distances:
@@ -227,7 +227,7 @@ inputs:
             type: real 1d
             default:
         a:
-            meaning: Scale factor samples of d_m
+            meaning: Scale factor samples of d_m.
             type: real 1d
             default:
         d_m:
@@ -236,7 +236,7 @@ inputs:
             default:
     cosmological_parameters:
         h0:
-            meaning: The Hubble parameter H0/100 km/s/Mpc
+            meaning: The Hubble parameter H0/100 km/s/Mpc.
             type: real
             default:
         chi_star:
@@ -246,11 +246,11 @@ inputs:
     wl_number_density:
         z:
             meaning: Redshift samples of binned n(z). A different section name to wl_number_density will be used depending
-                on the options chosen (see above)
+                on the options chosen (see above).
             type: real 1d
             default:
         nbin:
-            meaning: Number of tomographic bins used
+            meaning: Number of tomographic bins used.
             type: int
             default:
         bin_{i}:
@@ -280,17 +280,17 @@ outputs:
     shear_cl:
         nbin_a:
             meaning: Number of tomographic bins for first of the two quantities correlated.
-                Various sections will have these outputs depending on the options chosen
+                Various sections will have these outputs depending on the options chosen.
             type: int
         nbin_b:
-            meaning: Number of tomographic bins for second of the two quantities correlated
+            meaning: Number of tomographic bins for second of the two quantities correlated.
             type: int
         nbin:
             meaning: Only if auto-correlation is calculated. Number of tomographic
-                bins for the quantity (nbin=nbin_a=nbin_b)
+                bins for the quantity (nbin=nbin_a=nbin_b).
             type: int
         ell:
-            meaning: Values at which c_ell are calculated
+            meaning: Values at which c_ell are calculated.
             type: int 1d
         bin_{i}_{j}:
             meaning: S for relevant i and j combinations. C_ell calculated at corresponding
@@ -298,9 +298,16 @@ outputs:
             type: real 1d
         chi_peak_{i}_{j}:
             meaning: Only if get_kernel_peaks=T. Peak of the n(z) or w(z) for this
-                bin combination
+                bin combination.
             type: real
         arcmin_per_Mpch_{i}_{j}:
             meaning: Only if get_kernel_peaks=T. Conversion factor from mpc/h to arcmin
-                for this bin
+                for this bin.
             type: real
+    auto_only:
+        meaning: Spectra for which to only compute auto-correlations, not inter-bin correlations (space-separated).
+        type: str
+    is_auto:
+        meaning: Whether an auto-correlation (e.g. shear-shear, position-position, but not shear position)
+                and the two n(z) samples are the same, or a cross-correlation.
+        type: str

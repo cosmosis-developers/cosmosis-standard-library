@@ -116,6 +116,10 @@ inputs:
             meaning: Whether this is an autocorrelation (True) or cross-correlation (False)
             type: bool
             default:
+        auto_only:
+            meaning: Whether this is an auto-correlation (True) or inter-bin correlation (False).
+            type: bool
+            default:
     shear_cl_bb:
         ell:
             meaning: Angular multipole values for B-modes (if xi_type='EB')
@@ -170,6 +174,9 @@ outputs:
         is_auto:
             meaning: Whether this is an autocorrelation (True) or cross-correlation (False)
             type: bool
+        auto_only:
+            meaning: Whether this is an auto-correlation (True) or inter-bin correlation (False).
+            type: bool
         cl_section:
             meaning: Name of input section that C_ell values were read from
             type: str
@@ -209,6 +216,9 @@ outputs:
             type: str
         is_auto:
             meaning: Whether this is an autocorrelation (True) or cross-correlation (False)
+            type: bool
+        auto_only:
+            meaning: Whether this is an auto-correlation (True) or inter-bin correlation (False).
             type: bool
         cl_section:
             meaning: Name of input section that C_ell values were read from
