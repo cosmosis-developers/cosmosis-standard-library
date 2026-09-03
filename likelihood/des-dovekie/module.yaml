@@ -7,17 +7,33 @@ attribution: ["DES Collaboration"]
 rules: "Please cite DES Collaboration (2024)."
 cite: 
     - "https://arxiv.org/abs/2401.02929"
+assumptions:
+    - "Analytically marginalized over absolute magnitude (M) and H0."
 
 params:
-    data_file: "String. Path to the CSV data vector (default: DES-Dovekie_HD_clean.csv)."
-    covmat_file: "String. Path to the inverse covariance matrix (default: STAT+SYS.npz)."
+    data_file:
+        meaning: "Path to the CSV data vector."
+        type: "str"
+        default: "DES-Dovekie_HD_clean.csv"
+    covmat_file:
+        meaning: "Path to the inverse covariance matrix."
+        type: "str"
+        default: "STAT+SYS.npz"
 
 inputs:
     distances:
-        z: "Real 1D array. Redshift array."
-        d_l: "Real 1D array. Luminosity distance in Mpc."
-        mu: "Real 1D array. Distance modulus (optional, calculated if not provided)."
+        z:
+            meaning: "Redshift array."
+            type: "real 1d"
+        d_l:
+            meaning: "Luminosity distance in Mpc."
+            type: "real 1d"
+        mu:
+            meaning: "Distance modulus (optional, calculated if not provided)."
+            type: "real 1d"
 
 outputs:
     likelihoods:
-        des_dovekie_like: "Real. The computed log-likelihood."
+        des_dovekie_like:
+            meaning: "The computed log-likelihood."
+            type: "real"

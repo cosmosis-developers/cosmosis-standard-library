@@ -11,8 +11,8 @@ import numpy as np
 from astropy.table import Table
 
 
-default_data_file = os.path.join(os.path.split(__file__)[0], "DES-SN5YR_HD.csv")
-default_covmat_file = os.path.join(os.path.split(__file__)[0], "STAT+SYS.txt.gz")
+default_data_file = os.path.join(os.path.split(__file__)[0], "DES-Dovekie_HD_clean.csv")
+default_covmat_file = os.path.join(os.path.split(__file__)[0], "STAT+SYS.npz")
 
 def cov_log_likelihood(mu_model, mu, inv_cov):
     """ 
@@ -32,7 +32,7 @@ class DovekieLikelihood(GaussianLikelihood):
     x_name = "z"
     y_section = names.distances
     y_name = "D_A"
-    like_name = "desy5sn"
+    like_name = "des_dovekie"
 
     def build_data(self):
         """
@@ -82,7 +82,7 @@ class DovekieLikelihood(GaussianLikelihood):
         # Reflect to lower triangular part to make it symmetric
         i_lower = np.tril_indices(n, -1)
         inv_cov[i_lower] = inv_cov.T[i_lower]
-	# Unfortunately, to make this work in cosmosis we need to invert the inverse covariance and return that ... sigh ...
+        # Unfortunately, to make this work in cosmosis we need to invert the inverse covariance and return that ... sigh ...
         C = np.linalg.inv(inv_cov)
 
         # Return the covariance; the parent class knows to invert this
