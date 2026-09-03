@@ -1,0 +1,39 @@
+name: "des_dovekie"
+version: "1.0"
+purpose: "DES Year 5 Supernova likelihood (Dovekie sample)"
+url: "https://github.com/des-science/DES-SN5YR"
+interface: "des_dovekie_like.py"
+attribution: ["DES Collaboration"]
+rules: "Please cite DES Collaboration (2024)."
+cite: 
+    - "https://arxiv.org/abs/2401.02929"
+assumptions:
+    - "Analytically marginalized over absolute magnitude (M) and H0."
+
+params:
+    data_file:
+        meaning: "Path to the CSV data vector."
+        type: "str"
+        default: "DES-Dovekie_HD_clean.csv"
+    covmat_file:
+        meaning: "Path to the inverse covariance matrix."
+        type: "str"
+        default: "STAT+SYS.npz"
+
+inputs:
+    distances:
+        z:
+            meaning: "Redshift array."
+            type: "real 1d"
+        d_l:
+            meaning: "Luminosity distance in Mpc."
+            type: "real 1d"
+        mu:
+            meaning: "Distance modulus (optional, calculated if not provided)."
+            type: "real 1d"
+
+outputs:
+    likelihoods:
+        des_dovekie_like:
+            meaning: "The computed log-likelihood."
+            type: "real"
