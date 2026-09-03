@@ -1,5 +1,6 @@
 name: "des_dovekie"
 version: "1.0"
+category: Supernova Likelihoods
 purpose: "DES Year 5 Supernova likelihood (Dovekie sample)"
 url: "https://github.com/des-science/DES-SN5YR"
 interface: "des_dovekie_like.py"
@@ -9,6 +10,14 @@ cite:
     - "https://arxiv.org/abs/2401.02929"
 assumptions:
     - "Analytically marginalized over absolute magnitude (M) and H0."
+
+
+explanation: |
+    This module gives a likelihood of the distance modulus of the DES Dovekie supernovae sample/
+    It marginalizes over both the supernova absolute magnitude and H0.
+
+    The module starts from the angular diameter distance so it can apply the
+    heliocentric correction, rather than reading the computed mu(z) values.
 
 params:
     data_file:
