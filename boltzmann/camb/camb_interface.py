@@ -856,6 +856,8 @@ def execute(block, config):
                 more_config["_reuse_window_hits"] += 1
                 r = cache.pop(reuse_key)
                 cache[reuse_key] = r
+                if block.has_value(cosmo, "sigma_8"):
+                    block[cosmo, "A_s"] = r.Params.InitPower.As
             else:
                 if more_config["reuse_computation"]:
                     more_config["_reuse_misses"] += 1

@@ -148,6 +148,28 @@ def test_reuse_computation_matches_and_invalidates():
     assert np.all(changed_power > 0)
 
 
+def test_sigma8_reuse_restores_normalized_amplitude():
+    options = dict(mode="power", nk=40, nz=12)
+    cached = build_camb_module(reuse_computation=True, reuse_cache_size=2, **options)
+    fresh = build_camb_module(reuse_computation=False, **options)
+    for target in (0.8, 0.85, 0.8):
+        actual, expected = _camb_power_block(), _camb_power_block()
+        for block in (actual, expected):
+            block["cosmological_parameters", "sigma_8"] = target
+        assert cached.execute(actual) == 0
+        assert fresh.execute(expected) == 0
+        for section in ("matter_power_lin", "matter_power_nl"):
+            reference = expected[section, "p_k"]
+            epsilon = np.max(np.abs(actual[section, "p_k"]-reference) /
+                             np.maximum(np.abs(reference), 1e-30))
+            assert epsilon <= 1e-12
+        assert actual["cosmological_parameters", "A_s"] == pytest.approx(
+            expected["cosmological_parameters", "A_s"], rel=1e-12, abs=0)
+        assert actual["cosmological_parameters", "sigma_8"] == pytest.approx(target, rel=1e-6)
+    assert cached.data[1]["_reuse_hits"] == 1
+    assert cached.data[1]["_reuse_misses"] == 2
+
+
 def test_reuse_computation_reuses_nonconsecutive_input():
     module = build_camb_module(mode="power", reuse_computation=True,
                                reuse_cache_size=2)
