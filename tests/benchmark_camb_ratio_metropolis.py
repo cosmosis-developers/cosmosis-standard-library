@@ -13,7 +13,7 @@ with tempfile.TemporaryDirectory() as directory:
     reference = None
     reference_likes = None
     timings = {False: [], True: []}
-    for repetition in range(1):
+    for repetition in range(3):
         fs = True
         for reuse in ((False, True) if repetition % 2 == 0 else (True, False)):
             ini=Inifile({'pipeline':{'modules':'camb bao probe','values':str(d/'values.ini'),'likelihoods':'6DFGS probe','fast_slow':str(fs),'quiet':'T'},'camb':{'file':str(ROOT/'boltzmann/camb/camb_interface.py'),'mode':'power','nonlinear':'both','power_spectra':'delta_tot delta_nonu delta_cdm','nk':'20','nz':'6','reuse_computation':'False','share_nonlinear_ratio':str(reuse)},'bao':{'file':str(ROOT/'likelihood/6dfgs/6dfgs.py')},'probe':{'file':str(d/'like.py')}})
@@ -53,7 +53,7 @@ with tempfile.TemporaryDirectory() as directory:
             print('RESULT',fs,reuse,elapsed,cfg['_reuse_hits'],cfg['_reuse_misses'],eps,flush=True)
     for reuse, samples in timings.items():
         print('SUMMARY', reuse, 'times', samples, 'median', np.median(samples),
-              'std', np.std(samples, ddof=0), flush=True)
+              'std', np.std(samples, ddof=1), flush=True)
     print('SPEEDUP', np.median(timings[False])/np.median(timings[True]), flush=True)
 
 

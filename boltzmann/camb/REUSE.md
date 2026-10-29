@@ -1,5 +1,16 @@
 # CAMB result reuse
 
+Experimental nonlinear sharing: `share_nonlinear_ratio = T` shares native-grid
+ratios for delta_tot, delta_nonu and delta_cdm auto spectra. Default false.
+Unsupported components, cross spectra, grid/unit mismatches and invalid arrays
+fall back to native extraction; six dedicated fallback tests passed.
+`python tests/benchmark_camb_ratio_metropolis.py` runs three alternating pairs
+of 100-step block Metropolis tests. Local disabled median: 8.584172 seconds
+(sample standard deviation 0.819588); enabled median: 10.373043 seconds
+(standard deviation 2.339120). Ratio of medians: 0.827546. All six spectral
+and posterior differences were zero. This did not reproduce the earlier
+single-pair speedup. Keep sharing experimental and disabled by default.
+
 Enable exact result reuse with `reuse_computation = T`. The default is false.
 Results are retained in a least-recently-used cache. A hit refreshes recency;
 inserting a new result evicts the oldest entry when capacity is exceeded.
