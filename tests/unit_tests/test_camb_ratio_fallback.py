@@ -53,10 +53,17 @@ def test_unsupported_requests_always_use_native_result(options):
         _, _, result = shared.get_linear_matter_power_spectrum(nonlinear=True, **options)
         np.testing.assert_array_equal(result, np.full((2, 2), 7.0))
     assert native.nonlinear_calls == 2
+    reasons = {
+        "positional_args": 0,
+        "linear_request": 0,
+        "unsupported_variable": 2 if options["var1"] == "Weyl" else 0,
+        "cross_spectrum": 2 if options["var1"] != "Weyl" else 0,
+    }
     assert shared.diagnostics() == {
         "native_nonlinear_calls": 0,
         "shared_calls": 0,
         "fallback_calls": 2,
+        "fallback_reasons": reasons,
     }
 
 

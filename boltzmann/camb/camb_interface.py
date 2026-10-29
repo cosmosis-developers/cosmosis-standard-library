@@ -741,6 +741,12 @@ class SharedNonlinearRatio:
         self.native_nonlinear_calls = 0
         self.shared_calls = 0
         self.fallback_calls = 0
+        self.fallback_reasons = {
+            "positional_args": 0,
+            "linear_request": 0,
+            "unsupported_variable": 0,
+            "cross_spectrum": 0,
+        }
 
     def diagnostics(self):
         """Return extraction counters for performance diagnostics."""
@@ -748,6 +754,7 @@ class SharedNonlinearRatio:
             "native_nonlinear_calls": self.native_nonlinear_calls,
             "shared_calls": self.shared_calls,
             "fallback_calls": self.fallback_calls,
+            "fallback_reasons": dict(self.fallback_reasons),
         }
 
     def __getattr__(self, name):
@@ -755,10 +762,17 @@ class SharedNonlinearRatio:
 
     def get_linear_matter_power_spectrum(self, *args, **kwargs):
         var = kwargs.get("var1")
-        if (args or not kwargs.get("nonlinear", False) or
-                var not in self.supported or kwargs.get("var2") != var):
+        if args or not kwargs.get("nonlinear", False) or var not in self.supported or kwargs.get("var2") != var:
             if kwargs.get("nonlinear", False):
                 self.fallback_calls += 1
+                if args:
+                    self.fallback_reasons["positional_args"] += 1
+                elif not kwargs.get("nonlinear", False):
+                    self.fallback_reasons["linear_request"] += 1
+                elif var not in self.supported:
+                    self.fallback_reasons["unsupported_variable"] += 1
+                else:
+                    self.fallback_reasons["cross_spectrum"] += 1
             return self.result.get_linear_matter_power_spectrum(*args, **kwargs)
         linear_options = dict(kwargs, nonlinear=False)
         k, z, linear = self.result.get_linear_matter_power_spectrum(**linear_options)
