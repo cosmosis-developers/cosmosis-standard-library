@@ -178,6 +178,50 @@ def get_class_outputs(block, c, config):
     k = np.logspace(np.log10(kmin), np.log10(kmax), nk)
     nz = len(z)
 
+    def power_grid(get_grid, scalar_getter):
+        """Evaluate P(k,z) on the CosmoSIS grid using CLASS's grid API.
+
+        CLASS returns its redshift grid in descending order and its power grid
+        as [k, z].  Interpolation is performed in log(k) and linear z. CLASS
+        power values are positive, so linear interpolation in P preserves
+        positivity between grid points while avoiding redshift bias. The
+        scalar path remains as a compatibility fallback for
+        older classy builds that do not provide the grid API.
+        """
+        if hasattr(c, "get_pk_and_k_and_z"):
+            try:
+                pk, k_class, z_class = get_grid()
+                pk = np.asarray(pk, dtype=float)
+                k_class = np.asarray(k_class, dtype=float)
+                z_class = np.asarray(z_class, dtype=float)
+                if (pk.ndim != 2 or pk.shape != (k_class.size, z_class.size)
+                        or np.any(k_class <= 0) or np.any(pk <= 0)
+                        or np.any(z_class < 0)):
+                    raise ValueError("CLASS returned an invalid P(k,z) grid")
+                order = np.argsort(z_class)
+                log_k = np.log(k_class)
+                log_query_k = np.log(k)
+                # Interpolate in log(k) at each CLASS redshift, then linearly
+                # interpolate P in z. This preserves power-law behavior in k
+                # without introducing the bias of log(P) interpolation in z.
+                values_at_z = np.vstack([
+                    np.interp(log_query_k, log_k, np.log(pk[:, index]))
+                    for index in order
+                ])
+                values = np.vstack([
+                    np.interp(z, z_class[order], np.exp(values_at_z[:, i]))
+                    for i in range(k.size)
+                ])
+                return values
+            except (AttributeError, IndexError, TypeError, ValueError):
+                pass
+
+        P = np.empty((k.size, z.size))
+        for i, ki in enumerate(k):
+            for j, zi in enumerate(z):
+                P[i, j] = scalar_getter(ki, zi)
+        return P
+
     if not config['background_only']:
         # Extract (interpolate) P(k,z) at the requested
         # sample points.
@@ -186,19 +230,23 @@ def get_class_outputs(block, c, config):
 
             # Total matter power spectrum (saved as grid)
             if config['save_matter_power_lin']:
-                P = np.zeros((k.size, z.size))
-                for i, ki in enumerate(k):
-                    for j, zi in enumerate(z):
-                        P[i, j] = c.pk_lin(ki, zi)
+                P = power_grid(
+                    lambda: c.get_pk_and_k_and_z(
+                        nonlinear=False, only_clustering_species=False,
+                        h_units=False),
+                    c.pk_lin,
+                )
                 # We transpose P here to match the camb convention
                 block.put_grid("matter_power_lin", "z", z, "k_h", k / h0, "p_k", P.T * h0**3)
 
             # CDM+baryons power spectrum
             if config['save_cdm_baryon_power_lin']:
-                P = np.zeros((k.size, z.size))
-                for i, ki in enumerate(k):
-                    for j, zi in enumerate(z):
-                        P[i, j] = c.pk_cb_lin(ki, zi)
+                P = power_grid(
+                    lambda: c.get_pk_and_k_and_z(
+                        nonlinear=False, only_clustering_species=True,
+                        h_units=False),
+                    c.pk_cb_lin,
+                )
                 block.put_grid('cdm_baryon_power_lin', 'z', z, 'k_h', k/h0, 'p_k', P.T * h0 **3)
 
             # Get growth rates and sigma_8
@@ -214,9 +262,12 @@ def get_class_outputs(block, c, config):
             block[names.growth_parameters, "a"] = 1/(1+z)
 
             if c.nonlinear_method != 0:
-                for i, ki in enumerate(k):
-                    for j, zi in enumerate(z):
-                        P[i, j] = c.pk(ki, zi)
+                P = power_grid(
+                    lambda: c.get_pk_and_k_and_z(
+                        nonlinear=True, only_clustering_species=False,
+                        h_units=False),
+                    c.pk,
+                )
 
                 block.put_grid("matter_power_nl", "z", z, "k_h", k / h0, "p_k", P.T * h0**3)
 
