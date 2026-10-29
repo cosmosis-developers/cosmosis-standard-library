@@ -148,6 +148,38 @@ def test_reuse_computation_matches_and_invalidates():
     assert np.all(changed_power > 0)
 
 
+def test_lru_capacity_recency_and_combined_inputs():
+    options = dict(mode="power", nk=30, nz=8)
+    cached = build_camb_module(reuse_computation=True, reuse_cache_size=2, **options)
+    fresh = build_camb_module(reuse_computation=False, **options)
+    inputs = {"A": (0.06, 2.1e-9), "B": (0.15, 2.1e-9),
+              "C": (0.15, 2.3e-9)}
+    keys = {}
+    expected_counts = [(0, 1), (0, 2), (1, 2), (1, 3), (1, 4)]
+    for index, label in enumerate(("A", "B", "A", "C", "B")):
+        actual, expected = _camb_power_block(), _camb_power_block()
+        mass, amplitude = inputs[label]
+        for block in (actual, expected):
+            block["cosmological_parameters", "mnu"] = mass
+            block["cosmological_parameters", "num_massive_neutrinos"] = 1
+            block["cosmological_parameters", "A_s"] = amplitude
+        assert cached.execute(actual) == 0
+        assert fresh.execute(expected) == 0
+        config = cached.data[1]
+        cache = config["_reuse_cache"]
+        assert len(cache) <= 2
+        assert (config["_reuse_hits"], config["_reuse_misses"]) == expected_counts[index]
+        keys[label] = next(reversed(cache))
+        expected_order = (("A",), ("A", "B"), ("B", "A"),
+                          ("A", "C"), ("C", "B"))[index]
+        assert list(cache) == [keys[item] for item in expected_order]
+        for section in ("matter_power_lin", "matter_power_nl"):
+            reference, result = expected[section, "p_k"], actual[section, "p_k"]
+            assert np.all(np.isfinite(result)) and np.all(result > 0)
+            epsilon = np.max(np.abs(result-reference) / np.maximum(np.abs(reference), 1e-30))
+            assert epsilon <= 1e-12, (label, section, epsilon)
+
+
 def test_sigma8_reuse_restores_normalized_amplitude():
     options = dict(mode="power", nk=40, nz=12)
     cached = build_camb_module(reuse_computation=True, reuse_cache_size=2, **options)
