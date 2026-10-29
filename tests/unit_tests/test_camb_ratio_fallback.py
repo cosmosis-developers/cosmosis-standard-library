@@ -2,6 +2,7 @@ import numpy as np
 import pytest
 from boltzmann.camb.camb_interface import (
     SharedNonlinearRatio, estimate_nonlinear_ratio_saving,
+    estimate_nonlinear_ratio_saving_from_diagnostics,
 )
 
 
@@ -25,6 +26,19 @@ def test_saving_estimate_matches_amortization_formula(n, expected, eligible):
 def test_saving_estimate_rejects_invalid_inputs(args):
     with pytest.raises(ValueError):
         estimate_nonlinear_ratio_saving(*args)
+
+
+def test_diagnostics_estimate_uses_measured_calls_and_times():
+    result = estimate_nonlinear_ratio_saving_from_diagnostics({
+        "native_nonlinear_calls": 1,
+        "shared_calls": 2,
+        "native_nonlinear_seconds": 0.018,
+        "linear_seconds": 0.0003,
+        "shared_seconds": 0.00008,
+    })
+    assert result["n_extractions"] == 3
+    assert result["saving_seconds"] == pytest.approx(0.03568)
+    assert result["eligible"] is True
 
 
 class FakeResult:

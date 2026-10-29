@@ -732,6 +732,22 @@ def estimate_nonlinear_ratio_saving(n_extractions, nonlinear_seconds,
     return {"saving_seconds": float(saving), "eligible": bool(saving > 0)}
 
 
+def estimate_nonlinear_ratio_saving_from_diagnostics(diagnostics):
+    """Apply the amortization estimate to one ``diagnostics()`` snapshot."""
+    native_calls = diagnostics["native_nonlinear_calls"]
+    shared_calls = diagnostics["shared_calls"]
+    if native_calls != 1 or shared_calls < 1:
+        return {"saving_seconds": 0.0, "eligible": False}
+    n = native_calls + shared_calls
+    nonlinear = diagnostics["native_nonlinear_seconds"] / native_calls
+    linear = diagnostics["linear_seconds"] / n
+    overhead = diagnostics["shared_seconds"] / shared_calls
+    result = estimate_nonlinear_ratio_saving(n, nonlinear, linear, overhead)
+    result.update({"n_extractions": n, "nonlinear_seconds": nonlinear,
+                   "linear_seconds": linear, "overhead_seconds": overhead})
+    return result
+
+
 class SharedNonlinearRatio:
     """Share CAMB's native-grid nonlinear ratio within one output extraction."""
     supported = {"delta_tot", "delta_nonu", "delta_cdm"}
