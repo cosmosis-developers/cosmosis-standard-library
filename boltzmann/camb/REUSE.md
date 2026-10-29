@@ -46,6 +46,19 @@ ratio of 1.036085. Spectral and posterior differences were both zero. This is
 an encouraging candidate result, but still too small and environment-sensitive
 to justify changing the default; repeat on a second machine or longer chain.
 
+## Non-timing value
+
+Sharing is not expected to improve scientific accuracy. Its additional value
+is making same-result extraction explicit and testable: the implementation
+records native, shared, and fallback paths; checks grid, units, positivity and
+finiteness before reuse; and supplies exact-spectrum and likelihood regression
+tests. This makes CAMB extraction behavior easier to audit and provides a
+controlled base for future policies, even when end-to-end sampler speed is
+neutral or negative. A 300-step alternating run reported 17.285919 seconds
+without sharing and 19.638009 seconds with sharing (ratio 0.880228), with
+zero spectral and likelihood differences; therefore the feature remains
+opt-in.
+
 Enable exact result reuse with `reuse_computation = T`. The default is false.
 Results are retained in a least-recently-used cache. A hit refreshes recency;
 inserting a new result evicts the oldest entry when capacity is exceeded.
