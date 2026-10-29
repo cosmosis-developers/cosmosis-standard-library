@@ -124,6 +124,30 @@ def test_mass_and_amplitude_cache_invalidation(parameter, changed):
         assert (config["_reuse_hits"], config["_reuse_misses"]) == ((1, 2) if index == 2 else (0, index+1))
 
 
+@pytest.mark.parametrize("settings,message", [
+    ({"reuse_cache_size": 0}, "reuse_cache_size"),
+    ({"reuse_cache_size": -1}, "reuse_cache_size"),
+    ({"reuse_cache_max_size": 0}, "reuse_cache_max_size"),
+    ({"reuse_cache_size": 4, "reuse_cache_max_size": 2}, "reuse_cache_max_size"),
+    ({"reuse_cache_window": 0}, "reuse_cache_window"),
+    ({"reuse_cache_threshold": -0.01}, "reuse_cache_threshold"),
+    ({"reuse_cache_threshold": 1.01}, "reuse_cache_threshold"),
+    ({"reuse_cache_threshold": np.nan}, "reuse_cache_threshold"),
+    ({"reuse_cache_threshold": np.inf}, "reuse_cache_threshold"),
+])
+def test_invalid_cache_settings_fail_at_setup(settings, message):
+    with pytest.raises(ValueError, match=message):
+        build_camb_module(mode="power", **settings)
+
+
+@pytest.mark.parametrize("threshold", [0.0, 1.0])
+def test_cache_threshold_boundaries(threshold):
+    module = build_camb_module(mode="power", reuse_cache_size=1,
+                               reuse_cache_max_size=1, reuse_cache_window=1,
+                               reuse_cache_threshold=threshold)
+    assert module.data[1]["reuse_cache_threshold"] == threshold
+
+
 def test_reuse_computation_matches_and_invalidates():
     module = build_camb_module(mode="power", reuse_computation=True)
     first = _camb_power_block()

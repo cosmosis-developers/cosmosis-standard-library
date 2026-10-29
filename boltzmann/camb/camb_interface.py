@@ -217,12 +217,20 @@ def setup(options):
 
     more_config["mode"] = mode
     more_config["reuse_computation"] = options.get_bool(opt, "reuse_computation", default=False)
-    more_config["reuse_cache_size"] = max(1, options.get_int(opt, "reuse_cache_size", default=4))
+    more_config["reuse_cache_size"] = options.get_int(opt, "reuse_cache_size", default=4)
     more_config["reuse_cache_adaptive"] = options.get_bool(opt, "reuse_cache_adaptive", default=False)
-    more_config["reuse_cache_max_size"] = max(more_config["reuse_cache_size"],
-                                                options.get_int(opt, "reuse_cache_max_size", default=8))
-    more_config["reuse_cache_window"] = max(1, options.get_int(opt, "reuse_cache_window", default=8))
+    more_config["reuse_cache_max_size"] = options.get_int(
+        opt, "reuse_cache_max_size", default=max(8, more_config["reuse_cache_size"]))
+    more_config["reuse_cache_window"] = options.get_int(opt, "reuse_cache_window", default=8)
     more_config["reuse_cache_threshold"] = options.get_double(opt, "reuse_cache_threshold", default=0.25)
+    for name in ("reuse_cache_size", "reuse_cache_max_size", "reuse_cache_window"):
+        if more_config[name] < 1:
+            raise ValueError(f"{name} must be a positive integer")
+    if more_config["reuse_cache_max_size"] < more_config["reuse_cache_size"]:
+        raise ValueError("reuse_cache_max_size must be at least reuse_cache_size")
+    threshold = more_config["reuse_cache_threshold"]
+    if not np.isfinite(threshold) or not 0 <= threshold <= 1:
+        raise ValueError("reuse_cache_threshold must be finite and between 0 and 1")
     more_config["_reuse_cache"] = OrderedDict()
     more_config["_reuse_hits"] = 0
     more_config["_reuse_misses"] = 0
