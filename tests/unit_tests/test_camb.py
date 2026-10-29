@@ -93,6 +93,37 @@ def _camb_power_block(omch2=0.12):
     return block
 
 
+@pytest.mark.parametrize("parameter,changed", [("mnu", 0.15), ("A_s", 2.3e-9)])
+def test_mass_and_amplitude_cache_invalidation(parameter, changed):
+    options = dict(mode="power", nk=40, nz=12,
+                   power_spectra="delta_tot delta_nonu")
+    cached = build_camb_module(reuse_computation=True, reuse_cache_size=2, **options)
+    fresh = build_camb_module(reuse_computation=False, **options)
+    baseline = 0.06 if parameter == "mnu" else 2.1e-9
+    original = None
+    for index, value in enumerate((baseline, changed, baseline)):
+        actual, expected = _camb_power_block(), _camb_power_block()
+        for block in (actual, expected):
+            block["cosmological_parameters", "mnu"] = 0.06
+            block["cosmological_parameters", "num_massive_neutrinos"] = 1
+            block["cosmological_parameters", parameter] = value
+        assert cached.execute(actual) == 0
+        assert fresh.execute(expected) == 0
+        for section in ("matter_power_lin", "matter_power_nl",
+                        "cdm_baryon_power_lin", "cdm_baryon_power_nl"):
+            result, reference = actual[section, "p_k"], expected[section, "p_k"]
+            assert np.all(np.isfinite(result)) and np.all(result > 0)
+            epsilon = np.max(np.abs(result-reference) / np.maximum(np.abs(reference), 1e-30))
+            assert epsilon <= 1e-12, (parameter, value, section, epsilon)
+        power = actual["matter_power_lin", "p_k"]
+        if index == 0:
+            original = power.copy()
+        elif index == 1:
+            assert np.max(np.abs(power-original) / np.maximum(np.abs(original), 1e-30)) > 1e-8
+        config = cached.data[1]
+        assert (config["_reuse_hits"], config["_reuse_misses"]) == ((1, 2) if index == 2 else (0, index+1))
+
+
 def test_reuse_computation_matches_and_invalidates():
     module = build_camb_module(mode="power", reuse_computation=True)
     first = _camb_power_block()
