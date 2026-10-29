@@ -36,6 +36,16 @@ implemented until a representative workload measures a positive margin. A
 future implementation should decide per CAMB result, expose the decision and
 timings in diagnostics, and include a no-sharing control in every benchmark.
 
+Latest repeated measurement after positional-argument normalization found one
+native nonlinear extraction and two shared extractions per CAMB result, with
+no fallbacks. The extraction-level estimate was positive (`S` approximately
+0.033--0.051 seconds). In the three-pair alternating Metropolis benchmark,
+the no-sharing median was 6.666412 seconds (sample standard deviation
+0.045624), while sharing was 6.434233 seconds (0.133936), a total-runtime
+ratio of 1.036085. Spectral and posterior differences were both zero. This is
+an encouraging candidate result, but still too small and environment-sensitive
+to justify changing the default; repeat on a second machine or longer chain.
+
 Enable exact result reuse with `reuse_computation = T`. The default is false.
 Results are retained in a least-recently-used cache. A hit refreshes recency;
 inserting a new result evicts the oldest entry when capacity is exceeded.
