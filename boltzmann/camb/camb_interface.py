@@ -738,6 +738,17 @@ class SharedNonlinearRatio:
     def __init__(self, result):
         self.result = result
         self.cached = None
+        self.native_nonlinear_calls = 0
+        self.shared_calls = 0
+        self.fallback_calls = 0
+
+    def diagnostics(self):
+        """Return extraction counters for performance diagnostics."""
+        return {
+            "native_nonlinear_calls": self.native_nonlinear_calls,
+            "shared_calls": self.shared_calls,
+            "fallback_calls": self.fallback_calls,
+        }
 
     def __getattr__(self, name):
         return getattr(self.result, name)
@@ -746,6 +757,8 @@ class SharedNonlinearRatio:
         var = kwargs.get("var1")
         if (args or not kwargs.get("nonlinear", False) or
                 var not in self.supported or kwargs.get("var2") != var):
+            if kwargs.get("nonlinear", False):
+                self.fallback_calls += 1
             return self.result.get_linear_matter_power_spectrum(*args, **kwargs)
         linear_options = dict(kwargs, nonlinear=False)
         k, z, linear = self.result.get_linear_matter_power_spectrum(**linear_options)
@@ -756,7 +769,9 @@ class SharedNonlinearRatio:
             if units == signature and np.array_equal(k, ck) and np.array_equal(z, cz):
                 power = linear * ratio
                 if np.all(np.isfinite(power)) and np.all(power > 0):
+                    self.shared_calls += 1
                     return k, z, power
+        self.native_nonlinear_calls += 1
         kn, zn, nonlinear = self.result.get_linear_matter_power_spectrum(**kwargs)
         if (valid and np.array_equal(k, kn) and np.array_equal(z, zn) and
                 np.all(np.isfinite(nonlinear)) and np.all(nonlinear > 0)):

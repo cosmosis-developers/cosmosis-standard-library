@@ -53,6 +53,11 @@ def test_unsupported_requests_always_use_native_result(options):
         _, _, result = shared.get_linear_matter_power_spectrum(nonlinear=True, **options)
         np.testing.assert_array_equal(result, np.full((2, 2), 7.0))
     assert native.nonlinear_calls == 2
+    assert shared.diagnostics() == {
+        "native_nonlinear_calls": 0,
+        "shared_calls": 0,
+        "fallback_calls": 2,
+    }
 
 
 @pytest.mark.parametrize("reason", ["grid", "zero", "nan", "units"])
