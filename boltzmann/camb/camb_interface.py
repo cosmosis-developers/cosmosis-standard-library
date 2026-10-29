@@ -857,7 +857,8 @@ def execute(block, config):
             r = camb.get_background(p)
         else:
             # other modes
-            reuse_key = _make_reuse_key(block, p, more_config)
+            reuse_key = (_make_reuse_key(block, p, more_config)
+                         if more_config["reuse_computation"] else None)
             cache = more_config["_reuse_cache"]
             if more_config["reuse_computation"] and reuse_key in cache:
                 more_config["_reuse_hits"] += 1
@@ -878,7 +879,6 @@ def execute(block, config):
                     while len(cache) > more_config["reuse_cache_size"]:
                         cache.popitem(last=False)
             if more_config["reuse_computation"] and more_config["reuse_cache_adaptive"]:
-                requests = more_config["_reuse_hits"] + more_config["_reuse_misses"]
                 window_requests = (more_config["_reuse_window_hits"] +
                                    more_config["_reuse_window_misses"])
                 if window_requests >= more_config["reuse_cache_window"]:
