@@ -134,6 +134,29 @@ def test_reuse_computation_reuses_nonconsecutive_input():
     assert epsilon == pytest.approx(0.0, abs=1e-14)
 
 
+def test_lru_matches_independent_fresh_spectra():
+    options = dict(mode="power", nk=40, nz=12,
+                   power_spectra="delta_tot delta_nonu")
+    cached = build_camb_module(reuse_computation=True, reuse_cache_size=2, **options)
+    fresh = build_camb_module(reuse_computation=False, **options)
+    for density in (0.12, 0.121, 0.12):
+        actual = _camb_power_block(omch2=density)
+        expected = _camb_power_block(omch2=density)
+        assert cached.execute(actual) == 0
+        assert fresh.execute(expected) == 0
+        for section in ("matter_power_lin", "matter_power_nl",
+                        "cdm_baryon_power_lin", "cdm_baryon_power_nl"):
+            reference = expected[section, "p_k"]
+            result = actual[section, "p_k"]
+            assert np.all(np.isfinite(result))
+            assert np.all(result > 0)
+            epsilon = np.max(np.abs(result - reference) /
+                             np.maximum(np.abs(reference), 1e-30))
+            assert epsilon <= 1e-12, (density, section, epsilon)
+            np.testing.assert_array_equal(actual[section, "k_h"], expected[section, "k_h"])
+            np.testing.assert_array_equal(actual[section, "z"], expected[section, "z"])
+
+
 def test_adaptive_reuse_is_opt_in_and_bounded():
     module = build_camb_module(mode="power", reuse_computation=True,
                                reuse_cache_size=2, reuse_cache_adaptive=True,
