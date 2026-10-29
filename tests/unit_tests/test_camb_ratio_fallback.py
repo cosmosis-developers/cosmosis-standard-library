@@ -84,3 +84,16 @@ def test_invalid_reuse_falls_back_to_native_result(reason):
     _, _, result = shared.get_linear_matter_power_spectrum(**options)
     np.testing.assert_array_equal(result, np.full((2, 2), 7.0))
     assert native.nonlinear_calls == 2
+
+
+def test_positional_camb_signature_is_normalized_and_shared():
+    native = FakeResult()
+    shared = SharedNonlinearRatio(native)
+    positional = ("delta_tot", "delta_tot", True, True, True, None, True)
+    _, _, first = shared.get_linear_matter_power_spectrum(*positional)
+    _, _, second = shared.get_linear_matter_power_spectrum(*positional)
+    np.testing.assert_array_equal(first, np.full((2, 2), 7.0))
+    np.testing.assert_array_equal(second, np.full((2, 2), 7.0))
+    assert native.nonlinear_calls == 1
+    assert shared.diagnostics()["shared_calls"] == 1
+    assert shared.diagnostics()["fallback_reasons"]["positional_args"] == 0

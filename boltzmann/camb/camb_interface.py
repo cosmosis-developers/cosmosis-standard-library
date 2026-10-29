@@ -761,6 +761,14 @@ class SharedNonlinearRatio:
         return getattr(self.result, name)
 
     def get_linear_matter_power_spectrum(self, *args, **kwargs):
+        if args:
+            positional_names = ("var1", "var2", "hubble_units", "k_hunit",
+                                "have_power_spectra", "params", "nonlinear")
+            if len(args) <= len(positional_names) and not any(
+                    name in kwargs for name in positional_names[:len(args)]):
+                kwargs = dict(kwargs)
+                kwargs.update(dict(zip(positional_names, args)))
+                args = ()
         var = kwargs.get("var1")
         if args or not kwargs.get("nonlinear", False) or var not in self.supported or kwargs.get("var2") != var:
             if kwargs.get("nonlinear", False):
