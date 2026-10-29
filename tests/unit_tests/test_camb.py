@@ -180,6 +180,37 @@ def test_lru_capacity_recency_and_combined_inputs():
             assert epsilon <= 1e-12, (label, section, epsilon)
 
 
+def test_adaptive_growth_preserves_capacity_and_lru_order():
+    options = dict(mode="power", nk=30, nz=8)
+    cached = build_camb_module(reuse_computation=True, reuse_cache_size=1,
+                               reuse_cache_adaptive=True, reuse_cache_max_size=2,
+                               reuse_cache_window=2, **options)
+    fresh = build_camb_module(reuse_computation=False, **options)
+    keys = {}
+    labels = ("A", "B", "C", "B", "D", "A")
+    orders = (("A",), ("B",), ("B", "C"), ("C", "B"),
+              ("B", "D"), ("D", "A"))
+    for index, label in enumerate(labels):
+        density = 0.12 + 0.001 * (ord(label)-ord("A"))
+        actual = _camb_power_block(omch2=density)
+        expected = _camb_power_block(omch2=density)
+        assert cached.execute(actual) == 0
+        assert fresh.execute(expected) == 0
+        config = cached.data[1]
+        cache = config["_reuse_cache"]
+        assert config["reuse_cache_size"] == (1 if index == 0 else 2)
+        assert len(cache) <= config["reuse_cache_size"] <= 2
+        keys[label] = next(reversed(cache))
+        assert list(cache) == [keys[item] for item in orders[index]]
+        for section in ("matter_power_lin", "matter_power_nl"):
+            reference, result = expected[section, "p_k"], actual[section, "p_k"]
+            assert np.all(np.isfinite(result)) and np.all(result > 0)
+            epsilon = np.max(np.abs(result-reference) / np.maximum(np.abs(reference), 1e-30))
+            assert epsilon <= 1e-12, (index, section, epsilon)
+    assert config["_reuse_hits"] == 1
+    assert config["_reuse_misses"] == 5
+
+
 def test_sigma8_reuse_restores_normalized_amplitude():
     options = dict(mode="power", nk=40, nz=12)
     cached = build_camb_module(reuse_computation=True, reuse_cache_size=2, **options)
