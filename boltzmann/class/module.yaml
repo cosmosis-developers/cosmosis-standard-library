@@ -94,6 +94,10 @@ params:
         meaning: Whether to save linear CDM-baryon power spectrum
         type: bool
         default: False
+    reuse_computation:
+        meaning: Reuse CLASS state for identical consecutive inputs
+        type: bool
+        default: False
 inputs:
     cosmological_parameters:
         ombh2:

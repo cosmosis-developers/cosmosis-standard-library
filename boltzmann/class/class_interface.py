@@ -41,7 +41,8 @@ def setup(options):
         'mpk': options.get_bool(option_section, 'mpk', default=True),
         'save_matter_power_lin': options.get_bool(option_section, 'save_matter_power_lin', default=True),
         'save_cdm_baryon_power_lin': options.get_bool(option_section, 'save_cdm_baryon_power_lin', default=False),
-        'background_only': options.get_bool(option_section, "background_only", default=False)
+        'background_only': options.get_bool(option_section, "background_only", default=False),
+        'reuse_computation': options.get_bool(option_section, 'reuse_computation', default=False)
     }
 
     # cannot request cmb or mpk when background_only=True
@@ -311,14 +312,21 @@ def execute(block, config):
     try:
         # Set input parameters
         params = get_class_inputs(block, config)
-        c.set(params)
+        input_key = repr(sorted(params.items()))
+        reuse = config.get('reuse_computation', False)
+        same_computation = reuse and config.get('_computed_input_key') == input_key
+        if not same_computation:
+            if reuse and config.get('_computed_input_key') is not None:
+                c.struct_cleanup()
+            c.set(params)
 
         # saves neff if we are using nur, for cases where nur is sampled:
         block[cosmo, 'nnu'] = c.Neff()
 
-        if not config['background_only']:
+        if not same_computation and not config['background_only']:
             # Run perturbation calculations
             c.compute()
+            config['_computed_input_key'] = input_key
 
         # Extract outputs
         get_class_outputs(block, c, config)
@@ -330,8 +338,8 @@ def execute(block, config):
             sys.stderr.write("Error in class. Set debug=T for info: {}\n".format(error))
         return 1
     finally:
-        # Reset for re-use next time
-        c.struct_cleanup()
+        if not config.get('reuse_computation', False):
+            c.struct_cleanup()
     return 0
 
 
