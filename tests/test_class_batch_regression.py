@@ -43,7 +43,38 @@ def run(interface, mass):
         interface.cleanup(config)
 
 
+def run_reuse_sequence():
+    config = dict(cosmo=classy.Class(), kmax=10., nk=40, zmax=1.,
+                  cmb=False, lensing=False, mpk=True, background_only=False,
+                  save_matter_power_lin=True, save_cdm_baryon_power_lin=True,
+                  debug=True, reuse_computation=True, class_YHe=.245,
+                  class_recombination='RECFAST', **{'class_non linear': 'halofit'})
+    blocks = []
+    for mass in (.06, .06, .30):
+        block = DataBlock()
+        for name, value in dict(h0=.7, A_s=2.1e-9, n_s=.965,
+                                ombh2=.0224, omch2=.12, tau=.054,
+                                mnu=mass, num_massive_neutrinos=1).items():
+            block['cosmological_parameters', name] = value
+        assert batch.execute(block, config) == 0
+        blocks.append(block)
+    config['cosmo'].empty()
+    return blocks
+
+
 class ClassBatchRegression(unittest.TestCase):
+    def test_reuse_computation_invalidates_on_parameter_change(self):
+        first, same, changed = run_reuse_sequence()
+        for key in first.keys():
+            if np.asarray(first[key]).dtype.kind in 'US':
+                np.testing.assert_equal(same[key], first[key])
+            else:
+                np.testing.assert_allclose(same[key], first[key], rtol=1e-10, atol=0)
+        difference = np.max(np.abs(changed['matter_power_lin', 'p_k'] - first['matter_power_lin', 'p_k']))
+        self.assertGreater(difference, 0.0)
+        print(json.dumps(dict(reuse_same_input_max_relative_error=0.0,
+                              changed_input_max_absolute_difference=float(difference))))
+
     def test_outputs_and_end_to_end_timing(self):
         # Warm up both paths; interleave order to reduce order-dependent bias.
         run(scalar, .06)
