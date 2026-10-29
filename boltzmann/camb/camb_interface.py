@@ -4,6 +4,9 @@ import numpy as np
 import warnings
 import traceback
 import contextlib
+import hashlib
+import json
+from collections import OrderedDict
 
 # Finally we can now import camb
 import camb
@@ -38,6 +41,52 @@ matter_power_section_names = {
     'v_newtonian_baryon': 'baryon_velocity_power',
     'v_baryon_cdm': 'baryon_cdm_relative_velocity_power',
 }
+
+
+def _canonicalize_cache_value(value):
+    """Convert nested CAMB configuration values into stable JSON data."""
+    if isinstance(value, dict):
+        return {str(key): _canonicalize_cache_value(value[key])
+                for key in sorted(value, key=str)}
+    if isinstance(value, (list, tuple)):
+        return [_canonicalize_cache_value(item) for item in value]
+    if isinstance(value, np.ndarray):
+        return {
+            "__ndarray__": True,
+            "dtype": value.dtype.str,
+            "shape": list(value.shape),
+            "data": value.tolist(),
+        }
+    if isinstance(value, (np.integer, np.floating, np.bool_)):
+        return value.item()
+    return value
+
+
+def make_camb_cache_key(*parts):
+    """Return a deterministic key for a complete CAMB input signature.
+
+    This helper is intentionally separate from caching.  Callers must include
+    every parameter affecting CAMB computation or requested output grids.
+    """
+    canonical = _canonicalize_cache_value(parts)
+    payload = json.dumps(canonical, sort_keys=True, separators=(",", ":"),
+                         allow_nan=False).encode("utf-8")
+    return hashlib.sha256(payload).hexdigest()
+
+
+def _make_reuse_key(block, p, more_config):
+    """Build a key covering CAMB state and CosmoSIS output requirements."""
+    key_config = {key: value for key, value in more_config.items()
+                  if not key.startswith("_") and key not in {
+                      "reuse_computation", "reuse_cache_size", "reuse_cache_adaptive",
+                      "reuse_cache_max_size", "reuse_cache_window", "reuse_cache_threshold"
+                  }}
+    special = {}
+    if block.has_value(cosmo, "sigma_8"):
+        special["sigma_8"] = block[cosmo, "sigma_8"]
+    if block.has_value("redshift_as_parameter", "z"):
+        special["redshift_as_parameter_z"] = block["redshift_as_parameter", "z"]
+    return make_camb_cache_key(repr(p), key_config, special)
 
 @contextlib.contextmanager
 def be_quiet_camb():
@@ -147,6 +196,18 @@ def setup(options):
     more_config = {}
 
     more_config["mode"] = mode
+    more_config["reuse_computation"] = options.get_bool(opt, "reuse_computation", default=False)
+    more_config["reuse_cache_size"] = max(1, options.get_int(opt, "reuse_cache_size", default=4))
+    more_config["reuse_cache_adaptive"] = options.get_bool(opt, "reuse_cache_adaptive", default=False)
+    more_config["reuse_cache_max_size"] = max(more_config["reuse_cache_size"],
+                                                options.get_int(opt, "reuse_cache_max_size", default=8))
+    more_config["reuse_cache_window"] = max(1, options.get_int(opt, "reuse_cache_window", default=8))
+    more_config["reuse_cache_threshold"] = options.get_double(opt, "reuse_cache_threshold", default=0.25)
+    more_config["_reuse_cache"] = OrderedDict()
+    more_config["_reuse_hits"] = 0
+    more_config["_reuse_misses"] = 0
+    more_config["_reuse_window_hits"] = 0
+    more_config["_reuse_window_misses"] = 0
     more_config["max_printed_errors"] = options.get_int(opt, 'max_printed_errors', default=20)
     more_config["n_printed_errors"] = 0
     config['WantCls'] = mode in [MODE_CMB, MODE_ALL]
@@ -767,9 +828,38 @@ def execute(block, config):
             r = camb.get_background(p)
         else:
             # other modes
-            r = camb.get_results(p)
-            if block.has_value(cosmo, 'sigma_8'):
-                r = recompute_for_sigma8(r, block, config, more_config)
+            reuse_key = _make_reuse_key(block, p, more_config)
+            cache = more_config["_reuse_cache"]
+            if more_config["reuse_computation"] and reuse_key in cache:
+                more_config["_reuse_hits"] += 1
+                more_config["_reuse_window_hits"] += 1
+                r = cache.pop(reuse_key)
+                cache[reuse_key] = r
+            else:
+                if more_config["reuse_computation"]:
+                    more_config["_reuse_misses"] += 1
+                    more_config["_reuse_window_misses"] += 1
+                r = camb.get_results(p)
+                if block.has_value(cosmo, 'sigma_8'):
+                    r = recompute_for_sigma8(r, block, config, more_config)
+                if more_config["reuse_computation"]:
+                    cache[reuse_key] = r
+                    while len(cache) > more_config["reuse_cache_size"]:
+                        cache.popitem(last=False)
+            if more_config["reuse_computation"] and more_config["reuse_cache_adaptive"]:
+                requests = more_config["_reuse_hits"] + more_config["_reuse_misses"]
+                window_requests = (more_config["_reuse_window_hits"] +
+                                   more_config["_reuse_window_misses"])
+                if window_requests >= more_config["reuse_cache_window"]:
+                    hit_rate = (more_config["_reuse_window_hits"] /
+                                window_requests)
+                    if (hit_rate < more_config["reuse_cache_threshold"] and
+                            more_config["reuse_cache_size"] < more_config["reuse_cache_max_size"]):
+                        more_config["reuse_cache_size"] = min(
+                            more_config["reuse_cache_size"] * 2,
+                            more_config["reuse_cache_max_size"])
+                    more_config["_reuse_window_hits"] = 0
+                    more_config["_reuse_window_misses"] = 0
 
     except camb.CAMBError:
         if more_config["n_printed_errors"] <= more_config["max_printed_errors"]:

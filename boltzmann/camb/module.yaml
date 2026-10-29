@@ -39,6 +39,30 @@ params:
             history is computed and rs_zdrag and related quantities also. In cmb mode
             the CMB power spectra are also calculated. In power mode the CMB is not
             calculated but low-z mattter power is.  In all mode everything is calculated.
+    reuse_computation:
+        meaning: Reuse CAMB results for identical inputs in the bounded exact cache
+        type: bool
+        default: False
+    reuse_cache_size:
+        meaning: Maximum number of exact CAMB results retained for reuse
+        type: int
+        default: 4
+    reuse_cache_adaptive:
+        meaning: Increase the exact-cache capacity when the observed hit rate is low
+        type: bool
+        default: false
+    reuse_cache_max_size:
+        meaning: Upper bound for adaptive exact-cache capacity
+        type: int
+        default: 8
+    reuse_cache_window:
+        meaning: Number of requests between adaptive-cache decisions
+        type: int
+        default: 8
+    reuse_cache_threshold:
+        meaning: Increase adaptive capacity below this cache hit rate
+        type: real
+        default: 0.25
         type: str
         default:
     feedback:
