@@ -48,3 +48,32 @@ reuse median 0.062744 seconds, giving a ratio of approximately 9.523. Warm-up is
 excluded. These historical timings predate subsequent validation changes and
 are not end-to-end inference speedups. Actual benefit depends on repeated inputs,
 cache hit rate, native memory costs and existing CosmoSIS fast/slow reuse.
+
+## Alternating fast/slow pipeline benchmark
+
+Run `python tests/benchmark_camb_fast_slow.py` from the repository root.
+This runs real CAMB with a synthetic likelihood and automatic fast/slow splitting.
+Four cosmologies are visited in sequence three times (12 requests per condition).
+The existing slow-subspace cache in the tested CosmoSIS checkout holds three
+entries; this workload intentionally exceeds that capacity. The CAMB LRU holds
+four entries. Verify the slow-subspace capacity when using other CosmoSIS versions.
+
+Each condition is measured three times in alternating order: off/on, on/off,
+off/on. Setup and fast/slow analysis are excluded from total evaluation time.
+Pipeline cache state after analysis is retained; the CAMB LRU and cumulative
+counters are cleared before timing. This is a controlled revisit experiment,
+not an observational likelihood or sampler convergence benchmark.
+
+Local recorded times in seconds:
+
+| CAMB LRU | Run 1 | Run 2 | Run 3 | Median | Sample standard deviation |
+| --- | --- | --- | --- | --- | --- |
+| Disabled | 3.956843 | 4.184688 | 4.312583 | 4.184688 | 0.180195 |
+| Enabled | 1.518363 | 2.068216 | 1.663524 | 1.663524 | 0.284951 |
+
+The ratio of medians is 4.184688 / 1.663524 = approximately 2.516;
+time reduction is 1 - 1.663524 / 4.184688 = approximately 60.25 percent.
+Each enabled run recorded eight hits and four misses: H = 8/12.
+Maximum relative spectral difference against the first baseline run was zero
+in all six runs, with acceptance threshold epsilon_max <= 1e-12.
+Three repeats describe local variability and do not establish a confidence interval.
