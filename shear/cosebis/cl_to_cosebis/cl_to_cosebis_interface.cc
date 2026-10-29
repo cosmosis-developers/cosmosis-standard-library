@@ -226,6 +226,16 @@ extern "C" {
 			}
 		}
 
+		//get is_auto
+		bool is_auto;
+
+		status = block->get_val(config->input_section_name, string("is_auto"), is_auto);
+		if (status)
+		{
+			clog << "WARNING: could not find the value of is_auto. Setting it to True." << endl;
+			is_auto = true;
+		}
+
 		vector<number> ell,logell;
 		//get ell vector
 		status = block->get_val(config->input_section_name, string("ell"), ell);
@@ -290,6 +300,7 @@ extern "C" {
 		status = block->put_val<double>(config->output_section_name, string("nbin_b"), num_z_bin_B);
 		status = block->put_val(config->output_section_name, "theta_min", config->theta_min);
     	status = block->put_val(config->output_section_name, "theta_max", config->theta_max);
+    	status = block->put_val(config->output_section_name, "is_auto", is_auto);
 		status = block->put_val(config->output_section_name, "input_section_name", config->input_section_name);
 
 		
