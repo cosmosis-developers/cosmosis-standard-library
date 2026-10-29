@@ -901,7 +901,10 @@ def save_matter_power(r, block, more_config):
             block.put_grid(section_name, "z", z, "k_h", k, "p_k", p_k)
 
     if isinstance(r, SharedNonlinearRatio):
-        print("CAMB nonlinear sharing diagnostics:", r.diagnostics())
+        diagnostics = r.diagnostics()
+        diagnostics["eligibility"] = estimate_nonlinear_ratio_saving_from_diagnostics(
+            diagnostics)
+        print("CAMB nonlinear sharing diagnostics:", diagnostics)
 
     # Get growth rates and sigma_8
     sigma_8 = r.get_sigma8()[::-1]
