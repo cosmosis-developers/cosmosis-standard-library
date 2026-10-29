@@ -12,6 +12,33 @@ on:
 
 jobs:
 
+  class_batch_regression:
+    name: CLASS batch regression
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install CLASS build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gfortran libgsl-dev libopenblas-dev
+          python -m pip install --upgrade pip
+          python -m pip install numpy==2.3.* cython cosmosis
+
+      - name: Build CLASS 3.2.5 Python interface
+        run: make -C boltzmann/class/class_v3.2.5 classy PYTHON=python
+
+      - name: Run CLASS batch regression
+        run: |
+          export PYTHONPATH="$PWD/boltzmann/class/class_v3.2.5/classy_install:$PYTHONPATH"
+          python tests/test_class_batch_regression.py
+
   Download_Data:
     name: Download test data
     runs-on: ubuntu-latest
