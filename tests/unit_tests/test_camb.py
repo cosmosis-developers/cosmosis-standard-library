@@ -147,9 +147,10 @@ def test_adaptive_reuse_is_opt_in_and_bounded():
     assert config["_reuse_hits"] + config["_reuse_misses"] == 8
 
 
-def test_nonfinite_cosmological_input_fails_fast():
+@pytest.mark.parametrize("invalid", [np.nan, np.inf, -np.inf])
+def test_nonfinite_cosmological_input_fails_fast(invalid):
     module = build_camb_module(mode="power")
-    block = _camb_power_block(omch2=np.nan)
+    block = _camb_power_block(omch2=invalid)
     with pytest.raises(ValueError, match="Non-finite cosmological input"):
         module.execute(block)
 

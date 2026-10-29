@@ -97,6 +97,10 @@ def _validate_finite_cosmological_inputs(block):
     for key in block.keys(section):
         name = key[1] if isinstance(key, tuple) else key
         value = block[section, name]
+        # Other modules may store descriptive metadata in this shared section.
+        # Validate numeric values without imposing a schema on unrelated text.
+        if isinstance(value, str):
+            continue
         try:
             values = np.asarray(value, dtype=float)
         except (TypeError, ValueError) as exc:
