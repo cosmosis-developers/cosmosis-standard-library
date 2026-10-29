@@ -455,8 +455,7 @@ inputs:
 outputs:
     cosmological_parameters:
         sigma_8:
-            meaning: Amplitude of linear matter power at 8/h Mpc at z=0.  Only calculated
-                if mode=all
+            meaning: Amplitude of linear matter power at 8/h Mpc at z=0.  Calculated when matter power output is enabled
             type: real
     distances:
         nz:
@@ -607,7 +606,7 @@ outputs:
             meaning: Wavenumbers k of samples in Mpc/h.
             type: real 1d
         p_k:
-            meaning: Linear power spectrum at samples in (Mpc/h)^-3.
+            meaning: Linear power spectrum at samples in (Mpc/h)^3.
             type: real 2d
     matter_power_nl:
         z:
@@ -619,7 +618,7 @@ outputs:
             meaning: Wavenumbers k of samples in Mpc/h.
             type: real 1d
         p_k:
-            meaning: Non-linear power spectrum at samples in (Mpc/h)^-3.
+            meaning: Non-linear power spectrum at samples in (Mpc/h)^3.
             type: real 2d
     transfer_func:
         k_h:
