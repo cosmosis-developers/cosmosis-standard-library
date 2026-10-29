@@ -77,3 +77,25 @@ Each enabled run recorded eight hits and four misses: H = 8/12.
 Maximum relative spectral difference against the first baseline run was zero
 in all six runs, with acceptance threshold epsilon_max <= 1e-12.
 Three repeats describe local variability and do not establish a confidence interval.
+
+## Recommended use and sampler check
+
+Keep reuse disabled for routine continuous Metropolis sampling unless measured
+CAMB cache hits justify enabling it. The demonstrated use is exact cosmology
+revisits exceeding the existing slow-subspace cache capacity, such as controlled
+repeated-grid or replay workloads. No generic MCMC speedup is established.
+
+Run `python tests/benchmark_camb_metropolis.py` for a seeded 100-step run of the
+CosmoSIS Metropolis engine with fast/slow block proposals and oversampling 5.
+It uses 6dFGS BAO plus a synthetic fast nuisance likelihood. This is longer than
+the initial 20-step check, but remains a performance smoke test, not convergence
+validation or an observational posterior result.
+
+Local result: 101 posterior requests per condition; full-vector exact revisits
+zero. With reuse enabled CAMB recorded 0 hits and 18 misses. Total evaluation
+times were 6.384891 seconds disabled and 6.393932 seconds enabled. Their ratio
+is 0.998586, approximately 0.14 percent more time with reuse; one pair cannot
+resolve a difference this small. Spectral relative error and posterior log
+probability absolute difference were both zero (limits 1e-12 and 1e-10).
+Other requests were handled by pipeline reuse or prior rejection. Rejected
+chain states should not be confused with reevaluated likelihood requests.
