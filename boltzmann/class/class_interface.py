@@ -178,41 +178,14 @@ def get_class_outputs(block, c, config):
     k = np.logspace(np.log10(kmin), np.log10(kmax), nk)
     nz = len(z)
 
-    def power_grid(get_grid, scalar_getter):
-        """Evaluate P(k,z) on the CosmoSIS grid using CLASS's grid API.
-
-        CLASS returns its redshift grid in descending order and its power grid
-        as [k, z].  Interpolation is performed in log(k) and linear z. CLASS
-        power values are positive, so linear interpolation in P preserves
-        positivity between grid points while avoiding redshift bias. The
-        scalar path remains as a compatibility fallback for
-        older classy builds that do not provide the grid API.
-        """
-        if hasattr(c, "get_pk_and_k_and_z"):
+    def power_grid(array_getter, scalar_getter):
+        """Evaluate P(k,z) using CLASS's vectorized interpolation API."""
+        if hasattr(c, "get_pk_lin"):
             try:
-                pk, k_class, z_class = get_grid()
-                pk = np.asarray(pk, dtype=float)
-                k_class = np.asarray(k_class, dtype=float)
-                z_class = np.asarray(z_class, dtype=float)
-                if (pk.ndim != 2 or pk.shape != (k_class.size, z_class.size)
-                        or np.any(k_class <= 0) or np.any(pk <= 0)
-                        or np.any(z_class < 0)):
-                    raise ValueError("CLASS returned an invalid P(k,z) grid")
-                order = np.argsort(z_class)
-                log_k = np.log(k_class)
-                log_query_k = np.log(k)
-                # Interpolate in log(k) at each CLASS redshift, then linearly
-                # interpolate P in z. This preserves power-law behavior in k
-                # without introducing the bias of log(P) interpolation in z.
-                values_at_z = np.vstack([
-                    np.interp(log_query_k, log_k, np.log(pk[:, index]))
-                    for index in order
-                ])
-                values = np.vstack([
-                    np.interp(z, z_class[order], np.exp(values_at_z[:, i]))
-                    for i in range(k.size)
-                ])
-                return values
+                values = np.asarray(array_getter(), dtype=float)
+                if values.shape != (k.size, z.size, 1) or np.any(values <= 0):
+                    raise ValueError("CLASS returned an invalid P(k,z) array")
+                return values[:, :, 0]
             except (AttributeError, IndexError, TypeError, ValueError):
                 pass
 
@@ -231,9 +204,8 @@ def get_class_outputs(block, c, config):
             # Total matter power spectrum (saved as grid)
             if config['save_matter_power_lin']:
                 P = power_grid(
-                    lambda: c.get_pk_and_k_and_z(
-                        nonlinear=False, only_clustering_species=False,
-                        h_units=False),
+                    lambda: c.get_pk_lin(k[:, None, None] * np.ones((1, z.size, 1)),
+                                         z, k.size, z.size, 1),
                     c.pk_lin,
                 )
                 # We transpose P here to match the camb convention
@@ -242,9 +214,8 @@ def get_class_outputs(block, c, config):
             # CDM+baryons power spectrum
             if config['save_cdm_baryon_power_lin']:
                 P = power_grid(
-                    lambda: c.get_pk_and_k_and_z(
-                        nonlinear=False, only_clustering_species=True,
-                        h_units=False),
+                    lambda: c.get_pk_cb_lin(k[:, None, None] * np.ones((1, z.size, 1)),
+                                            z, k.size, z.size, 1),
                     c.pk_cb_lin,
                 )
                 block.put_grid('cdm_baryon_power_lin', 'z', z, 'k_h', k/h0, 'p_k', P.T * h0 **3)
@@ -263,9 +234,8 @@ def get_class_outputs(block, c, config):
 
             if c.nonlinear_method != 0:
                 P = power_grid(
-                    lambda: c.get_pk_and_k_and_z(
-                        nonlinear=True, only_clustering_species=False,
-                        h_units=False),
+                    lambda: c.get_pk(k[:, None, None] * np.ones((1, z.size, 1)),
+                                     z, k.size, z.size, 1),
                     c.pk,
                 )
 
