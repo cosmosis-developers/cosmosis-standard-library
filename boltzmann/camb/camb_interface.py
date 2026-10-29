@@ -6,6 +6,7 @@ import traceback
 import contextlib
 import hashlib
 import json
+import time
 from collections import OrderedDict
 
 # Finally we can now import camb
@@ -747,6 +748,9 @@ class SharedNonlinearRatio:
             "unsupported_variable": 0,
             "cross_spectrum": 0,
         }
+        self.native_nonlinear_seconds = 0.0
+        self.shared_seconds = 0.0
+        self.linear_seconds = 0.0
 
     def diagnostics(self):
         """Return extraction counters for performance diagnostics."""
@@ -755,6 +759,9 @@ class SharedNonlinearRatio:
             "shared_calls": self.shared_calls,
             "fallback_calls": self.fallback_calls,
             "fallback_reasons": dict(self.fallback_reasons),
+            "native_nonlinear_seconds": self.native_nonlinear_seconds,
+            "shared_seconds": self.shared_seconds,
+            "linear_seconds": self.linear_seconds,
         }
 
     def __getattr__(self, name):
@@ -783,7 +790,10 @@ class SharedNonlinearRatio:
                     self.fallback_reasons["cross_spectrum"] += 1
             return self.result.get_linear_matter_power_spectrum(*args, **kwargs)
         linear_options = dict(kwargs, nonlinear=False)
+        started = time.perf_counter()
         k, z, linear = self.result.get_linear_matter_power_spectrum(**linear_options)
+        self.linear_seconds += time.perf_counter() - started
+        shared_started = time.perf_counter()
         valid = np.all(np.isfinite(linear)) and np.all(linear > 0)
         signature = (kwargs.get("hubble_units", True), kwargs.get("k_hunit", True))
         if self.cached is not None and valid:
@@ -791,10 +801,13 @@ class SharedNonlinearRatio:
             if units == signature and np.array_equal(k, ck) and np.array_equal(z, cz):
                 power = linear * ratio
                 if np.all(np.isfinite(power)) and np.all(power > 0):
+                    self.shared_seconds += time.perf_counter() - shared_started
                     self.shared_calls += 1
                     return k, z, power
         self.native_nonlinear_calls += 1
+        started = time.perf_counter()
         kn, zn, nonlinear = self.result.get_linear_matter_power_spectrum(**kwargs)
+        self.native_nonlinear_seconds += time.perf_counter() - started
         if (valid and np.array_equal(k, kn) and np.array_equal(z, zn) and
                 np.all(np.isfinite(nonlinear)) and np.all(nonlinear > 0)):
             ratio = nonlinear / linear

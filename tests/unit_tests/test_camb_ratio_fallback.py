@@ -64,6 +64,9 @@ def test_unsupported_requests_always_use_native_result(options):
         "shared_calls": 0,
         "fallback_calls": 2,
         "fallback_reasons": reasons,
+        "native_nonlinear_seconds": 0.0,
+        "shared_seconds": 0.0,
+        "linear_seconds": 0.0,
     }
 
 
