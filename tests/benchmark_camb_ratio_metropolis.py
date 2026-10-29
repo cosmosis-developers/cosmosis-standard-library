@@ -1,11 +1,15 @@
 import tempfile
 import pathlib
 import time
+import os
 from cosmosis.samplers.metropolis.metropolis import MCMC
 import numpy as np
 from cosmosis.runtime import Inifile, LikelihoodPipeline
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
+SAMPLES = int(os.environ.get('COSMOSIS_RATIO_SAMPLES', '100'))
+if SAMPLES <= 0:
+    raise ValueError('COSMOSIS_RATIO_SAMPLES must be positive')
 with tempfile.TemporaryDirectory() as directory:
     d = pathlib.Path(directory)
     (d/'values.ini').write_text('[cosmological_parameters]\nombh2=.022\nomch2=.11 .12 .13\nh0=.675\ntau=.06\nn_s=.965\nA_s=2.1e-9\nomega_k=0\n[nuisance]\nx=-1 0 1\n')
@@ -38,7 +42,7 @@ with tempfile.TemporaryDirectory() as directory:
             sampler=MCMC(pipeline.start_vector(), posterior, np.diag([1e-6,0.01]), tuning_frequency=-1)
             sampler.set_fast_slow(pipeline.fast_param_indices,
                                   pipeline.slow_param_indices, oversampling=5)
-            list(sampler.sample(100))
+            list(sampler.sample(SAMPLES))
             print('REVISITS', len(visited)-len(set(visited)), 'REQUESTS', len(visited), flush=True)
             elapsed=time.perf_counter()-start
             timings[reuse].append(elapsed)
