@@ -849,6 +849,9 @@ def save_matter_power(r, block, more_config):
             section_name = matter_power_section_names[transfer_type] + "_nl"
             block.put_grid(section_name, "z", z, "k_h", k, "p_k", p_k)
 
+    if isinstance(r, SharedNonlinearRatio):
+        print("CAMB nonlinear sharing diagnostics:", r.diagnostics())
+
     # Get growth rates and sigma_8
     sigma_8 = r.get_sigma8()[::-1]
     fsigma_8 = r.get_fsigma8()[::-1]
