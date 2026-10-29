@@ -216,6 +216,7 @@ def setup(options):
     more_config = {}
 
     more_config["mode"] = mode
+    more_config["share_nonlinear_ratio"] = options.get_bool(opt, "share_nonlinear_ratio", default=False)
     more_config["reuse_computation"] = options.get_bool(opt, "reuse_computation", default=False)
     more_config["reuse_cache_size"] = options.get_int(opt, "reuse_cache_size", default=4)
     more_config["reuse_cache_adaptive"] = options.get_bool(opt, "reuse_cache_adaptive", default=False)
@@ -710,7 +711,47 @@ def compute_growth_factor(r, block, P_tot, k, z, more_config):
     return np.atleast_1d(D)
 
 
+class SharedNonlinearRatio:
+    """Share CAMB's native-grid nonlinear ratio within one output extraction."""
+    supported = {"delta_tot", "delta_nonu", "delta_cdm"}
+
+    def __init__(self, result):
+        self.result = result
+        self.cached = None
+
+    def __getattr__(self, name):
+        return getattr(self.result, name)
+
+    def get_linear_matter_power_spectrum(self, *args, **kwargs):
+        var = kwargs.get("var1")
+        if (args or not kwargs.get("nonlinear", False) or
+                var not in self.supported or kwargs.get("var2") != var):
+            return self.result.get_linear_matter_power_spectrum(*args, **kwargs)
+        linear_options = dict(kwargs, nonlinear=False)
+        k, z, linear = self.result.get_linear_matter_power_spectrum(**linear_options)
+        valid = np.all(np.isfinite(linear)) and np.all(linear > 0)
+        signature = (kwargs.get("hubble_units", True), kwargs.get("k_hunit", True))
+        if self.cached is not None and valid:
+            ck, cz, ratio, units = self.cached
+            if units == signature and np.array_equal(k, ck) and np.array_equal(z, cz):
+                power = linear * ratio
+                if np.all(np.isfinite(power)) and np.all(power > 0):
+                    return k, z, power
+        kn, zn, nonlinear = self.result.get_linear_matter_power_spectrum(**kwargs)
+        if (valid and np.array_equal(k, kn) and np.array_equal(z, zn) and
+                np.all(np.isfinite(nonlinear)) and np.all(nonlinear > 0)):
+            ratio = nonlinear / linear
+            if np.all(np.isfinite(ratio)):
+                self.cached = (k.copy(), z.copy(), ratio, signature)
+        return kn, zn, nonlinear
+
+    def get_matter_power_interpolator(self, **kwargs):
+        return camb.results.CAMBdata.get_matter_power_interpolator(self, **kwargs)
+
+
 def save_matter_power(r, block, more_config):
+    if more_config.get("share_nonlinear_ratio", False):
+        r = SharedNonlinearRatio(r)
     p = r.Params
     # Grids in k, z on which to save matter power.
     # There are two kmax values - the max one calculated directly,

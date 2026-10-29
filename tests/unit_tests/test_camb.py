@@ -274,10 +274,12 @@ def test_reuse_computation_reuses_nonconsecutive_input():
     assert epsilon == pytest.approx(0.0, abs=1e-14)
 
 
-def test_lru_matches_independent_fresh_spectra():
+@pytest.mark.parametrize("sharing", [False, True])
+def test_lru_matches_independent_fresh_spectra(sharing):
     options = dict(mode="power", nk=40, nz=12,
                    power_spectra="delta_tot delta_nonu")
-    cached = build_camb_module(reuse_computation=True, reuse_cache_size=2, **options)
+    cached = build_camb_module(reuse_computation=True, reuse_cache_size=2,
+                               share_nonlinear_ratio=sharing, **options)
     fresh = build_camb_module(reuse_computation=False, **options)
     for density in (0.12, 0.121, 0.12):
         actual = _camb_power_block(omch2=density)
