@@ -11,6 +11,31 @@ of 100-step block Metropolis tests. Local disabled median: 8.584172 seconds
 and posterior differences were zero. This did not reproduce the earlier
 single-pair speedup. Keep sharing experimental and disabled by default.
 
+## Candidate policy for automatic sharing
+
+The sampler benchmark does not justify enabling sharing merely because several
+spectra are requested. The measured condition had three supported auto
+spectra, but sharing was slower (median ratio 0.827546). The conservative
+automatic policy is therefore:
+
+1. Do not enable sharing for a single nonlinear extraction.
+2. Require at least two supported positive auto spectra on the same native
+   `(k, z, hubble_units, k_hunit)` grid; cross spectra and Weyl are excluded.
+3. Require the measured first nonlinear extraction cost to amortize the ratio
+   multiplication and wrapper overhead. With `t_nl` and `t_lin` in seconds,
+   and `n` planned extractions, estimate
+   `S = (n - 1) * (t_nl - t_lin) - n * t_overhead`.
+   Automatic sharing is eligible only when `S > 0`.
+4. If grid, unit, positivity, or finiteness checks fail, use native CAMB
+   extraction and invalidate the shared ratio.
+
+This is a policy specification, not an enabled default. The current
+three-pair alternating Metropolis measurement had zero spectral and posterior
+error but a negative estimated saving, so automatic activation is not
+implemented until a representative workload measures a positive margin. A
+future implementation should decide per CAMB result, expose the decision and
+timings in diagnostics, and include a no-sharing control in every benchmark.
+
 Enable exact result reuse with `reuse_computation = T`. The default is false.
 Results are retained in a least-recently-used cache. A hit refreshes recency;
 inserting a new result evicts the oldest entry when capacity is exceeded.
