@@ -88,6 +88,22 @@ def _make_reuse_key(block, p, more_config):
         special["redshift_as_parameter_z"] = block["redshift_as_parameter", "z"]
     return make_camb_cache_key(repr(p), key_config, special)
 
+
+def _validate_finite_cosmological_inputs(block):
+    """Fail fast on non-finite cosmological inputs before CAMB is called."""
+    section = cosmo
+    if not block.has_section(section):
+        return
+    for key in block.keys(section):
+        name = key[1] if isinstance(key, tuple) else key
+        value = block[section, name]
+        try:
+            values = np.asarray(value, dtype=float)
+        except (TypeError, ValueError) as exc:
+            raise ValueError(f"Non-numeric cosmological input: {section}.{name}") from exc
+        if not np.all(np.isfinite(values)):
+            raise ValueError(f"Non-finite cosmological input: {section}.{name}")
+
 @contextlib.contextmanager
 def be_quiet_camb():
     original_feedback_level = camb.config.FeedbackLevel
@@ -821,6 +837,7 @@ def execute(block, config):
     config, more_config = config
     p = "<Error occurred during parameter setup>"
     try:
+        _validate_finite_cosmological_inputs(block)
         p = extract_camb_params(block, config, more_config)
 
         if (not p.WantCls) and (not p.WantTransfer):
