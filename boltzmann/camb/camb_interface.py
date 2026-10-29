@@ -711,6 +711,26 @@ def compute_growth_factor(r, block, P_tot, k, z, more_config):
     return np.atleast_1d(D)
 
 
+def estimate_nonlinear_ratio_saving(n_extractions, nonlinear_seconds,
+                                    linear_seconds, overhead_seconds):
+    """Estimate seconds saved by sharing one nonlinear correction ratio.
+
+    The first extraction remains native; each later extraction can reuse the
+    ratio.  This helper is diagnostic only and does not enable sharing.
+    """
+    if isinstance(n_extractions, bool) or not isinstance(n_extractions, (int, np.integer)):
+        raise ValueError("n_extractions must be a positive integer")
+    if n_extractions < 1:
+        raise ValueError("n_extractions must be a positive integer")
+    values = (nonlinear_seconds, linear_seconds, overhead_seconds)
+    if not all(np.isfinite(value) and value >= 0 for value in values):
+        raise ValueError("timings must be finite and non-negative")
+    saving = ((n_extractions - 1) *
+              (nonlinear_seconds - linear_seconds) -
+              n_extractions * overhead_seconds)
+    return {"saving_seconds": float(saving), "eligible": bool(saving > 0)}
+
+
 class SharedNonlinearRatio:
     """Share CAMB's native-grid nonlinear ratio within one output extraction."""
     supported = {"delta_tot", "delta_nonu", "delta_cdm"}

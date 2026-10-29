@@ -1,6 +1,30 @@
 import numpy as np
 import pytest
-from boltzmann.camb.camb_interface import SharedNonlinearRatio
+from boltzmann.camb.camb_interface import (
+    SharedNonlinearRatio, estimate_nonlinear_ratio_saving,
+)
+
+
+@pytest.mark.parametrize("n, expected, eligible", [
+    (1, -0.2, False),
+    (2, 3.6, True),
+    (4, 11.2, True),
+])
+def test_saving_estimate_matches_amortization_formula(n, expected, eligible):
+    result = estimate_nonlinear_ratio_saving(n, 5.0, 1.0, 0.2)
+    assert result["saving_seconds"] == pytest.approx(expected)
+    assert result["eligible"] is eligible
+
+
+@pytest.mark.parametrize("args", [
+    (0, 5.0, 1.0, 0.2),
+    (True, 5.0, 1.0, 0.2),
+    (2, np.nan, 1.0, 0.2),
+    (2, 5.0, -1.0, 0.2),
+])
+def test_saving_estimate_rejects_invalid_inputs(args):
+    with pytest.raises(ValueError):
+        estimate_nonlinear_ratio_saving(*args)
 
 
 class FakeResult:
