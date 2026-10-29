@@ -21,9 +21,8 @@ try:
             old = np.array([[scalar(ki, zi) for zi in z] for ki in k])
             old_times.append(time.perf_counter() - start)
             start = time.perf_counter()
-            karr = k[:, None, None] * np.ones((1, z.size, 1))
-            new = (c.get_pk(karr, z, k.size, z.size, 1) if nonlinear
-                   else c.get_pk_lin(karr, z, k.size, z.size, 1))[:, :, 0]
+            new = c.get_pk_array(k, z, k.size, z.size, int(nonlinear))
+            new = new.reshape(z.size, k.size).T
             new_times.append(time.perf_counter() - start)
         error = np.abs(new-old)/np.maximum(np.abs(old), 1e-30)
         print(json.dumps(dict(nonlinear=nonlinear, max_relative_error=float(error.max()),

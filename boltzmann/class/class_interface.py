@@ -180,12 +180,12 @@ def get_class_outputs(block, c, config):
 
     def power_grid(array_getter, scalar_getter):
         """Evaluate P(k,z) using CLASS's vectorized interpolation API."""
-        if hasattr(c, "get_pk_lin"):
+        if hasattr(c, "get_pk_array"):
             try:
                 values = np.asarray(array_getter(), dtype=float)
-                if values.shape != (k.size, z.size, 1) or np.any(values <= 0):
+                if values.size != k.size * z.size or np.any(values <= 0):
                     raise ValueError("CLASS returned an invalid P(k,z) array")
-                return values[:, :, 0]
+                return values.reshape(z.size, k.size).T
             except (AttributeError, IndexError, TypeError, ValueError):
                 pass
 
@@ -204,8 +204,7 @@ def get_class_outputs(block, c, config):
             # Total matter power spectrum (saved as grid)
             if config['save_matter_power_lin']:
                 P = power_grid(
-                    lambda: c.get_pk_lin(k[:, None, None] * np.ones((1, z.size, 1)),
-                                         z, k.size, z.size, 1),
+                    lambda: c.get_pk_array(k, z, k.size, z.size, 0),
                     c.pk_lin,
                 )
                 # We transpose P here to match the camb convention
@@ -214,8 +213,7 @@ def get_class_outputs(block, c, config):
             # CDM+baryons power spectrum
             if config['save_cdm_baryon_power_lin']:
                 P = power_grid(
-                    lambda: c.get_pk_cb_lin(k[:, None, None] * np.ones((1, z.size, 1)),
-                                            z, k.size, z.size, 1),
+                    lambda: c.get_pk_cb_array(k, z, k.size, z.size, 0),
                     c.pk_cb_lin,
                 )
                 block.put_grid('cdm_baryon_power_lin', 'z', z, 'k_h', k/h0, 'p_k', P.T * h0 **3)
@@ -234,8 +232,7 @@ def get_class_outputs(block, c, config):
 
             if c.nonlinear_method != 0:
                 P = power_grid(
-                    lambda: c.get_pk(k[:, None, None] * np.ones((1, z.size, 1)),
-                                     z, k.size, z.size, 1),
+                    lambda: c.get_pk_array(k, z, k.size, z.size, 1),
                     c.pk,
                 )
 
