@@ -39,6 +39,12 @@ explanation: |4
 
     The CosmoSIS team packaged this module into cosmosis form so any issues
     running it here please ask us first.
+
+    For pipelines that vary parameters used only by later likelihood modules,
+    set ``fast_slow = T`` in the ``[pipeline]`` section. CosmoSIS will measure
+    module timings, cache the slow-module DataBlock, and reuse CLASS outputs
+    when only fast parameters change. The cache is invalidated when a
+    parameter used by CLASS changes.
 params:
     version:
         meaning: Version of CLASS to use
@@ -86,6 +92,10 @@ params:
         default: True
     save_cdm_baryon_power_lin:
         meaning: Whether to save linear CDM-baryon power spectrum
+        type: bool
+        default: False
+    reuse_computation:
+        meaning: Reuse CLASS state for identical consecutive inputs
         type: bool
         default: False
 inputs:
