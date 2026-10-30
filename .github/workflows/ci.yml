@@ -107,6 +107,7 @@ jobs:
             "scipy=${{ matrix.scipy-version }}" \
             "camb=${{ matrix.camb-version }}" \
             "compilers>=2"
+
           # replace fastpt version forcibly
           mamba uninstall --force fast-pt
           pip install "git+https://github.com/joezuntz/FAST-PT/"
