@@ -214,6 +214,9 @@ def get_class_outputs(block, c, config):
             block[names.growth_parameters, "a"] = 1/(1+z)
 
             if c.nonlinear_method != 0:
+                # The linear grid is optional; allocate a separate output
+                # array when nonlinear-only saving is requested.
+                P = np.zeros((k.size, z.size))
                 for i, ki in enumerate(k):
                     for j, zi in enumerate(z):
                         P[i, j] = c.pk(ki, zi)
