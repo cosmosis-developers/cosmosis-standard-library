@@ -178,6 +178,34 @@ def get_class_outputs(block, c, config):
     k = np.logspace(np.log10(kmin), np.log10(kmax), nk)
     nz = len(z)
 
+    # Keep only the most recent spectrum extraction.  Sampling chains often
+    # revisit an identical point (or retry a failed downstream module), and
+    # reusing the already validated CLASS array avoids another batch call.
+    # The cache is deliberately one-entry and belongs to this module config,
+    # so it cannot grow with chain length or mix different CLASS parameters.
+    cache_key = (config.get("_class_input_key"), k.tobytes(), z.tobytes())
+    spectrum_cache = config.get("_spectrum_cache")
+    if spectrum_cache is None or spectrum_cache.get("key") != cache_key:
+        spectrum_cache = {"key": cache_key}
+        config["_spectrum_cache"] = spectrum_cache
+
+    def power_grid(array_getter, scalar_getter):
+        """Evaluate P(k,z) using CLASS's vectorized interpolation API."""
+        if hasattr(c, "get_pk_array"):
+            try:
+                values = np.asarray(array_getter(), dtype=float)
+                if values.size != k.size * z.size or np.any(values <= 0):
+                    raise ValueError("CLASS returned an invalid P(k,z) array")
+                return values.reshape(z.size, k.size).T
+            except (AttributeError, IndexError, TypeError, ValueError):
+                pass
+
+        P = np.empty((k.size, z.size))
+        for i, ki in enumerate(k):
+            for j, zi in enumerate(z):
+                P[i, j] = scalar_getter(ki, zi)
+        return P
+
     if not config['background_only']:
         # Extract (interpolate) P(k,z) at the requested
         # sample points.
@@ -186,19 +214,25 @@ def get_class_outputs(block, c, config):
 
             # Total matter power spectrum (saved as grid)
             if config['save_matter_power_lin']:
-                P = np.zeros((k.size, z.size))
-                for i, ki in enumerate(k):
-                    for j, zi in enumerate(z):
-                        P[i, j] = c.pk_lin(ki, zi)
+                P = spectrum_cache.get("matter_power_lin")
+                if P is None:
+                    P = power_grid(
+                        lambda: c.get_pk_array(k, z, k.size, z.size, 0),
+                        c.pk_lin,
+                    )
+                    spectrum_cache["matter_power_lin"] = P.copy()
                 # We transpose P here to match the camb convention
                 block.put_grid("matter_power_lin", "z", z, "k_h", k / h0, "p_k", P.T * h0**3)
 
             # CDM+baryons power spectrum
             if config['save_cdm_baryon_power_lin']:
-                P = np.zeros((k.size, z.size))
-                for i, ki in enumerate(k):
-                    for j, zi in enumerate(z):
-                        P[i, j] = c.pk_cb_lin(ki, zi)
+                P = spectrum_cache.get("cdm_baryon_power_lin")
+                if P is None:
+                    P = power_grid(
+                        lambda: c.get_pk_cb_array(k, z, k.size, z.size, 0),
+                        c.pk_cb_lin,
+                    )
+                    spectrum_cache["cdm_baryon_power_lin"] = P.copy()
                 block.put_grid('cdm_baryon_power_lin', 'z', z, 'k_h', k/h0, 'p_k', P.T * h0 **3)
 
             # Get growth rates and sigma_8
@@ -214,9 +248,13 @@ def get_class_outputs(block, c, config):
             block[names.growth_parameters, "a"] = 1/(1+z)
 
             if c.nonlinear_method != 0:
-                for i, ki in enumerate(k):
-                    for j, zi in enumerate(z):
-                        P[i, j] = c.pk(ki, zi)
+                P = spectrum_cache.get("matter_power_nl")
+                if P is None:
+                    P = power_grid(
+                        lambda: c.get_pk_array(k, z, k.size, z.size, 1),
+                        c.pk,
+                    )
+                    spectrum_cache["matter_power_nl"] = P.copy()
 
                 block.put_grid("matter_power_nl", "z", z, "k_h", k / h0, "p_k", P.T * h0**3)
 
@@ -293,6 +331,7 @@ def execute(block, config):
     try:
         # Set input parameters
         params = get_class_inputs(block, config)
+        config["_class_input_key"] = repr(sorted(params.items()))
         c.set(params)
 
         # saves neff if we are using nur, for cases where nur is sampled:
