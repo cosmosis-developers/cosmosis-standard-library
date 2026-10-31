@@ -168,23 +168,25 @@ DEFINESCOMMON = -D HAS_LAPACK -D LAPACK_CLIK -D NOHEALPIX -D CLIK_LENSING -D 'CL
 CM64 =
 FM64 =
 
-# ifeq ($(OS),macos)
-# DEFINES = $(DEFINESMACOS) $(DEFINESCOMMON)
-# ifndef CM64
-# CM64 =
-# endif
-# ifndef FM64
-# FM64 =
-# endif
-# else
-# DEFINES = $(DEFINESLINUX) $(DEFINESCOMMON)
-# ifndef CM64
+ifeq ($(OS),macos)
+DEFINES = $(DEFINESMACOS) $(DEFINESCOMMON)
+ifndef CM64
+CM64 =
+endif
+ifndef FM64
+FM64 =
+endif
+else
+DEFINES = $(DEFINESLINUX) $(DEFINESCOMMON)
+ifndef CM64
 # CM64 = -m64
-# endif
-# ifndef FM64
-# # FM64 = -m64
-# endif
-# endif
+CM64 =
+endif
+ifndef FM64
+# FM64 = -m64
+FM64 = -m64
+endif
+endif
 
 INCLUDES = -I$(CFITSIO_INCPATH)
 
