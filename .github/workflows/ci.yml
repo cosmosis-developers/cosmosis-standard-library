@@ -99,14 +99,7 @@ jobs:
       - name: Install dependencies with conda
         shell: bash -l {0}
         run: |
-          mamba install -c conda-forge \
-            "cosmosis>=3.25" \
-            cosmosis-build-standard-library \
-            pytest \
-            "numpy=${{ matrix.numpy-version }}" \
-            "scipy=${{ matrix.scipy-version }}" \
-            "camb=${{ matrix.camb-version }}"
-
+           mamba install -c conda-forge "cosmosis>=3.25" cosmosis-build-standard-library pytest "numpy=${{ matrix.numpy-version }}" "scipy=${{ matrix.scipy-version }}" "camb=${{ matrix.camb-version }}"
           # replace fastpt version forcibly
           mamba uninstall --force fast-pt
           pip install "git+https://github.com/joezuntz/FAST-PT/"
