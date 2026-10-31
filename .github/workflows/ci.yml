@@ -106,7 +106,7 @@ jobs:
             "numpy=${{ matrix.numpy-version }}" \
             "scipy=${{ matrix.scipy-version }}" \
             "camb=${{ matrix.camb-version }}" \
-            openblas cblas blas lapack lapacke
+            openblas libblas libcblas liblapack liblapacke
 
           # replace fastpt version forcibly
           mamba uninstall --force fast-pt
