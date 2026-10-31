@@ -481,14 +481,14 @@ class Spectrum(object):
         # if there is only a very tiny overlap between
         # the kernels then we should try without clipping
         # in case there is a very small signal.
-        if chimin > chimax:
+        if chimin >= chimax:
             chimin = max( K1.xmin, K2.xmin )
             chimax = min( K1.xmax, K2.xmax )
 
         # If there is no overlap at all between the
         # kernels even then then there is no signal
         # so we should just return zeros.
-        if chimin > chimax:
+        if chimin >= chimax:
             c_ell = np.zeros(len(ell))
             return c_ell
 
@@ -636,14 +636,14 @@ class LingalLingalSpectrum(Spectrum):
         # if there is only a very tiny overlap between
         # the kernels then we should try without clipping
         # in case there is a very small signal.
-        if chimin > chimax:
+        if chimin >= chimax:
             chimin = max( K1.xmin, K2.xmin )
             chimax = min( K1.xmax, K2.xmax )
 
         # If there is no overlap at all between the
         # kernels even then then there is no density-density signal
         # so we should just return zeros.
-        if chimin > chimax:
+        if chimin >= chimax:
             c_ell = np.zeros(len(ell))
             return c_ell
 
