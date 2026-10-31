@@ -109,7 +109,7 @@ jobs:
 
           # replace fastpt version forcibly
           mamba uninstall --force fast-pt
-          pip install --no-deps --no-build-isolation "git+https://github.com/joezuntz/FAST-PT/"
+          pip install "git+https://github.com/joezuntz/FAST-PT/"
       
       - name: Build standard library
         shell: bash -l {0}
