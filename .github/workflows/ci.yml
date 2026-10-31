@@ -105,9 +105,7 @@ jobs:
             pytest \
             "numpy=${{ matrix.numpy-version }}" \
             "scipy=${{ matrix.scipy-version }}" \
-            "camb=${{ matrix.camb-version }}" \
-            openblas libblas libcblas liblapack liblapacke \
-            setuptools pip
+            "camb=${{ matrix.camb-version }}"
 
           # replace fastpt version forcibly
           mamba uninstall --force fast-pt
