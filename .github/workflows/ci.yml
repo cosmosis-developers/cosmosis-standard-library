@@ -69,7 +69,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest]
+        os: [ubuntu-latest, macos-latest, ubuntu-26.04-arm]
         pyversion: ["3.11", "3.12", "3.13", "3.14"]
         numpy-version: ["2.4", "2.5"]
         camb-version: ["1.6.5", "2.0.0"]
