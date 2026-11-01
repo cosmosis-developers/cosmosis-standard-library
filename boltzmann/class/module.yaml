@@ -88,6 +88,14 @@ params:
         meaning: Whether to save linear CDM-baryon power spectrum
         type: bool
         default: False
+    use_bulk_pk:
+        meaning: Use bounded CLASS bulk power extraction for the low/intermediate-k region. Disabled by default; enable only when approximately 3.5e-4 pointwise relative accuracy is acceptable.
+        type: bool
+        default: False
+    bulk_pk_kmax:
+        meaning: Maximum k in h/Mpc for CLASS bulk extraction; higher k uses scalar extraction. The validated default is 5.0.
+        type: real
+        default: 5.0
 inputs:
     cosmological_parameters:
         ombh2:
