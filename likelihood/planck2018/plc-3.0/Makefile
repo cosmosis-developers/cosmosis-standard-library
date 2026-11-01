@@ -181,7 +181,7 @@ CM64 =
 endif
 ifndef FM64
 # FM64 = -m64
-FM64 = -m64
+FM64 =
 endif
 endif
 
