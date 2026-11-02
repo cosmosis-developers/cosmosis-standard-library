@@ -29,6 +29,8 @@ def configure(ctx):
     if ctx.options.m32:
       mopt = ["-m32"]
       
+  mopt = []
+
   ctx.env.mopt=mopt
   ctx.env.append_value('CCFLAGS',mopt)
   ctx.env.append_value('LINKFLAGS',mopt)
