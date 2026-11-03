@@ -1,32 +1,36 @@
-# Add Xlens to the model modifying the linear gal bias
-# Based on Shivam Pandey's code for Y3
-from cosmosis.datablock import names, option_section
-import numpy as np
+"""
+Add xlens to the model by modifying the linear galaxy bias.
+
+Based on Shivam Pandey's code for Y3.
+"""
+from cosmosis.datablock import option_section
+
 
 def setup(options):
-    # Get the name of the bias section
     bias_section = options.get_string(option_section, "bias_section", "bias_lens")
-	# Get the name of the xlens section
-    r_section = options.get_string(option_section,"r_section", "x_lens")
+    r_section = options.get_string(option_section, "r_section", "x_lens")
+    nbins = options.get_int(option_section, "nbins", 5)
+    return bias_section, r_section, nbins
 
-    return bias_section, r_section
 
 def execute(block, config):
+    bias_section, r_section, nbins = config
 
-    bias_section, r_section = config
+    rval = block[r_section, "rmean_bin"]
 
-    rval = block[r_section, 'rmean_bin']
-
-    for i in range(1,6):
-        b1in_label = "b1E_bin%d"%i
-        b1_in = block[bias_section, b1in_label]
-        b1out_gt_label = "b1gt_bin%d"%i
-        b1out_wt_label = "b1wt_bin%d"%i
-        if not block.has_value(bias_section, b1in_label):
-            print("%s not found"%b1in_label)
+    for i in range(1, nbins + 1):
+        b1_in_label = f"b1E_bin{i}"
+        if not block.has_value(bias_section, b1_in_label):
+            print(f"{b1_in_label} not found")
             break
-        block[bias_section, b1out_wt_label] = b1_in
-        b1_gt = rval*b1_in
-        block[bias_section, b1out_gt_label] = b1_gt
+        b1_in = block[bias_section, b1_in_label]
+
+        # Galaxy clustering uses the original bias, galaxy-galaxy lensing the scaled one
+        block[bias_section, f"b1wt_bin{i}"] = b1_in
+        block[bias_section, f"b1gt_bin{i}"] = rval * b1_in
 
     return 0
+
+
+def cleanup(config):
+    pass
