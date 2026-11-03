@@ -1,0 +1,55 @@
+# This is a template for module description files
+name: photoz_uz
+version: 1
+purpose: Modify a set of loaded n(z) distributions by a set of eigenmodes and amplitudes.
+url: ''
+interface: photoz_uz.py
+attribution: Troxel & Gary Bernstein
+rules: ''
+cite: []
+assumptions:
+  - files containing information on n(z) modes and priors on amplitudes
+
+explanation: |
+
+params:
+  sample:
+    meaning: Name of sample
+    type: str
+    default: ""
+  basis_file:
+    meaning: File containing n(z) mode array
+    type: str
+    default: ""
+  n_modes:
+    meaning: Number of modes to use
+    type: int
+    default: 0
+  no_degaussbins:
+    meaning: Lens redshift bin to not apply degaussianization
+    type: int
+    default: 9999
+inputs:
+  wl_number_density:
+    nbin:
+      meaning: Number of redshift bins
+      type: int
+      default:
+    z:
+      meaning: Redshift sample points of n(z) estimates
+      type: real 1d
+      default:
+    bin_i:
+      meaning: n(z) for i=1..nbin. n(z) estimates
+      type: real 1d
+      default:
+  "{sample}_photoz_u":
+    bias_i:
+      meaning: For i=1..nmode. Amplitude for mode i.
+      type: real
+      default:
+outputs:
+  wl_number_density:
+    bin_i:
+      meaning: n(z) for i=1..nbin. Modified n(z) estimates replaced old value
+      type: real 1d
