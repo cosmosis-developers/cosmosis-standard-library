@@ -78,7 +78,7 @@ def execute(block, config):
     emulator = config['emulator']
 
     k = np.logspace(np.log10(config['kmin']), np.log10(config['kmax']), config['nk'])
-    if k.max() > K_EMU_MAX:
+    if k.max() > K_EMU_MAX * (1 + 1e-6):
         warnings.warn(f"Maximum k={k.max()} is above the emulator maximum of {K_EMU_MAX}")
 
     # The emulator is only valid for z < 3 so we cut the grid there
