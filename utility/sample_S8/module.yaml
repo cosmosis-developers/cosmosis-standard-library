@@ -13,38 +13,30 @@ assumptions:
 explanation: |
     This module lets you sample over S_8 = sigma_8 * (Omega_m / 0.3)**alpha instead of sigma_8,
     with a configurable alpha (the standard value is 0.5). It computes sigma_8 from the
-    sampled S_8 and the matter density omega_m, which must therefore already be known, and saves it
-    in the cosmological_parameters section under the name sigma_8_input by default.
+    sampled S_8 (or S_8 squared, if read_s8_squared is set) and the matter density omega_m, which must
+    therefore already be known, and saves it as cosmological_parameters/sigma_8. Any existing value is replaced.
 
-    This sigma_8 value is not used directly by the Boltzmann code. It is intended to be used
-    with the sigma8_rescale module, which reads a parameter called sigma8_input,
-    so set sigma8_name = sigma8_input to connect them.
-
-    The consistency module can also convert S_8 to sigma_8 (with alpha = 0.5) when sigma_8 is
-    calculated by the Boltzmann code, which is a different use case.
+    The consistency module can also convert S_8 to sigma_8, but only with alpha = 0.5. Use this module
+    when you need a different alpha, or to sample S_8^2. Do not use both on the same parameter.
 
 params:
     alpha:
         meaning: Exponent of Omega_m / 0.3 in the definition of S_8
         type: real
         default: 0.5
-    S8_squared:
-        meaning: If true then the sampled parameter is S_8^2 rather than S_8
+    read_s8_squared:
+        meaning: If true then the sampled parameter is S8_squared (the square of S_8) rather than S_8
         type: bool
         default: false
-    S8_name:
-        meaning: Name of the sampled S_8 parameter in the cosmological_parameters section
-        type: str
-        default: S_8_input
-    sigma8_name:
-        meaning: Name of the output sigma_8 parameter in the cosmological_parameters section
-        type: str
-        default: sigma_8_input
 
 inputs:
     cosmological_parameters:
-        S_8_input:
-            meaning: The sampled S_8 value, under the name given by S8_name
+        S_8:
+            meaning: The sampled S_8 value. Used if read_s8_squared is false
+            type: real
+            default:
+        S8_squared:
+            meaning: The sampled value of S_8^2. Used if read_s8_squared is true
             type: real
             default:
         omega_m:
@@ -66,6 +58,6 @@ inputs:
 
 outputs:
     cosmological_parameters:
-        sigma_8_input:
-            meaning: The sigma_8 corresponding to the input S_8, under the name given by sigma8_name
+        sigma_8:
+            meaning: The sigma_8 corresponding to the input S_8
             type: real

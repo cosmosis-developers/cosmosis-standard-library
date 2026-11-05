@@ -1,6 +1,6 @@
 """
 Sample S_8 = sigma_8 * (Omega_m / 0.3)**alpha instead of sigma_8, converting
-it to a sigma_8 value for use by other modules (for example sigma8_rescale).
+it to a sigma_8 value.
 
 This is a copy of a module from the KiDS KCAP repository.
 Contributors: Tilman Troester and Marika Asgari
@@ -15,18 +15,17 @@ cosmo = section_names.cosmological_parameters
 
 def setup(options):
     alpha = options.get_double(option_section, "alpha", default=0.5)
-    S8_squared = options.get_bool(option_section, "S8_squared", default=False)
-    S8_input_name = options.get_string(option_section, "S8_name", default="S_8_input")
-    sigma8_output_name = options.get_string(option_section, "sigma8_name", default="sigma_8_input")
-    return alpha, S8_squared, S8_input_name, sigma8_output_name
+    read_s8_squared = options.get_bool(option_section, "read_s8_squared", default=False)
+    return alpha, read_s8_squared
 
 
 def execute(block, config):
-    alpha, S8_squared, S8_input_name, sigma8_output_name = config
+    alpha, read_s8_squared = config
 
-    S8_input = block[cosmo, S8_input_name]
-    if S8_squared:
-        S8_input = np.sqrt(S8_input)
+    if read_s8_squared:
+        S8 = np.sqrt(block[cosmo, "S8_squared"])
+    else:
+        S8 = block[cosmo, "S_8"]
 
     if block.has_value(cosmo, "omega_m"):
         # Use Omega_m if available
@@ -38,7 +37,7 @@ def execute(block, config):
         h = block[cosmo, "h0"]
         Omega_m = (omch2 + ombh2) / h**2
 
-    block[cosmo, sigma8_output_name] = S8_input / (Omega_m / 0.3) ** alpha
+    block[cosmo, "sigma_8"] = S8 / (Omega_m / 0.3) ** alpha
 
     return 0
 
