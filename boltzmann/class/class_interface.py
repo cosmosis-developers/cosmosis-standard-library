@@ -185,8 +185,10 @@ def get_class_outputs(block, c, config):
             block[cosmo, 'sigma_8'] = c.sigma8()
 
             # Total matter power spectrum (saved as grid)
+            # Allocate once so the nonlinear-only configuration is valid even
+            # when neither linear output grid is requested.
+            P = np.zeros((k.size, z.size))
             if config['save_matter_power_lin']:
-                P = np.zeros((k.size, z.size))
                 for i, ki in enumerate(k):
                     for j, zi in enumerate(z):
                         P[i, j] = c.pk_lin(ki, zi)
@@ -195,7 +197,6 @@ def get_class_outputs(block, c, config):
 
             # CDM+baryons power spectrum
             if config['save_cdm_baryon_power_lin']:
-                P = np.zeros((k.size, z.size))
                 for i, ki in enumerate(k):
                     for j, zi in enumerate(z):
                         P[i, j] = c.pk_cb_lin(ki, zi)
