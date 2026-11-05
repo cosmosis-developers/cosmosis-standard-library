@@ -1,0 +1,119 @@
+#This is a template for module description files
+name: "act-dr6-lens"
+version: "1.0.0"
+purpose: "CMB Lensing from ACT DR6 data."
+url: "https://github.com/ACTCollaboration/act_dr6_lenslike"
+interface: "act_dr6_lenslike_interface.py"
+attribution: ["Mat Madhavacheril, Frank Qu, ACT Collaboration (Library)", "Ian Harrison, David Dzingeleski, CosmoSIS Team (Interface)"]
+rules:
+    "None"
+cite:
+    - "https://doi.org/10.48550/arXiv.2304.05203"
+    - "https://doi.org/10.48550/arXiv.2304.05202"
+
+assumptions:
+    - "act_dr6_lenslike python module"
+    - "ACT DR6 lensing data"
+
+explanation: |
+    "This is the lensing likelihood from the ACT DR6 data release. What is supplied here is only the CosmoSIS interface
+    to the standalone act_dr6_lenslike python module. This should be obtainable through running: pip install act_dr6_lenslike."
+
+# List of parameters that can go in the params.ini file in the section for this module    
+params:
+    data_directory:
+        meaning: "Directory to search for data"
+        type: str
+        default: "[module dir]/data"
+    variant:
+        meaning: "The variant of the DR6 lensing likelihood to use. Options are 
+                  act_baseline, act_extended, actplanck_baseline, actplanck_extended, act_polonly, act_cibdeproj, act_cinpaint"
+        type: str
+        default: "act_baseline"
+    lens_only:
+        meaning: "If False then a covariance matrix will be used which has been CMB marginalized."
+        type: bool
+        default: False
+    like_only:
+        meaning: "If set to True then only the likelihood will be stored. If True then 
+                  the lensing theory spectra calculated by the likelihood will be saved to the CosmoSIS data block, 
+                  along with the data, covariance and inverse covariance."
+        type: bool
+        default: False
+    mock:
+        meaning: "If True, use a set of simulated Cls at default DR6 accuracy instead of the data."
+        type: bool
+        default: False
+    nsims_act:
+        meaning: "The number of simulations used to create the ACT portion of the covariance matrix."
+        type: int
+        default: 792
+    nsims_planck:
+        meaning: "The number of simulations used to create the Planck portion of the covariance matrix."
+        type: int
+        default: 400
+    like_corrections:
+        meaning: "If set to True, will apply appropriate likelihood norm corrections."
+        type: bool
+        default: True
+    trim_lmax:
+        meaning: "Maximum L to use from the lensing kk spectra."
+        type: int
+        default: 2998
+    apply_hartlap:
+        meaning: "Choose whether to apply a Hartlap correction to the covariance matrix."
+        type: bool
+        default: True
+    scale_cov:
+        meaning: "A value /as a string/ by which to scale the covariance matrix by a given value (for e.g. making forecasts)."
+        type: str
+        default: ''
+    varying_cmb_alens:
+        meaning: "Whether or not to divide the lensing theory spectrum by an A_lens parameter, if one is being used." 
+        type: bool
+        default: False
+
+#Inputs for a given choice of a parameter, from the values.ini or from other modules
+#If no such choices, just do one of these omitting mode=something part:
+inputs:
+    cmb_cl:
+        ell:
+            meaning: "CMB power spectrum ell values of other inputs"
+            type: real 1d
+            default:
+        tt:
+            meaning: "Lensed CMB temperature power spectrum in ell(ell+1)/2pi units"
+            type: real 1d
+            default:
+        te:
+            meaning: "Lensed CMB temperature-E-mode polarization cross power spectrum in ell(ell+1)/2pi units"
+            type: real 1d
+            default:
+        ee:
+            meaning: "Lensed CMB E-mode polaration power spectrum in ell(ell+1)/2pi units"
+            type: real 1d
+            default:
+        bb:
+            meaning: "Lensed CMB B-mode polaration power spectrum in ell(ell+1)/2pi units"
+            type: real 1d
+            default:
+        pp:
+            meaning: "CMB lensing phi-phi power spectrum in ell(ell+1)/2pi units"
+            type: real 1d
+            default:
+
+outputs:
+    likelihoods:
+        act_dr6_lens_like:
+            meaning: "ACT DR6 lensing likelihood for given selection"
+            type: real
+    data_vector:
+        act_dr6_lens_data:
+            meaning: "Binned CLkk data, only if like_only=False"
+            type: real 1d
+        act_dr6_lens_covariance:
+            meaning: "Used covariance matrix, only if like_only=False"
+            type: real 2d
+        act_dr6_lens_inverse_covariance:
+            meaning: "Used inverse covariance matrix, only if like_only=False"
+            type: real 2d
