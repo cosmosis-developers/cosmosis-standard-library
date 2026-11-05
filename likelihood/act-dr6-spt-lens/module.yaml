@@ -1,10 +1,10 @@
-#This is a template for module description files
-name: "act-dr6-lens"
+name: "act-dr6-spt-lens"
 version: "1.0.0"
-purpose: "CMB Lensing from ACT DR6 data."
-url: "https://github.com/ACTCollaboration/act_dr6_lenslike"
-interface: "act_dr6_lenslike_interface.py"
-attribution: ["Mat Madhavacheril, Frank Qu, ACT Collaboration (Library)", "Ian Harrison, David Dzingeleski, CosmoSIS Team (Interface)"]
+category: CMB Likelihoods
+purpose: "Combined CMB lensing from ACT DR6, Planck and SPT-3G data."
+url: "https://github.com/qujia7/spt_act_likelihood"
+interface: "act_dr6_spt_lenslike_interface.py"
+attribution: ["Frank Qu, Mat Madhavacheril, ACT and SPT Collaborations (Library)", "Ian Harrison, David Dzingeleski, CosmoSIS Team (Interface)"]
 rules:
     "None"
 cite:
@@ -12,36 +12,40 @@ cite:
     - "https://doi.org/10.48550/arXiv.2304.05202"
 
 assumptions:
-    - "act_dr6_lenslike python module"
-    - "ACT DR6 lensing data"
+    - "act_dr6_spt_lenslike python module"
+    - "ACT DR6 + SPT lensing data, version 1.2"
 
 explanation: |
-    "This is the lensing likelihood from the ACT DR6 data release. What is supplied here is only the CosmoSIS interface
-    to the standalone act_dr6_lenslike python module. This should be obtainable through running: pip install act_dr6_lenslike."
+    "This is the combined ACT DR6 + Planck + SPT-3G CMB lensing likelihood. It is the CosmoSIS interface to the
+    standalone act_dr6_spt_lenslike python module, which can be obtained from https://github.com/qujia7/spt_act_likelihood/.
+    The data (version 1.2 of the ACT DR6 likelihood data release) can be downloaded with the provided get-act-data.sh script.
+    For ACT DR6 lensing on its own see the act-dr6-lens module.
 
-# List of parameters that can go in the params.ini file in the section for this module    
+    The module needs the lensed CMB spectra (including BB) and the lensing potential power spectrum to be
+    calculated up to at least trim_lmax. Note that the default options differ from those of act-dr6-lens."
+
+# List of parameters that can go in the params.ini file in the section for this module
 params:
     data_directory:
         meaning: "Directory to search for data"
         type: str
-        default: "[module dir]/data"
+        default: "[module dir]/data/v1.2/"
     variant:
-        meaning: "The variant of the DR6 lensing likelihood to use. Options are 
-                  act_baseline, act_extended, actplanck_baseline, actplanck_extended, act_polonly, act_cibdeproj, act_cinpaint"
+        meaning: "The variant of the likelihood to use. See the act_dr6_spt_lenslike package for the available choices."
         type: str
-        default: "act_baseline"
+        default: "actplanckspt3g_extended"
     lens_only:
         meaning: "If False then a covariance matrix will be used which has been CMB marginalized."
         type: bool
-        default: False
+        default: True
     like_only:
-        meaning: "If set to True then only the likelihood will be stored. If True then 
-                  the lensing theory spectra calculated by the likelihood will be saved to the CosmoSIS data block, 
+        meaning: "If set to True then only the likelihood will be stored. If False then
+                  the lensing theory spectra calculated by the likelihood will be saved to the CosmoSIS data block,
                   along with the data, covariance and inverse covariance."
         type: bool
         default: False
     mock:
-        meaning: "If True, use a set of simulated Cls at default DR6 accuracy instead of the data."
+        meaning: "If True, use a set of simulated Cls at default accuracy instead of the data."
         type: bool
         default: False
     nsims_act:
@@ -55,7 +59,7 @@ params:
     like_corrections:
         meaning: "If set to True, will apply appropriate likelihood norm corrections."
         type: bool
-        default: True
+        default: False
     trim_lmax:
         meaning: "Maximum L to use from the lensing kk spectra."
         type: int
@@ -65,16 +69,14 @@ params:
         type: bool
         default: True
     scale_cov:
-        meaning: "A value /as a string/ by which to scale the covariance matrix by a given value (for e.g. making forecasts)."
+        meaning: "A value /as a string/ by which to scale the covariance matrix (for e.g. making forecasts)."
         type: str
         default: ''
     varying_cmb_alens:
-        meaning: "Whether or not to divide the lensing theory spectrum by an A_lens parameter, if one is being used." 
+        meaning: "Whether or not to divide the lensing theory spectrum by an A_lens parameter, which must then be in cosmological_parameters."
         type: bool
         default: False
 
-#Inputs for a given choice of a parameter, from the values.ini or from other modules
-#If no such choices, just do one of these omitting mode=something part:
 inputs:
     cmb_cl:
         ell:
@@ -101,19 +103,27 @@ inputs:
             meaning: "CMB lensing phi-phi power spectrum in ell(ell+1)/2pi units"
             type: real 1d
             default:
+    cosmological_parameters:
+        A_lens:
+            meaning: "Lensing amplitude. Only used if varying_cmb_alens is True"
+            type: real
+            default:
 
 outputs:
     likelihoods:
-        act_dr6_lens_like:
-            meaning: "ACT DR6 lensing likelihood for given selection"
+        act_dr6_spt_lens_like:
+            meaning: "ACT DR6 + SPT lensing likelihood for given selection"
             type: real
     data_vector:
-        act_dr6_lens_data:
-            meaning: "Binned CLkk data, only if like_only=False"
+        act_dr6_spt_lens_theory:
+            meaning: "Binned theory Clkk, only if like_only=False"
             type: real 1d
-        act_dr6_lens_covariance:
+        act_dr6_spt_lens_data:
+            meaning: "Binned Clkk data, only if like_only=False"
+            type: real 1d
+        act_dr6_spt_lens_covariance:
             meaning: "Used covariance matrix, only if like_only=False"
             type: real 2d
-        act_dr6_lens_inverse_covariance:
+        act_dr6_spt_lens_inverse_covariance:
             meaning: "Used inverse covariance matrix, only if like_only=False"
             type: real 2d
