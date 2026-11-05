@@ -36,11 +36,11 @@ rm -rf output/demo5*
 # multinest
 
 # one nodes
-srun -u -N 1 -n 32 cosmosis --mpi examples/pantheon.ini -p runtime.sampler=multinest
+srun -u -N 1 -n 32 cosmosis --mpi examples/sn/pantheon.ini -p runtime.sampler=multinest
 rm -rf output/pantheon* output/mn*
 
 # two nodes
-srun -u -N 2 -n 32 cosmosis --mpi examples/pantheon.ini -p runtime.sampler=multinest
+srun -u -N 2 -n 32 cosmosis --mpi examples/sn/pantheon.ini -p runtime.sampler=multinest
 rm -rf output/pantheon* output/mn*
 
 
@@ -49,11 +49,11 @@ rm -rf output/pantheon* output/mn*
 mkdir -p clusters
 
 # one nodes
-srun -u -N 1 -n 32 cosmosis --mpi examples/pantheon.ini -p runtime.sampler=polychord
+srun -u -N 1 -n 32 cosmosis --mpi examples/sn/pantheon.ini -p runtime.sampler=polychord
 rm -rf output/pantheon*
 
 # two nodes
-srun -u -N 2 -n 32 cosmosis --mpi examples/pantheon.ini -p runtime.sampler=polychord
+srun -u -N 2 -n 32 cosmosis --mpi examples/sn/pantheon.ini -p runtime.sampler=polychord
 rm -rf output/pantheon*
 
 
@@ -61,15 +61,15 @@ rm -rf output/pantheon*
 # des-y3
 
 export OMP_NUM_THREADS=8
-cosmosis examples/des-y3.ini
+cosmosis examples/desy3/des-y3.ini
 
 
 
 # planck
 if [ ! -f "likelihood/planck2018/baseline/plc_3.0/hi_l/plik_lite/plik_lite_v22_TT.clik/_mdb" ]; then
-    ./examples/get-planck-data.sh
+    ./examples/planck/get-planck-data.sh
 fi
 
-cosmosis examples/planck.ini
+cosmosis examples/planck/planck.ini
 
 echo All tasks complete

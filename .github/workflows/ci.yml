@@ -288,13 +288,13 @@ jobs:
       shell: bash -l {0}
       run: |
         source .github/ci-setup.sh
-        cosmosis-campaign -l examples/des-campaign.yml | tee output/campaign.log
+        cosmosis-campaign -l examples/desy3/des-campaign.yml | tee output/campaign.log
         grep -e "mira-titan" campaign.log
         grep -e "fiducial" campaign.log
-        cosmosis-campaign --run fiducial-test-only examples/des-campaign.yml
-        cosmosis-campaign  examples/des-campaign.yml --status fiducial-test-only > output/campaign.log
+        cosmosis-campaign --run fiducial-test-only examples/desy3/des-campaign.yml
+        cosmosis-campaign  examples/desy3/des-campaign.yml --status fiducial-test-only > output/campaign.log
         grep -e "🟢 fiducial-test-only" output/campaign.log
-        cosmosis-campaign  examples/des-campaign.yml --status
+        cosmosis-campaign  examples/desy3/des-campaign.yml --status
 
     - name: Run Unit Tests
       shell: bash -l {0}

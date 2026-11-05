@@ -28,7 +28,7 @@ def check_no_camb_warnings(capfd):
 
 
 def test_projection(capfd):
-    run_cosmosis("examples/various-spectra.ini", override={("consistency","extra_relations"):"omega_x=omega_c+100"})
+    run_cosmosis("examples/other/various-spectra.ini", override={("consistency","extra_relations"):"omega_x=omega_c+100"})
     with open("output/various-spectra/cosmological_parameters/values.txt") as f:
         assert "omega_x = 100.261" in f.read()
     check_no_camb_warnings(capfd)
@@ -36,21 +36,21 @@ def test_projection(capfd):
 
 
 def test_bao(capfd):
-    run_cosmosis("examples/bao.ini")
+    run_cosmosis("examples/bao/bao.ini")
     check_likelihood("test_bao", capfd, "-198.6", "198.7")
     check_no_camb_warnings(capfd)
 
 def test_planck(capfd):
     if not os.path.exists("likelihood/planck2018/baseline/plc_3.0/hi_l/plik_lite/plik_lite_v22_TT.clik"):
         pytest.skip("Planck data not found")
-    run_cosmosis("examples/planck.ini")
+    run_cosmosis("examples/planck/planck.ini")
     check_likelihood("test_planck", capfd, "-1441.14", "-1441.30", "-1441.46", "-502.5", "-502.0")
     check_no_camb_warnings(capfd)
     
 def test_planck_class(capfd):
     if not os.path.exists("likelihood/planck2018/baseline/plc_3.0/hi_l/plik_lite/plik_lite_v22_TT.clik"):
         pytest.skip("Planck data not found")
-    run_cosmosis("examples/planck_class.ini", override={("class","mpk"):"T"})
+    run_cosmosis("examples/planck/planck_class.ini", override={("class","mpk"):"T"})
     check_no_camb_warnings(capfd)
 
 
@@ -80,7 +80,7 @@ def test_planck_lite(choices, expected, capfd):
     }
     if isinstance(expected, str):
         expected = [expected]
-    run_cosmosis("examples/planck_lite.ini", override=override)
+    run_cosmosis("examples/planck/planck_lite.ini", override=override)
     check_likelihood(test_name, capfd, *expected)
 
 
@@ -89,28 +89,28 @@ def test_planck_lite(choices, expected, capfd):
 def test_wmap(capfd):
     if not os.path.exists("likelihood/wmap9/data/lowlP/mask_r3_p06_jarosik.fits"):
         pytest.skip("WMAP data not found")
-    run_cosmosis("examples/wmap.ini")
+    run_cosmosis("examples/cmb/wmap.ini")
     check_no_camb_warnings(capfd)
 
 def test_pantheon_emcee(capfd):
-    run_cosmosis("examples/pantheon.ini", override={("emcee","samples"):"20"})
-    plots = run_cosmosis_postprocess(["examples/pantheon.ini"], outdir="output/pantheon")
+    run_cosmosis("examples/sn/pantheon.ini", override={("emcee","samples"):"20"})
+    plots = run_cosmosis_postprocess(["examples/sn/pantheon.ini"], outdir="output/pantheon")
     plots.save()
     assert os.path.exists("output/pantheon/cosmological_parameters--omega_m.png")
     check_no_camb_warnings(capfd)
 
 def test_pantheon_plus_shoes(capfd):
-    run_cosmosis("examples/pantheon_plus_shoes.ini", override={("runtime","sampler"):"test"})
+    run_cosmosis("examples/sn/pantheon_plus_shoes.ini", override={("runtime","sampler"):"test"})
     check_likelihood("test_pantheon_plus_shoes", capfd, "-738.23")
     check_no_camb_warnings(capfd)
 
 def test_des_y1(capfd):
-    run_cosmosis("examples/des-y1.ini")
+    run_cosmosis("examples/desy1/des-y1.ini")
     check_likelihood("test_des_y1", capfd, "5237.3", "5237.4")
     check_no_camb_warnings(capfd)
 
 def test_des_y1_cl_to_corr(capfd):
-    run_cosmosis("examples/des-y1.ini", override={
+    run_cosmosis("examples/desy1/des-y1.ini", override={
         ("2pt_shear","file"): "./shear/cl_to_corr/cl_to_corr.py",
         ("2pt_shear","corr_type"): "xi"
         })
@@ -118,7 +118,7 @@ def test_des_y1_cl_to_corr(capfd):
     check_no_camb_warnings(capfd)
 
 def test_des_y3(capfd):
-    run_cosmosis("examples/des-y3.ini", override={
+    run_cosmosis("examples/desy3/des-y3.ini", override={
         ("pk_to_cl_gg","save_kernels"):"T",
         ("pk_to_cl","save_kernels"):"T"
         })
@@ -126,27 +126,27 @@ def test_des_y3(capfd):
     check_no_camb_warnings(capfd)
 
 def test_des_y3_plus_planck(capfd):
-    run_cosmosis("examples/des-y3-planck.ini")
+    run_cosmosis("examples/desy3/des-y3-planck.ini")
     check_likelihood("test_des_y3_plus_planck", capfd, "5679.6", "5679.7", "5678.")
     check_no_camb_warnings(capfd)
 
 
 def test_des_y3_class(capfd):
-    run_cosmosis("examples/des-y3-class.ini")
+    run_cosmosis("examples/desy3/des-y3-class.ini")
     # class is not consistent across systems to the level needed here
 
 def test_des_y3_shear(capfd):
-    run_cosmosis("examples/des-y3-shear.ini")
+    run_cosmosis("examples/desy3/des-y3-shear.ini")
     check_likelihood("test_des_y3_shear", capfd, "2957.03", "2957.12", "2957.11", "2957.13", "2957.07", "2957.08")
     check_no_camb_warnings(capfd)
 
 def test_des_y3_mira_titan(capfd):
-    run_cosmosis("examples/des-y3-mira-titan.ini")
+    run_cosmosis("examples/desy3/des-y3-mira-titan.ini")
     check_likelihood("test_des_y3_mira_titan", capfd, "6048.0", "6048.1", "6048.2")
     check_no_camb_warnings(capfd)
 
 def test_des_y3_mead(capfd):
-    run_cosmosis("examples/des-y3.ini", 
+    run_cosmosis("examples/desy3/des-y3.ini", 
                  override={("camb", "halofit_version"): "mead2020_feedback"},
                  variables={("halo_model_parameters", "logT_AGN"): "8.2"}
                  )
@@ -158,23 +158,23 @@ def test_act_dr6_lensing(capfd):
         import act_dr6_lenslike
     except ImportError:
         pytest.skip("ACT likelihood code not found")
-    run_cosmosis("examples/act-dr6-lens.ini")
+    run_cosmosis("examples/act/act-dr6-lens.ini")
     check_likelihood("test_act_dr6_lensing", capfd, "-9.89", "-9.86", "-9.90", "-9.85")
     check_no_camb_warnings(capfd)
 
 def test_des_y3_5x2pt(capfd):
-    run_cosmosis("examples/des-y3-5x2pt.ini")
+    run_cosmosis("examples/desy3/des-y3-5x2pt.ini")
     check_no_camb_warnings(capfd)
 
 
 def test_des_y3_6x2pt(capfd):
     if not os.path.exists("likelihood/planck2018/baseline/plc_3.0/lensing/smicadx12_Dec5_ftl_mv2_ndclpp_p_teb_consext8_CMBmarged.clik_lensing"):
         pytest.skip("Planck data not found")
-    run_cosmosis("examples/des-y3-6x2pt.ini")
+    run_cosmosis("examples/desy3/des-y3-6x2pt.ini")
     check_no_camb_warnings(capfd)
 
 def test_euclid_emulator(capfd):
-    run_cosmosis("examples/euclid-emulator.ini")
+    run_cosmosis("examples/other/euclid-emulator.ini")
     assert os.path.exists("output/euclid-emulator/matter_power_nl/p_k.txt")
     check_no_camb_warnings(capfd)
 
@@ -185,27 +185,27 @@ def test_spk_example(capfd):
     except ImportError:
         pytest.skip("pyspk not installed")
 
-    run_cosmosis("examples/spk.ini")
+    run_cosmosis("examples/cmb/spk.ini")
     assert os.path.exists("output/spk/matter_power_nl/p_k.txt")
     assert os.path.exists("output/spk/spk_suppression/s_k.txt")
     check_no_camb_warnings(capfd)
 
 def test_log_w_example(capfd):
-    run_cosmosis("examples/w_model.ini")
+    run_cosmosis("examples/other/w_model.ini")
     check_no_camb_warnings(capfd)
 
 def test_theta_warning():
     with pytest.raises(RuntimeError):
-        run_cosmosis("examples/w_model.ini", override={("consistency","cosmomc_theta"):"T"})
+        run_cosmosis("examples/other/w_model.ini", override={("consistency","cosmomc_theta"):"T"})
 
 def test_des_kids(capfd):
-    run_cosmosis("examples/des-y3_and_kids-1000.ini")
+    run_cosmosis("examples/combined/des-y3_and_kids-1000.ini")
     check_likelihood("test_des_kids", capfd, "-199.40", "-199.41", "-199.47")
     check_no_camb_warnings(capfd)
 
 
 def test_kids(capfd):
-    run_cosmosis("examples/kids-1000.ini")
+    run_cosmosis("examples/kids/kids-1000.ini")
     check_likelihood("test_kids", capfd, "-47.6", "-47.7")
     check_no_camb_warnings(capfd)
 
@@ -219,16 +219,16 @@ def test_bacco():
         pytest.skip("Skipping Bacco on MacOS with Python 3.9-3.11 when running CI")
 
     # The baseline version just does non-linear matter power
-    run_cosmosis("examples/bacco.ini")
+    run_cosmosis("examples/other/bacco.ini")
 
     # This variant emulates NL power with baryonic effects
-    run_cosmosis("examples/bacco.ini",
+    run_cosmosis("examples/other/bacco.ini",
                  override={
                     ("bacco_emulator", "mode"): "nonlinear+baryons",
                 })
 
     # This variant uses camb to get the NL power and only emulates the baryonic effects
-    run_cosmosis("examples/bacco.ini",
+    run_cosmosis("examples/other/bacco.ini",
                  override={
                     ("bacco_emulator", "mode"): "baryons",
                     ("camb", "nonlinear"): "pk",
@@ -240,7 +240,7 @@ def test_hsc_harmonic(capfd):
         import sacc
     except ImportError:
         pytest.skip("Sacc not installed")
-    run_cosmosis("examples/hsc-y3-shear.ini")
+    run_cosmosis("examples/hsc/hsc-y3-shear.ini")
     check_likelihood("test_hsc_harmonic", capfd, "-109.0")
 
 def test_hsc_real(capfd):
@@ -248,7 +248,7 @@ def test_hsc_real(capfd):
         import sacc
     except ImportError:
         pytest.skip("Sacc not installed")
-    run_cosmosis("examples/hsc-y3-shear-real.ini")
+    run_cosmosis("examples/hsc/hsc-y3-shear-real.ini")
     check_likelihood("test_hsc_real", capfd, "-122.5", "-122.4")
 
 def test_npipe(capfd):
@@ -256,16 +256,16 @@ def test_npipe(capfd):
         import planckpr4lensing
     except ImportError:
         pytest.skip("Planck PR4 lensing likelihood not found")
-    run_cosmosis("examples/npipe.ini")
+    run_cosmosis("examples/planck/npipe.ini")
     check_likelihood("test_npipe", capfd, "-4.22", "-4.23")
 
 
 def test_desi_dr1(capfd):
-    run_cosmosis("examples/desi_dr1.ini")
+    run_cosmosis("examples/bao/desi_dr1.ini")
     check_likelihood("test_desi_dr1", capfd, "-11.25", "-11.26")
 
 def test_desi_dr2(capfd):
-    run_cosmosis("examples/desi_dr2.ini")
+    run_cosmosis("examples/bao/desi_dr2.ini")
     check_likelihood("test_desi_dr2", capfd, "-93.02", "-93.07")
 
 
@@ -274,7 +274,7 @@ def test_candl(capfd):
         import candl
     except ImportError:
         pytest.skip("Candl not installed")
-    run_cosmosis("examples/candl_test.ini")
+    run_cosmosis("examples/cmb/candl_test.ini")
     check_likelihood("test_candl", capfd, "-5.83")
 
 
@@ -286,9 +286,9 @@ def test_hillipop_lollipop(capfd):
         import planck_2020_lollipop
     except ImportError:
         pytest.skip("Planck 2020 lollipop likelihood not found")
-    run_cosmosis("examples/planck-hillipop-lollipop.ini")
+    run_cosmosis("examples/planck/planck-hillipop-lollipop.ini")
     check_likelihood("test_hillipop_lollipop", capfd, "-6476.91", "-6476.90")
 
 def test_decam(capfd):
-    run_cosmosis("examples/decam-13k.ini", override={("runtime","sampler"):"test"})
+    run_cosmosis("examples/other/decam-13k.ini", override={("runtime","sampler"):"test"})
     check_likelihood("test_decam", capfd, "9442.38", "9442.35", "9442.3")

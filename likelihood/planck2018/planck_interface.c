@@ -78,7 +78,7 @@ int read_requested_files(configuration_data * config, c_datablock * options, cli
 			fprintf(stderr,"Here is the error message:\n");
 			printError(stderr,err);
 			fprintf(stderr,"\nIf it mentions \"stat\" then this probably means that a likelihood file was not found.\n\n");
-			fprintf(stderr,"You can run the script examples/get-planck-data.sh to download Planck 2018 data.\n\n");
+			fprintf(stderr,"You can run the script examples/planck/get-planck-data.sh to download Planck 2018 data.\n\n");
 			exit(1);
 		}
 	}
