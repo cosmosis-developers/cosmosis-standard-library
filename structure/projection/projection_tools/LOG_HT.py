@@ -36,37 +36,50 @@ import sys
 log2=log(2)
 cut=200  # cutoff to switch to Gamma function limiting case (needed when argument to 
          # gamma function is large) 
+import numba
 
-def g_m_vals(mu,q):
+_LANCZOS = np.array([
+    0.99999999999980993, 676.5203681218851, -1259.1392167224028,
+    771.32342877765313, -176.61502916214059, 12.507343278686905,
+    -0.13857109526572012, 9.9843695780195716e-6, 1.5056327351493116e-7])
 
-    imag_q= np.imag(q)
-    
-    g_m=np.zeros(q.size, dtype=complex)
+@numba.njit(cache=True)
+def _lgamma(z):
+    # complex log-gamma, Lanczos approximation (g=7, n=9).
+    # Only differences of these are used, so branch choices of the log
+    # are irrelevant after exponentiation.
+    if z.real < 0.5:
+        # reflection: Gamma(z) Gamma(1-z) = pi / sin(pi z)
+        return np.log(np.pi / np.sin(np.pi * z)) - _lgamma(1.0 - z)
+    z = z - 1.0
+    x = _LANCZOS[0] + 0j
+    for i in range(1, 9):
+        x += _LANCZOS[i] / (z + i)
+    t = z + 7.5
+    return 0.5 * np.log(2 * np.pi) + (z + 0.5) * np.log(t) - t + np.log(x)
 
-    use_asym = (np.absolute(imag_q)+mu+1 > cut) | (np.absolute(-imag_q)+mu+1 > cut)
-    asym_q=q[use_asym]
-    asym_plus=(mu+1+asym_q)/2.
-    asym_minus=(mu+1-asym_q)/2.
-    
-    q_good=q[ (~use_asym) & (q!=mu + 1 + 0.0j)]
-
-    alpha_plus=(mu+1+q_good)/2.
-    alpha_minus=(mu+1-q_good)/2.
-    
-    g_m[(~use_asym) & (q!= mu + 1 + 0.0j)] =gamma(alpha_plus)/gamma(alpha_minus)
-
-    #g_m[np.absolute(imag_q)>cut] = exp( (asym_plus-0.5)*log(asym_plus) - (asym_minus-0.5)*log(asym_minus) - asym_q )
-    
-    #g_m[np.absolute(imag_q)>cut] = exp( (asym_plus-0.5)*log(asym_plus) - (asym_minus-0.5)*log(asym_minus) - asym_q \
-    #                               +1./12 *(1./asym_plus - 1./asym_minus) +1./360.*(1./asym_minus**3 - 1./asym_plus**3) )
-    
-    # to higher order                               
-    g_m[use_asym] = exp( (asym_plus-0.5)*log(asym_plus) - (asym_minus-0.5)*log(asym_minus) - asym_q \
-        +1./12 *(1./asym_plus - 1./asym_minus) +1./360.*(1./asym_minus**3 - 1./asym_plus**3) +1./1260*(1./asym_plus**5 - 1./asym_minus**5) )
-
-    g_m[np.where(q==mu+1+0.0j)[0]] = 0.+0.0j
-    
+@numba.njit(cache=True)
+def _g_m_vals(mu, q, cut):
+    n = q.size
+    g_m = np.zeros(n, dtype=np.complex128)
+    for i in range(n):
+        qi = q[i]
+        if qi == mu + 1 + 0.0j:
+            continue  # g_m stays zero
+        ap = (mu + 1 + qi) / 2.
+        am = (mu + 1 - qi) / 2.
+        if abs(qi.imag) + mu + 1 > cut:
+            # Stirling series, to higher order
+            g_m[i] = np.exp((ap - 0.5) * np.log(ap) - (am - 0.5) * np.log(am) - qi
+                            + 1./12 * (1./ap - 1./am)
+                            + 1./360. * (1./am**3 - 1./ap**3)
+                            + 1./1260 * (1./ap**5 - 1./am**5))
+        else:
+            g_m[i] = np.exp(_lgamma(ap) - _lgamma(am))
     return g_m
+
+def g_m_vals(mu, q):
+    return _g_m_vals(mu, np.asarray(q, dtype=np.complex128), cut)
 
 def log_gamma(z):
     
