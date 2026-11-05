@@ -1,9 +1,10 @@
-################
-#THIS MODULE IS A COPY FROM THE KIDS KCAP repository
-#Contributors: Tilman Troester and Marika Asgari
-#Need to be tested and chceked for our purpose
-################
+"""
+Sample S_8 = sigma_8 * (Omega_m / 0.3)**alpha instead of sigma_8, converting
+it to a sigma_8 value for use by other modules (for example sigma8_rescale).
 
+This is a copy of a module from the KiDS KCAP repository.
+Contributors: Tilman Troester and Marika Asgari
+"""
 import numpy as np
 
 from cosmosis.datablock import names as section_names
@@ -22,11 +23,12 @@ def setup(options):
 
 def execute(block, config):
     alpha, S8_squared, S8_input_name, sigma8_output_name = config
-    # Get parameters from sampler and CAMB output
+
     S8_input = block[cosmo, S8_input_name]
     if S8_squared:
         S8_input = np.sqrt(S8_input)
-    if (cosmo, "omega_m") in block:
+
+    if block.has_value(cosmo, "omega_m"):
         # Use Omega_m if available
         Omega_m = block[cosmo, "omega_m"]
     else:
@@ -34,15 +36,12 @@ def execute(block, config):
         omch2 = block[cosmo, "omch2"]
         ombh2 = block[cosmo, "ombh2"]
         h = block[cosmo, "h0"]
-        Omega_m=(omch2+ombh2)/h**2
+        Omega_m = (omch2 + ombh2) / h**2
 
-    sigma8_input = S8_input/(Omega_m/0.3)**alpha
-    block[cosmo, sigma8_output_name] = sigma8_input
-    # signal that everything went fine
+    block[cosmo, sigma8_output_name] = S8_input / (Omega_m / 0.3) ** alpha
+
     return 0
 
 
 def cleanup(config):
-    # nothing to do here!  We just include this
-    # for completeness
-    return 0
+    pass
