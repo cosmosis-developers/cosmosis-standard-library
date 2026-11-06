@@ -214,26 +214,26 @@ def execute(block, config):
     if need_reinit:
         t5=time()
         #specify which FAST-PT calculations to initialize
-        to_do=[]
-        if config['do_bias']:
-            to_do.append('dd_bias') 
-        if config['do_dd_spt']:
-            to_do.append('one_loop_dd')
-        if config['do_ia']:
-            to_do.append('IA_all')
-        if config['do_ia_tt']:
-            to_do.append('IA_tt')
-        if config['do_ia_ta']:
-            to_do.append('IA_ta')
-        if config['do_ia_mix']:
-            to_do.append('IA_mix')
-        if config['do_rsd']:
-    	    to_do.append('RSD')
-        if verbose: print('intializing FAST-PT on a new k grid with the following to_do list:',to_do)
+        # to_do=[]
+        # if config['do_bias']:
+        #     to_do.append('dd_bias') 
+        # if config['do_dd_spt']:
+        #     to_do.append('one_loop_dd')
+        # if config['do_ia']:
+        #     to_do.append('IA_all')
+        # if config['do_ia_tt']:
+        #     to_do.append('IA_tt')
+        # if config['do_ia_ta']:
+        #     to_do.append('IA_ta')
+        # if config['do_ia_mix']:
+        #     to_do.append('IA_mix')
+        # if config['do_rsd']:
+    	#     to_do.append('RSD')
+        # if verbose: print('intializing FAST-PT on a new k grid with the following to_do list:',to_do)
         # bias parameter and padding length 
         #nu=-2 #shouldn't be required in v2
         n_pad=int(config['n_pad_fac']*len(k))
-        config['fastpt_kinit'] = FASTPT(k,to_do=to_do,low_extrap=config['low_extrap'],high_extrap=config['high_extrap'],n_pad=n_pad) 
+        config['fastpt_kinit'] = FASTPT(k,low_extrap=config['low_extrap'],high_extrap=config['high_extrap'],n_pad=n_pad) 
         config['k0'] = k0
         config['knl1'] = knl1
         t6=time()

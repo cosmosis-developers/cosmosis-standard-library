@@ -1,0 +1,51 @@
+name: xlens_bias
+version: '1.0'
+category: Misc & Utilities
+purpose: Model xlens by using a different linear bias for galaxy-galaxy lensing
+url: ''
+interface: add_xlens_bias.py
+attribution: ["Agnes Ferte", "Shivam Pandey (Y3 version)"]
+rules: You can do what you want with this file.
+cite: []
+assumptions:
+-   The xlens effect is a scale-independent rescaling of the lens bias in galaxy-galaxy lensing only
+
+explanation: |
+    For each lens bin this creates b1wt_bin{i}, equal to the input b1E_bin{i}, for use in
+    galaxy clustering (w(theta)), and b1gt_bin{i} = rmean_bin * b1E_bin{i}, for use in
+    galaxy-galaxy lensing (gamma_t). It stops at the first bin that is not found.
+
+params:
+    bias_section:
+        meaning: Name of the section holding the bias parameters
+        type: str
+        default: bias_lens
+    r_section:
+        meaning: Name of the section holding rmean_bin
+        type: str
+        default: x_lens
+    nbins:
+        meaning: Maximum number of lens bins
+        type: int
+        default: 5
+
+inputs:
+    x_lens:
+        rmean_bin:
+            meaning: Mean ratio of the lensing and clustering bias
+            type: real
+            default:
+    bias_lens:
+        b1E_bin_i:
+            meaning: Linear bias in lens bin i=1..nbins
+            type: real
+            default:
+
+outputs:
+    bias_lens:
+        b1wt_bin_i:
+            meaning: Bias for use in clustering, equal to b1E_bin_i
+            type: real
+        b1gt_bin_i:
+            meaning: Bias for use in galaxy-galaxy lensing, rmean_bin * b1E_bin_i
+            type: real

@@ -31,7 +31,7 @@ class RatioDatPowerModulator(object):
         f = open(ratio_file, 'r')
         line = f.readline()
         f.close()
-        colnames = line.replace('\n','').split(' ')[1:]
+        colnames = line.split()[1:]
 
         # Assuming read-in redshift list is in decending order
         colnames.reverse()
@@ -42,7 +42,7 @@ class RatioDatPowerModulator(object):
         redshifts = np.zeros(nz)
         for i,col in enumerate(colnames):
             # Pull out the integer part
-            zintstr = re.findall('\d+',col)[0]
+            zintstr = re.findall(r'\d+',col)[0]
             # assume decimal place is after first digit
             redshifts[i]  = int(zintstr)/10.0**(len(zintstr)-1)
 
