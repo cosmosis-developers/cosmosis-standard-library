@@ -30,7 +30,35 @@ explanation: |
     The required data can be downloaded with the provided shell script."
 
 # List of parameters that can go in the params.ini file in the section for this module    
-params: {}
+params:
+    ell_min_tt:
+        meaning: "Minimum ell used for the TT spectrum"
+        type: int
+        default: 600
+    ell_min_te:
+        meaning: "Minimum ell used for the TE spectrum"
+        type: int
+        default: 600
+    ell_min_ee:
+        meaning: "Minimum ell used for the EE spectrum"
+        type: int
+        default: 600
+    ell_max_tt:
+        meaning: "Maximum ell used for the TT spectrum"
+        type: int
+        default: 6500
+    ell_max_te:
+        meaning: "Maximum ell used for the TE spectrum"
+        type: int
+        default: 6500
+    ell_max_ee:
+        meaning: "Maximum ell used for the EE spectrum"
+        type: int
+        default: 6500
+    use_data_from_test:
+        meaning: "Directory of output from a test-sampler run (containing cmb_cl/tt.txt etc). If set, this synthetic data replaces the real data."
+        type: str
+        default: ""
 
 
 #Inputs for a given choice of a parameter, from the values.ini or from other modules
@@ -58,6 +86,11 @@ inputs:
             meaning: "Overall ACT polarisation efficiency parameter used to model residual systematics."
             type: real
             default: 1.0
+    planck:
+        a_planck:
+            meaning: "Optional. If present, A_act is set equal to this, since ACT and Planck share a calibration when combined (see https://github.com/ACTCollaboration/DR6-ACT-lite/issues/12)."
+            type: real
+            default:
 
 outputs:
     likelihoods:

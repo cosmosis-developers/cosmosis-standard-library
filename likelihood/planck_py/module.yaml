@@ -99,6 +99,11 @@ inputs:
             meaning: CMB E-mode polaration power spectrum in ell(ell+1)/2pi units
             type: real 1d
             default:
+    planck:
+        a_planck:
+            meaning: Optional Planck calibration parameter. The theory D_ell are divided by a_planck^2.
+            type: real
+            default: 1.0
 
 outputs:
     likelihoods:

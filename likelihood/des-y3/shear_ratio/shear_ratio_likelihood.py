@@ -24,6 +24,11 @@ class ShearRatioLikelihood(GaussianLikelihood):
         with open(filename, "rb") as f:
             self.ratio_data = pickle.load(f)
 
+        # Optionally save the theory shear ratios, in the same format as the
+        # input data file, so they can be used as a simulated data vector.
+        self.save_simulated_ratios = options.get_bool("save_simulated_ratios", default=False)
+        self.output_name = options.get_string("output_file", default="simulated_shear_ratios.pkl")
+
         nbin_source = self.ratio_data['nbin_source']  # 4, we use all the source bins
         nbin_lens = self.ratio_data['nbin_lens'] # 3, because we don't use all the lens bins
         nratios_per_lens = self.ratio_data['nratios_per_lens'] # 3, because there are 3 independent ratios we can construct given 4 source bins, per each lens bin.
@@ -111,6 +116,15 @@ class ShearRatioLikelihood(GaussianLikelihood):
                 gamma_t = get_gamma_t(s, l)
                 ratio = get_ratio_from_gammat(gamma_t[mask], gammat_ref[mask], P)
                 theory_ratios.append(ratio)
+
+        if self.save_simulated_ratios:
+            # Copy the format of the input file. Only measured_ratios needs to
+            # change, assuming we keep the covariance matrix.
+            output_data = dict(self.ratio_data)
+            output_data['measured_ratios'] = np.array(theory_ratios)
+
+            with open(self.output_name, 'wb') as f:
+                pickle.dump(output_data, f, protocol=pickle.HIGHEST_PROTOCOL)
 
         return np.array(theory_ratios)
 

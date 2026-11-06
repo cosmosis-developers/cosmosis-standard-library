@@ -5,4 +5,4 @@ If you use it please cite:
     https://arxiv.org/abs/1708.01530
 
 For an example of its use please see the config files in:
-    ${COSMOSIS_SRC_DIR}/examples/des-y1
+    ${COSMOSIS_SRC_DIR}/examples/desy1

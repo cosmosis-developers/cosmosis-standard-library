@@ -1,0 +1,35 @@
+name: sample_log10As
+version: '1.0'
+category: Misc & Utilities
+purpose: Convert a sampled log10(10^10 A_s) parameter into A_s
+url: ''
+interface: sample_log10As.py
+attribution: ["David Sanchez Cid"]
+rules: You can do what you want with this file.
+cite: []
+assumptions: []
+
+explanation: |
+    Sample log10(10^10 A_s) instead of A_s, as is done in the HSC re-analysis in DESC. The
+    log10 is of the dimensionless combination 10^10 A_s, so A_s = 10^log10As / 10^10.
+    Note that the consistency module can do the equivalent for the natural log, with the
+    log1e10As parameter.
+
+params:
+    log10As_name:
+        meaning: Name of the input parameter in the cosmological_parameters section
+        type: str
+        default: log10As
+
+inputs:
+    cosmological_parameters:
+        log10As:
+            meaning: log10(10^10 A_s), under the name given by log10As_name
+            type: real
+            default:
+
+outputs:
+    cosmological_parameters:
+        A_s:
+            meaning: Amplitude of primordial fluctuations
+            type: real

@@ -1,0 +1,63 @@
+name: sample_S8
+version: '1.0'
+category: Misc & Utilities
+purpose: Convert a sampled S_8 parameter into a sigma_8 value
+url: https://github.com/KiDS-WL/kcap
+interface: sample_S8.py
+attribution: ["Tilman Troester", "Marika Asgari (KiDS KCAP)"]
+rules: ""
+cite: []
+assumptions:
+-   S_8 is defined as sigma_8 * (Omega_m / 0.3)**alpha
+
+explanation: |
+    This module lets you sample over S_8 = sigma_8 * (Omega_m / 0.3)**alpha instead of sigma_8,
+    with a configurable alpha (the standard value is 0.5). It computes sigma_8 from the
+    sampled S_8 (or S_8 squared, if read_s8_squared is set) and the matter density omega_m, which must
+    therefore already be known, and saves it as cosmological_parameters/sigma_8. Any existing value is replaced.
+
+    The consistency module can also convert S_8 to sigma_8, but only with alpha = 0.5. Use this module
+    when you need a different alpha, or to sample S_8^2. Do not use both on the same parameter.
+
+params:
+    alpha:
+        meaning: Exponent of Omega_m / 0.3 in the definition of S_8
+        type: real
+        default: 0.5
+    read_s8_squared:
+        meaning: If true then the sampled parameter is S8_squared (the square of S_8) rather than S_8
+        type: bool
+        default: false
+
+inputs:
+    cosmological_parameters:
+        S_8:
+            meaning: The sampled S_8 value. Used if read_s8_squared is false
+            type: real
+            default:
+        S8_squared:
+            meaning: The sampled value of S_8^2. Used if read_s8_squared is true
+            type: real
+            default:
+        omega_m:
+            meaning: Matter density fraction. If not present then omch2, ombh2 and h0 are used instead
+            type: real
+            default:
+        omch2:
+            meaning: Physical CDM density, used only if omega_m is not present
+            type: real
+            default:
+        ombh2:
+            meaning: Physical baryon density, used only if omega_m is not present
+            type: real
+            default:
+        h0:
+            meaning: Dimensionless Hubble parameter, used only if omega_m is not present
+            type: real
+            default:
+
+outputs:
+    cosmological_parameters:
+        sigma_8:
+            meaning: The sigma_8 corresponding to the input S_8
+            type: real
