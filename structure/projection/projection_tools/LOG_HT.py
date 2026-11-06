@@ -36,14 +36,16 @@ import sys
 log2=log(2)
 cut=200  # cutoff to switch to Gamma function limiting case (needed when argument to 
          # gamma function is large) 
-import numba
+try:
+    import numba
+except ImportError:
+    numba = None
 
 _LANCZOS = np.array([
     0.99999999999980993, 676.5203681218851, -1259.1392167224028,
     771.32342877765313, -176.61502916214059, 12.507343278686905,
     -0.13857109526572012, 9.9843695780195716e-6, 1.5056327351493116e-7])
 
-@numba.njit(cache=True)
 def _lgamma(z):
     # complex log-gamma, Lanczos approximation (g=7, n=9).
     # Only differences of these are used, so branch choices of the log
@@ -58,7 +60,6 @@ def _lgamma(z):
     t = z + 7.5
     return 0.5 * np.log(2 * np.pi) + (z + 0.5) * np.log(t) - t + np.log(x)
 
-@numba.njit(cache=True)
 def _g_m_vals(mu, q, cut):
     n = q.size
     g_m = np.zeros(n, dtype=np.complex128)
@@ -78,8 +79,38 @@ def _g_m_vals(mu, q, cut):
             g_m[i] = np.exp(_lgamma(ap) - _lgamma(am))
     return g_m
 
-def g_m_vals(mu, q):
-    return _g_m_vals(mu, np.asarray(q, dtype=np.complex128), cut)
+def _g_m_vals_numpy(mu, q, cut):
+    # Vectorized scipy version, used when numba is not available
+    imag_q = np.imag(q)
+    g_m = np.zeros(q.size, dtype=complex)
+
+    use_asym = (np.absolute(imag_q)+mu+1 > cut) | (np.absolute(-imag_q)+mu+1 > cut)
+    asym_q = q[use_asym]
+    asym_plus = (mu+1+asym_q)/2.
+    asym_minus = (mu+1-asym_q)/2.
+
+    good = (~use_asym) & (q != mu + 1 + 0.0j)
+    alpha_plus = (mu+1+q[good])/2.
+    alpha_minus = (mu+1-q[good])/2.
+    g_m[good] = gamma(alpha_plus)/gamma(alpha_minus)
+
+    # Stirling series, to higher order
+    g_m[use_asym] = exp((asym_plus-0.5)*log(asym_plus) - (asym_minus-0.5)*log(asym_minus) - asym_q
+        + 1./12*(1./asym_plus - 1./asym_minus) + 1./360.*(1./asym_minus**3 - 1./asym_plus**3)
+        + 1./1260*(1./asym_plus**5 - 1./asym_minus**5))
+
+    g_m[q == mu+1+0.0j] = 0.+0.0j
+    return g_m
+
+if numba is not None:
+    _lgamma = numba.njit(cache=True)(_lgamma)
+    _g_m_vals = numba.njit(cache=True)(_g_m_vals)
+
+    def g_m_vals(mu, q):
+        return _g_m_vals(mu, np.asarray(q, dtype=np.complex128), cut)
+else:
+    def g_m_vals(mu, q):
+        return _g_m_vals_numpy(mu, np.asarray(q, dtype=np.complex128), cut)
 
 def log_gamma(z):
     
