@@ -68,6 +68,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     env:
       CONDA_PKGS_DIRS: ~/conda_pkgs_dir
+      MAMBA_REPODATA_USE_SHARDS: false
     strategy:
       fail-fast: false
       matrix:
@@ -120,6 +121,7 @@ jobs:
       - name: Install dependencies with conda
         shell: bash -l {0}
         run: |
+          mamba clean --index-cache
           mamba install --retry-clean-cache -c conda-forge "cosmosis=3.27.1" cosmosis-build-standard-library pytest "numpy=${{ matrix.numpy-version }}" "scipy=${{ matrix.scipy-version }}" "camb=${{ matrix.camb-version }}"
           # replace fastpt version forcibly
           mamba uninstall --force fast-pt
