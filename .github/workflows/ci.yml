@@ -66,6 +66,8 @@ jobs:
     name: Conda Test
     needs: Download_Data
     runs-on: ${{ matrix.os }}
+    env:
+      CONDA_PKGS_DIRS: ~/conda_pkgs_dir
     strategy:
       fail-fast: false
       matrix:
@@ -85,8 +87,6 @@ jobs:
             pyversion: "3.11"
           - os: "macos-latest"
             pyversion: "3.12"
-          - os: "macos-latest"
-            pyversion: "3.14"
           - numpy-version: "2.4"
             camb-version: "2.0.0"
           - scipy-version: "1.18"
@@ -100,6 +100,15 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+
+      - name: Cache conda packages
+        uses: actions/cache@v4
+        with:
+          path: ~/conda_pkgs_dir
+          key: conda-pkgs-${{ matrix.os }}-py${{ matrix.pyversion }}-np${{ matrix.numpy-version }}-camb${{ matrix.camb-version }}-scipy${{ matrix.scipy-version }}-v1
+          restore-keys: |
+            conda-pkgs-${{ matrix.os }}-py${{ matrix.pyversion }}-
+            conda-pkgs-${{ matrix.os }}-
 
       - uses: conda-incubator/setup-miniconda@v2
         with:
@@ -216,11 +225,13 @@ jobs:
         python-version: ${{ matrix.python-version }}
 
     - name: Install apt dependencies
-      run: |
-        sudo apt-get update
-        sudo apt-get -y install gfortran-11 swig libopenmpi-dev openmpi-bin libopenblas-dev
-        sudo ln -s `which gfortran-11` /usr/local/bin/gfortran
-        sudo apt-get -y install libgsl-dev libfftw3-bin libfftw3-dev autotools-dev  autoconf libcfitsio-dev
+      uses: awalsh128/cache-apt-pkgs-action@553a35bb8ebd9fcabcb1c9451aa4c98e1b4ca8a9 # v1.6.3
+      with:
+        packages: gfortran-11 swig libopenmpi-dev openmpi-bin libopenblas-dev libgsl-dev libfftw3-bin libfftw3-dev autotools-dev autoconf libcfitsio-dev
+        version: 1.0
+
+    - name: Link gfortran
+      run: sudo ln -s `which gfortran-11` /usr/local/bin/gfortran
 
 
     - name: Get Cached Planck
