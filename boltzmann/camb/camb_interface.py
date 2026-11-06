@@ -4,6 +4,10 @@ import numpy as np
 import warnings
 import traceback
 import contextlib
+import hashlib
+import json
+import time
+from collections import OrderedDict
 
 # Finally we can now import camb
 import camb
@@ -38,6 +42,72 @@ matter_power_section_names = {
     'v_newtonian_baryon': 'baryon_velocity_power',
     'v_baryon_cdm': 'baryon_cdm_relative_velocity_power',
 }
+
+
+def _canonicalize_cache_value(value):
+    """Convert nested CAMB configuration values into stable JSON data."""
+    if isinstance(value, dict):
+        return {str(key): _canonicalize_cache_value(value[key])
+                for key in sorted(value, key=str)}
+    if isinstance(value, (list, tuple)):
+        return [_canonicalize_cache_value(item) for item in value]
+    if isinstance(value, np.ndarray):
+        return {
+            "__ndarray__": True,
+            "dtype": value.dtype.str,
+            "shape": list(value.shape),
+            "data": value.tolist(),
+        }
+    if isinstance(value, (np.integer, np.floating, np.bool_)):
+        return value.item()
+    return value
+
+
+def make_camb_cache_key(*parts):
+    """Return a deterministic key for a complete CAMB input signature.
+
+    This helper is intentionally separate from caching.  Callers must include
+    every parameter affecting CAMB computation or requested output grids.
+    """
+    canonical = _canonicalize_cache_value(parts)
+    payload = json.dumps(canonical, sort_keys=True, separators=(",", ":"),
+                         allow_nan=False).encode("utf-8")
+    return hashlib.sha256(payload).hexdigest()
+
+
+def _make_reuse_key(block, p, more_config):
+    """Build a key covering CAMB state and CosmoSIS output requirements."""
+    key_config = {key: value for key, value in more_config.items()
+                  if not key.startswith("_") and key not in {
+                      "reuse_computation", "reuse_cache_size", "reuse_cache_adaptive",
+                      "reuse_cache_max_size", "reuse_cache_window", "reuse_cache_threshold"
+                  }}
+    special = {}
+    if block.has_value(cosmo, "sigma_8"):
+        special["sigma_8"] = block[cosmo, "sigma_8"]
+    if block.has_value("redshift_as_parameter", "z"):
+        special["redshift_as_parameter_z"] = block["redshift_as_parameter", "z"]
+    return make_camb_cache_key(repr(p), key_config, special)
+
+
+def _validate_finite_cosmological_inputs(block):
+    """Fail fast on non-finite cosmological inputs before CAMB is called."""
+    section = cosmo
+    if not block.has_section(section):
+        return
+    for key in block.keys(section):
+        name = key[1] if isinstance(key, tuple) else key
+        value = block[section, name]
+        # Other modules may store descriptive metadata in this shared section.
+        # Validate numeric values without imposing a schema on unrelated text.
+        if isinstance(value, str):
+            continue
+        try:
+            values = np.asarray(value, dtype=float)
+        except (TypeError, ValueError) as exc:
+            raise ValueError(f"Non-numeric cosmological input: {section}.{name}") from exc
+        if not np.all(np.isfinite(values)):
+            raise ValueError(f"Non-finite cosmological input: {section}.{name}")
 
 @contextlib.contextmanager
 def be_quiet_camb():
@@ -147,6 +217,27 @@ def setup(options):
     more_config = {}
 
     more_config["mode"] = mode
+    more_config["share_nonlinear_ratio"] = options.get_bool(opt, "share_nonlinear_ratio", default=False)
+    more_config["reuse_computation"] = options.get_bool(opt, "reuse_computation", default=False)
+    more_config["reuse_cache_size"] = options.get_int(opt, "reuse_cache_size", default=4)
+    more_config["reuse_cache_adaptive"] = options.get_bool(opt, "reuse_cache_adaptive", default=False)
+    more_config["reuse_cache_max_size"] = options.get_int(
+        opt, "reuse_cache_max_size", default=max(8, more_config["reuse_cache_size"]))
+    more_config["reuse_cache_window"] = options.get_int(opt, "reuse_cache_window", default=8)
+    more_config["reuse_cache_threshold"] = options.get_double(opt, "reuse_cache_threshold", default=0.25)
+    for name in ("reuse_cache_size", "reuse_cache_max_size", "reuse_cache_window"):
+        if more_config[name] < 1:
+            raise ValueError(f"{name} must be a positive integer")
+    if more_config["reuse_cache_max_size"] < more_config["reuse_cache_size"]:
+        raise ValueError("reuse_cache_max_size must be at least reuse_cache_size")
+    threshold = more_config["reuse_cache_threshold"]
+    if not np.isfinite(threshold) or not 0 <= threshold <= 1:
+        raise ValueError("reuse_cache_threshold must be finite and between 0 and 1")
+    more_config["_reuse_cache"] = OrderedDict()
+    more_config["_reuse_hits"] = 0
+    more_config["_reuse_misses"] = 0
+    more_config["_reuse_window_hits"] = 0
+    more_config["_reuse_window_misses"] = 0
     more_config["max_printed_errors"] = options.get_int(opt, 'max_printed_errors', default=20)
     more_config["n_printed_errors"] = 0
     config['WantCls'] = mode in [MODE_CMB, MODE_ALL]
@@ -621,7 +712,132 @@ def compute_growth_factor(r, block, P_tot, k, z, more_config):
     return np.atleast_1d(D)
 
 
+def estimate_nonlinear_ratio_saving(n_extractions, nonlinear_seconds,
+                                    linear_seconds, overhead_seconds):
+    """Estimate seconds saved by sharing one nonlinear correction ratio.
+
+    The first extraction remains native; each later extraction can reuse the
+    ratio.  This helper is diagnostic only and does not enable sharing.
+    """
+    if isinstance(n_extractions, bool) or not isinstance(n_extractions, (int, np.integer)):
+        raise ValueError("n_extractions must be a positive integer")
+    if n_extractions < 1:
+        raise ValueError("n_extractions must be a positive integer")
+    values = (nonlinear_seconds, linear_seconds, overhead_seconds)
+    if not all(np.isfinite(value) and value >= 0 for value in values):
+        raise ValueError("timings must be finite and non-negative")
+    saving = ((n_extractions - 1) *
+              (nonlinear_seconds - linear_seconds) -
+              n_extractions * overhead_seconds)
+    return {"saving_seconds": float(saving), "eligible": bool(saving > 0)}
+
+
+def estimate_nonlinear_ratio_saving_from_diagnostics(diagnostics):
+    """Apply the amortization estimate to one ``diagnostics()`` snapshot."""
+    native_calls = diagnostics["native_nonlinear_calls"]
+    shared_calls = diagnostics["shared_calls"]
+    if native_calls != 1 or shared_calls < 1:
+        return {"saving_seconds": 0.0, "eligible": False}
+    n = native_calls + shared_calls
+    nonlinear = diagnostics["native_nonlinear_seconds"] / native_calls
+    linear = diagnostics["linear_seconds"] / n
+    overhead = diagnostics["shared_seconds"] / shared_calls
+    result = estimate_nonlinear_ratio_saving(n, nonlinear, linear, overhead)
+    result.update({"n_extractions": n, "nonlinear_seconds": nonlinear,
+                   "linear_seconds": linear, "overhead_seconds": overhead})
+    return result
+
+
+class SharedNonlinearRatio:
+    """Share CAMB's native-grid nonlinear ratio within one output extraction."""
+    supported = {"delta_tot", "delta_nonu", "delta_cdm"}
+
+    def __init__(self, result):
+        self.result = result
+        self.cached = None
+        self.native_nonlinear_calls = 0
+        self.shared_calls = 0
+        self.fallback_calls = 0
+        self.fallback_reasons = {
+            "positional_args": 0,
+            "linear_request": 0,
+            "unsupported_variable": 0,
+            "cross_spectrum": 0,
+        }
+        self.native_nonlinear_seconds = 0.0
+        self.shared_seconds = 0.0
+        self.linear_seconds = 0.0
+
+    def diagnostics(self):
+        """Return extraction counters for performance diagnostics."""
+        return {
+            "native_nonlinear_calls": self.native_nonlinear_calls,
+            "shared_calls": self.shared_calls,
+            "fallback_calls": self.fallback_calls,
+            "fallback_reasons": dict(self.fallback_reasons),
+            "native_nonlinear_seconds": self.native_nonlinear_seconds,
+            "shared_seconds": self.shared_seconds,
+            "linear_seconds": self.linear_seconds,
+        }
+
+    def __getattr__(self, name):
+        return getattr(self.result, name)
+
+    def get_linear_matter_power_spectrum(self, *args, **kwargs):
+        if args:
+            positional_names = ("var1", "var2", "hubble_units", "k_hunit",
+                                "have_power_spectra", "params", "nonlinear")
+            if len(args) <= len(positional_names) and not any(
+                    name in kwargs for name in positional_names[:len(args)]):
+                kwargs = dict(kwargs)
+                kwargs.update(dict(zip(positional_names, args)))
+                args = ()
+        var = kwargs.get("var1")
+        if args or not kwargs.get("nonlinear", False) or var not in self.supported or kwargs.get("var2") != var:
+            if kwargs.get("nonlinear", False):
+                self.fallback_calls += 1
+                if args:
+                    self.fallback_reasons["positional_args"] += 1
+                elif not kwargs.get("nonlinear", False):
+                    self.fallback_reasons["linear_request"] += 1
+                elif var not in self.supported:
+                    self.fallback_reasons["unsupported_variable"] += 1
+                else:
+                    self.fallback_reasons["cross_spectrum"] += 1
+            return self.result.get_linear_matter_power_spectrum(*args, **kwargs)
+        linear_options = dict(kwargs, nonlinear=False)
+        started = time.perf_counter()
+        k, z, linear = self.result.get_linear_matter_power_spectrum(**linear_options)
+        self.linear_seconds += time.perf_counter() - started
+        shared_started = time.perf_counter()
+        valid = np.all(np.isfinite(linear)) and np.all(linear > 0)
+        signature = (kwargs.get("hubble_units", True), kwargs.get("k_hunit", True))
+        if self.cached is not None and valid:
+            ck, cz, ratio, units = self.cached
+            if units == signature and np.array_equal(k, ck) and np.array_equal(z, cz):
+                power = linear * ratio
+                if np.all(np.isfinite(power)) and np.all(power > 0):
+                    self.shared_seconds += time.perf_counter() - shared_started
+                    self.shared_calls += 1
+                    return k, z, power
+        self.native_nonlinear_calls += 1
+        started = time.perf_counter()
+        kn, zn, nonlinear = self.result.get_linear_matter_power_spectrum(**kwargs)
+        self.native_nonlinear_seconds += time.perf_counter() - started
+        if (valid and np.array_equal(k, kn) and np.array_equal(z, zn) and
+                np.all(np.isfinite(nonlinear)) and np.all(nonlinear > 0)):
+            ratio = nonlinear / linear
+            if np.all(np.isfinite(ratio)):
+                self.cached = (k.copy(), z.copy(), ratio, signature)
+        return kn, zn, nonlinear
+
+    def get_matter_power_interpolator(self, **kwargs):
+        return camb.results.CAMBdata.get_matter_power_interpolator(self, **kwargs)
+
+
 def save_matter_power(r, block, more_config):
+    if more_config.get("share_nonlinear_ratio", False):
+        r = SharedNonlinearRatio(r)
     p = r.Params
     # Grids in k, z on which to save matter power.
     # There are two kmax values - the max one calculated directly,
@@ -683,6 +899,12 @@ def save_matter_power(r, block, more_config):
             p_k = P.P(z, k, grid=True)
             section_name = matter_power_section_names[transfer_type] + "_nl"
             block.put_grid(section_name, "z", z, "k_h", k, "p_k", p_k)
+
+    if isinstance(r, SharedNonlinearRatio):
+        diagnostics = r.diagnostics()
+        diagnostics["eligibility"] = estimate_nonlinear_ratio_saving_from_diagnostics(
+            diagnostics)
+        print("CAMB nonlinear sharing diagnostics:", diagnostics)
 
     # Get growth rates and sigma_8
     sigma_8 = r.get_sigma8()[::-1]
@@ -760,6 +982,7 @@ def execute(block, config):
     config, more_config = config
     p = "<Error occurred during parameter setup>"
     try:
+        _validate_finite_cosmological_inputs(block)
         p = extract_camb_params(block, config, more_config)
 
         if (not p.WantCls) and (not p.WantTransfer):
@@ -767,9 +990,40 @@ def execute(block, config):
             r = camb.get_background(p)
         else:
             # other modes
-            r = camb.get_results(p)
-            if block.has_value(cosmo, 'sigma_8'):
-                r = recompute_for_sigma8(r, block, config, more_config)
+            reuse_key = (_make_reuse_key(block, p, more_config)
+                         if more_config["reuse_computation"] else None)
+            cache = more_config["_reuse_cache"]
+            if more_config["reuse_computation"] and reuse_key in cache:
+                more_config["_reuse_hits"] += 1
+                more_config["_reuse_window_hits"] += 1
+                r = cache.pop(reuse_key)
+                cache[reuse_key] = r
+                if block.has_value(cosmo, "sigma_8"):
+                    block[cosmo, "A_s"] = r.Params.InitPower.As
+            else:
+                if more_config["reuse_computation"]:
+                    more_config["_reuse_misses"] += 1
+                    more_config["_reuse_window_misses"] += 1
+                r = camb.get_results(p)
+                if block.has_value(cosmo, 'sigma_8'):
+                    r = recompute_for_sigma8(r, block, config, more_config)
+                if more_config["reuse_computation"]:
+                    cache[reuse_key] = r
+                    while len(cache) > more_config["reuse_cache_size"]:
+                        cache.popitem(last=False)
+            if more_config["reuse_computation"] and more_config["reuse_cache_adaptive"]:
+                window_requests = (more_config["_reuse_window_hits"] +
+                                   more_config["_reuse_window_misses"])
+                if window_requests >= more_config["reuse_cache_window"]:
+                    hit_rate = (more_config["_reuse_window_hits"] /
+                                window_requests)
+                    if (hit_rate < more_config["reuse_cache_threshold"] and
+                            more_config["reuse_cache_size"] < more_config["reuse_cache_max_size"]):
+                        more_config["reuse_cache_size"] = min(
+                            more_config["reuse_cache_size"] * 2,
+                            more_config["reuse_cache_max_size"])
+                    more_config["_reuse_window_hits"] = 0
+                    more_config["_reuse_window_misses"] = 0
 
     except camb.CAMBError:
         if more_config["n_printed_errors"] <= more_config["max_printed_errors"]:
