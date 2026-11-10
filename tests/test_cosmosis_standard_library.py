@@ -55,15 +55,17 @@ def test_planck_class(capfd):
 
 
 
+# The last value in each list is for camb >= 2.0.5. The one before it is from camb 2.0.0,
+# which had a bug in non-linear CMB lensing when many matter power redshifts were requested.
 planck_lite_expected_values = {
-    ("T", "TTTEEE", "2018"): ["-2864.26", "-2882.45"],
-    ("F", "TTTEEE", "2018"): ["-2863.30", "-2881.49"],
-    ("T", "TT", "2018"): ["-1712.90", "-1712.89", "-1726.5"],
-    ("F", "TT", "2018"): ["-1711.94", "-1725.58"],
-    ("T", "TTTEEE", "2015"): ["-2812.68", "-2831.44"],
-    ("F", "TTTEEE", "2015"): ["-2811.98", "-2830.74"],
-    ("T", "TT", "2015"): ["-1744.11", "-1758.1"],
-    ("F", "TT", "2015"): ["-1743.41", "-1757.4"],
+    ("T", "TTTEEE", "2018"): ["-2864.26", "-2882.45", "-2880.1"],
+    ("F", "TTTEEE", "2018"): ["-2863.30", "-2881.49", "-2879.2"],
+    ("T", "TT", "2018"): ["-1712.90", "-1712.89", "-1726.5", "-1724.1"],
+    ("F", "TT", "2018"): ["-1711.94", "-1725.58", "-1723.1"],
+    ("T", "TTTEEE", "2015"): ["-2812.68", "-2831.44", "-2829.1"],
+    ("F", "TTTEEE", "2015"): ["-2811.98", "-2830.74", "-2828.4"],
+    ("T", "TT", "2015"): ["-1744.11", "-1758.1", "-1755.6"],
+    ("F", "TT", "2015"): ["-1743.41", "-1757.4", "-1754.9"],
 }
 
 
@@ -122,7 +124,7 @@ def test_des_y3(capfd):
         ("pk_to_cl_gg","save_kernels"):"T",
         ("pk_to_cl","save_kernels"):"T"
         })
-    check_likelihood("test_des_y3", capfd, "6043.23", "6043.34", "6043.37", "6043.33", "6043.30", "6043.27")
+    check_likelihood("test_des_y3", capfd, "6043.23", "6043.34", "6043.37", "6043.33", "6043.30", "6043.27", "6043.28")
     check_no_camb_warnings(capfd)
 
 def test_des_y3_plus_planck(capfd):
@@ -137,7 +139,7 @@ def test_des_y3_class(capfd):
 
 def test_des_y3_shear(capfd):
     run_cosmosis("examples/des-y3-shear.ini")
-    check_likelihood("test_des_y3_shear", capfd, "2957.03", "2957.12", "2957.11", "2957.13", "2957.07", "2957.08")
+    check_likelihood("test_des_y3_shear", capfd, "2957.03", "2957.12", "2957.11", "2957.13", "2957.07", "2957.08", "2957.06")
     check_no_camb_warnings(capfd)
 
 def test_des_y3_mira_titan(capfd):
@@ -266,7 +268,7 @@ def test_desi_dr1(capfd):
 
 def test_desi_dr2(capfd):
     run_cosmosis("examples/desi_dr2.ini")
-    check_likelihood("test_desi_dr2", capfd, "-93.02", "-93.07")
+    check_likelihood("test_desi_dr2", capfd, "-93.02", "-93.07", "-93.06")
 
 
 def test_candl(capfd):
