@@ -19,7 +19,7 @@ def setup(options):
     data_directory = options.get_string(option_section, 'data_directory', default=data_directory)
 
     if not os.path.exists(data_directory):
-        raise FileNotFoundError('Required data file not found at {}.\nPlease obtain it and place it correctly.\nThe script get-act-data.sh will download and place it.'.format(data_file))
+        raise FileNotFoundError('Required data file not found at {}.\nPlease obtain it and place it correctly.\nThe script get-act-data.sh will download and place it.'.format(data_directory))
 
     # lmax = options.get_int(option_section, 'lmax', default=4000)
     mock = options.get_bool(option_section, 'mock', default=False)

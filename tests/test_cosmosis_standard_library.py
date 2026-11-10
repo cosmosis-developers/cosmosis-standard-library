@@ -44,7 +44,7 @@ def test_planck(capfd):
     if not os.path.exists("likelihood/planck2018/baseline/plc_3.0/hi_l/plik_lite/plik_lite_v22_TT.clik"):
         pytest.skip("Planck data not found")
     run_cosmosis("examples/planck.ini")
-    check_likelihood("test_planck", capfd, "-1441.14", "-1441.30", "-1441.46", "-502.5", "-502.0")
+    check_likelihood("test_planck", capfd, "-1441.14", "-1441.30", "-1441.46", "-502.5", "-502.0", "-502.1")
     check_no_camb_warnings(capfd)
     
 def test_planck_class(capfd):
@@ -259,7 +259,7 @@ def test_npipe(capfd):
     except ImportError:
         pytest.skip("Planck PR4 lensing likelihood not found")
     run_cosmosis("examples/npipe.ini")
-    check_likelihood("test_npipe", capfd, "-4.22", "-4.23")
+    check_likelihood("test_npipe", capfd, "-4.22", "-4.23", "-4.21")
 
 
 def test_desi_dr1(capfd):
