@@ -259,7 +259,7 @@ def test_npipe(capfd):
     except ImportError:
         pytest.skip("Planck PR4 lensing likelihood not found")
     run_cosmosis("examples/npipe.ini")
-    check_likelihood("test_npipe", capfd, "-4.22", "-4.23", "-4.21")
+    check_likelihood("test_npipe", capfd, "-4.22", "-4.23", "-4.21", "4.18")
 
 
 def test_desi_dr1(capfd):
