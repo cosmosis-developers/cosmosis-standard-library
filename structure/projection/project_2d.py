@@ -1712,7 +1712,7 @@ class SpectrumCalculator(object):
                 if spectrum.section_name in self.auto_only_section_names:
                     if j!=i:
                         continue
-                if not spectrum.should_do_bin(j+1) and spectrum.kernel_types[0] == spectrum.kernel_types[1]:
+                if not spectrum.should_do_bin(j+1) and spectrum.kernel_types[0] == spectrum.kernel_types[1] and spectrum.autocorrelation:
                     continue
 
                 if self.verbose:
