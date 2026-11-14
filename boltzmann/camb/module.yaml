@@ -39,6 +39,10 @@ params:
             history is computed and rs_zdrag and related quantities also. In cmb mode
             the CMB power spectra are also calculated. In power mode the CMB is not
             calculated but low-z mattter power is.  In all mode everything is calculated.
+    reuse_computation:
+        meaning: Reuse CAMB results for identical consecutive inputs
+        type: bool
+        default: False
         type: str
         default:
     feedback:
