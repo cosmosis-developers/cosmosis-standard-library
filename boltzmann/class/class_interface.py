@@ -41,6 +41,8 @@ def setup(options):
         'mpk': options.get_bool(option_section, 'mpk', default=True),
         'save_matter_power_lin': options.get_bool(option_section, 'save_matter_power_lin', default=True),
         'save_cdm_baryon_power_lin': options.get_bool(option_section, 'save_cdm_baryon_power_lin', default=False),
+        'use_bulk_pk': options.get_bool(option_section, 'use_bulk_pk', default=False),
+        'bulk_pk_kmax': options.get_double(option_section, 'bulk_pk_kmax', default=5.0),
         'background_only': options.get_bool(option_section, "background_only", default=False)
     }
 
@@ -115,6 +117,8 @@ def get_class_inputs(block, config):
 
 
     neutrino_mass_total = block.get_double(cosmo, 'mnu', default=0.06)
+    if neutrino_mass_total < 0:
+        raise ValueError("mnu must be non-negative")
     if nmassive == 0:
         if neutrino_mass_total == 0.06:
             assert neutrino_mass_total == 0, f"mnu must equal 0 when num_massive_neutrinos=0, but you had {neutrino_mass_total} - you may have left it at the default value"
@@ -123,6 +127,30 @@ def get_class_inputs(block, config):
     else:
         neutrino_masses = np.repeat(neutrino_mass_total / nmassive, nmassive).astype(str)
         params['m_ncdm'] = ", ".join(neutrino_masses)
+
+    # CLASS can only provide the CDM+baryon spectrum when at least one
+    # massive neutrino species is present.  Fail early with a useful message
+    # instead of allowing CLASS to fail during output extraction.
+    if config['save_cdm_baryon_power_lin'] and nmassive == 0:
+        raise ValueError(
+            "save_cdm_baryon_power_lin requires num_massive_neutrinos > 0"
+        )
+
+    # The growth quantities below use CLASS sigma(R,z), which requires the
+    # CLASS P(k) table to extend to at least 1 h/Mpc.
+    if config['mpk'] and (
+        not np.isfinite(config['kmax']) or config['kmax'] < 1.0
+    ):
+        raise ValueError(
+            "kmax must be finite and >= 1.0 when matter power output is enabled"
+        )
+    bulk_pk_kmax = config.get('bulk_pk_kmax', 5.0)
+    if config.get('use_bulk_pk', False) and (
+        not np.isfinite(bulk_pk_kmax) or bulk_pk_kmax <= 0
+    ):
+        raise ValueError(
+            "bulk_pk_kmax must be finite and positive when use_bulk_pk is enabled"
+        )
 
 
     if config["cmb"] or config["lensing"]:
@@ -156,6 +184,28 @@ def get_class_inputs(block, config):
 
 
 
+def _extract_power_grid(c, scalar_fn, k, z, h0, config, nonlinear=False, cdmbar=False):
+    """Extract a P(k,z) grid with a bounded bulk path and scalar fallback."""
+    if not config.get('use_bulk_pk', False) or not hasattr(c, 'get_pk_all'):
+        return np.array([
+            [scalar_fn(ki, zi) for zi in z]
+            for ki in k
+        ])
+
+    bulk_mask = (k / h0) <= config.get('bulk_pk_kmax', 5.0)
+    result = np.empty((k.size, z.size))
+    if np.any(bulk_mask):
+        result[bulk_mask] = np.asarray(
+            c.get_pk_all(k[bulk_mask], z, nonlinear=nonlinear, cdmbar=cdmbar)
+        ).T
+    if np.any(~bulk_mask):
+        result[~bulk_mask] = np.array([
+            [scalar_fn(ki, zi) for zi in z]
+            for ki in k[~bulk_mask]
+        ])
+    return result
+
+
 def get_class_outputs(block, c, config):
     ##
     # Derived cosmological parameters
@@ -186,19 +236,13 @@ def get_class_outputs(block, c, config):
 
             # Total matter power spectrum (saved as grid)
             if config['save_matter_power_lin']:
-                P = np.zeros((k.size, z.size))
-                for i, ki in enumerate(k):
-                    for j, zi in enumerate(z):
-                        P[i, j] = c.pk_lin(ki, zi)
+                P = _extract_power_grid(c, c.pk_lin, k, z, h0, config)
                 # We transpose P here to match the camb convention
                 block.put_grid("matter_power_lin", "z", z, "k_h", k / h0, "p_k", P.T * h0**3)
 
             # CDM+baryons power spectrum
             if config['save_cdm_baryon_power_lin']:
-                P = np.zeros((k.size, z.size))
-                for i, ki in enumerate(k):
-                    for j, zi in enumerate(z):
-                        P[i, j] = c.pk_cb_lin(ki, zi)
+                P = _extract_power_grid(c, c.pk_cb_lin, k, z, h0, config, cdmbar=True)
                 block.put_grid('cdm_baryon_power_lin', 'z', z, 'k_h', k/h0, 'p_k', P.T * h0 **3)
 
             # Get growth rates and sigma_8
@@ -214,9 +258,9 @@ def get_class_outputs(block, c, config):
             block[names.growth_parameters, "a"] = 1/(1+z)
 
             if c.nonlinear_method != 0:
-                for i, ki in enumerate(k):
-                    for j, zi in enumerate(z):
-                        P[i, j] = c.pk(ki, zi)
+                # P is not necessarily initialized above: both linear output
+                # options may be disabled while nonlinear output is enabled.
+                P = _extract_power_grid(c, c.pk, k, z, h0, config, nonlinear=True)
 
                 block.put_grid("matter_power_nl", "z", z, "k_h", k / h0, "p_k", P.T * h0**3)
 
