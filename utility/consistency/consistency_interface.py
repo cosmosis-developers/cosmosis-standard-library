@@ -74,6 +74,7 @@ def execute(block, config):
         block[cosmo, "A_s"] = np.exp(block[cosmo, 'log1e10As']) * 1.0e-10
     elif block.has_value(cosmo, "A_s_1e9"):
         block[cosmo, "A_s"] = block[cosmo, "A_s_1e9"] * 1e-9
+        block[cosmo, "log1e10As"] = np.log(block[cosmo, "A_s_1e9"] * 10.0)
 
     # Set or replace the new values
     for param, value in list(filled_parameters.items()):

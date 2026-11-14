@@ -165,6 +165,9 @@ outputs:
         A_s:
             meaning: Amplitude of primordial fluctuations. Only if log1e10As or A_s_1e9 is present on input.
             type: real
+        log1e10As:
+            meaning: log (10**10 * A_s). Only if A_s_1e9 is present on input.
+            type: real
         sigma_8:
             meaning: RMS mass fluctuation in 8 Mpc/h spheres. Only if S_8 is present on input.
             type: real
