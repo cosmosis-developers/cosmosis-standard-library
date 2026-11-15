@@ -103,46 +103,39 @@ class SaccClLikelihood(GaussianLikelihood):
 
             if miss:
                 print(f"Removing tracer combination {tracers} because {miss} does not match any pattern in {tracer_patterns}")
-                s.remove_selection(tracers=(t1,t2))
+                s.remove_selection(tracers=tracers)
 
         # The ones we actually used.
         self.used_names = s.get_data_types()
 
-        # Check for scale cuts. In general, this is a minimum and maximum angle for
-        # each spectrum, for each redshift bin combination. Which is clearly a massive pain...
-        # but what can you do?
-
-        valid_tags = ["ell", "theta", "n", "mass", "luminosity"]
-        # We only support these tags for now, but we could add more
+        # Choose one range per tracer combination before removing any points.
         for name in self.used_names:
             for tracers in s.get_tracer_combinations(name):
-                if len(tracers) == 2:
-                    t1, t2 = tracers
-                    option_name = f"angle_range_{name}_{t1}_{t2}"
+                one_point = len(tracers) == 1
+                if one_point:
+                    base_name = f"onepoint_range_{name}"
+                    valid_tags = ("mass", "luminosity")
                 else:
-                    t1 = tracers[0]
-                    option_name = f"onepoint_range_{name}_{t1}"
-                    # also allow the invalid "angle_range" form
-                    invalid_name = f"angle_range_{name}_{t1}"
+                    base_name = f"angle_range_{name}"
+                    valid_tags = ("ell", "theta", "n")
 
-                if self.options.has_value(option_name) or (len(tracers) == 1 and self.options.has_value(invalid_name)):
-                    # if invalid_name is used, warn and substitute
-                    if len(tracers) == 1 and self.options.has_value(invalid_name):
-                        print(f"**** WARNING: '{invalid_name}' is not a valid option name. "
-                              f"Use '{option_name}' instead.")
-                        option_name = invalid_name
-                    r = self.options.get_double_array_1d(option_name)
-                    tags = np.unique([k for row in s.get_data_points(name) for k in row.tags])
-                    for tag in valid_tags:
-                        if tag in tags:
-                            # Determine the tracer tuple based on the tag and data type
-                            tracer_tuple = (t1, t2) if tag in ["ell", "theta", "n"] else (t1,)
-                            # Create keyword arguments for lt and gt
-                            kwargs_lt = {f"{tag}__lt": r[0]}
-                            kwargs_gt = {f"{tag}__gt": r[1]}
-                            # Call the remove_selection method
-                            s.remove_selection(name, tracer_tuple, **kwargs_lt)
-                            s.remove_selection(name, tracer_tuple, **kwargs_gt)
+                option_name = f"{base_name}_{'_'.join(tracers)}"
+                legacy_name = f"angle_range_{name}_{tracers[0]}"
+                if one_point and self.options.has_value(legacy_name):
+                    print(f"**** WARNING: '{legacy_name}' is not a valid option name. "
+                          f"Use '{option_name}' instead.")
+                    option_name = legacy_name
+                elif not self.options.has_value(option_name):
+                    option_name = base_name
+                    if not self.options.has_value(option_name):
+                        continue
+
+                r = self.options.get_double_array_1d(option_name)
+                tags = {tag for point in s.get_data_points(name, tracers) for tag in point.tags}
+                for tag in valid_tags:
+                    if tag in tags:
+                        s.remove_selection(name, tracers, **{f"{tag}__lt": r[0]})
+                        s.remove_selection(name, tracers, **{f"{tag}__gt": r[1]})
 
         for name in self.used_names:
             option_name = f"cut_{name}"

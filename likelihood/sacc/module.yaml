@@ -22,6 +22,13 @@ explanation: |
     Note a recent change: by default we now do not renormalize any bandpower weights,
     whereas before we did.  This is to allow for non-unit-sum weights such as those
     produced by NaMaster.
+
+    Scale-cut ranges keep points at both endpoints. For example, to keep COSEBI
+    modes 2 through 6 for all pairs except source_0/source_1, for which modes
+    1 through 4 are kept, put these settings in the likelihood's ini section::
+
+        angle_range_galaxy_shear_cosebi_ee = 2.0 6.0
+        angle_range_galaxy_shear_cosebi_ee_source_0_source_1 = 1.0 4.0
     "
 params:
     data_file:
@@ -37,9 +44,26 @@ params:
         meaning: Regular expression to select tracers to use.
         type: str
         default: ""
+    angle_range_{dataset}:
+        meaning: Default minimum and maximum for ell, theta, or COSEBI mode n
+            across tracer pairs of this SACC data type. Use two real numbers
+            (e.g. 2.0 6.0), in the units stored in the file.
+        type: str
+        default:
     angle_range_{dataset}_{i}_{j}:
-        meaning: Pair of real numbers. If set, for the given data set and pair of
-            bins, cut down the data used to this angular range  (min and max)
+        meaning: Minimum and maximum for the pair of SACC tracers i and j, named
+            in the order stored in the file. Replaces the entire default range
+            for this pair when specified.
+        type: str
+        default:
+    onepoint_range_{dataset}:
+        meaning: Default minimum and maximum mass or luminosity for this SACC
+            data type. Use two real numbers in the units stored in the file.
+        type: str
+        default:
+    onepoint_range_{dataset}_{i}:
+        meaning: Minimum and maximum for SACC tracer i. Replaces the entire
+            default one-point range for this tracer when specified.
         type: str
         default:
     cut_{dataset}:
