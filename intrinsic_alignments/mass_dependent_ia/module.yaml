@@ -22,7 +22,7 @@ explanation: |
     multiplied by the scaling factor twice when the outputs were written
     in-place (i.e. when new_suffix is the same as suffix, including the
     default case where both are empty). Thanks to David Gebauer for
-    finding this bug.
+    finding this bug. It does not affect the KIDS contours noticeably.
 
 params: 
         suffix:
