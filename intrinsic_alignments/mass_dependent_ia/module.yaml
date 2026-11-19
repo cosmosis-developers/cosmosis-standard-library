@@ -1,6 +1,6 @@
 #This is a template for module description files
 name: mass_dependent_ia_model
-version: '1.0'
+version: '1.1'
 category: Two-point Systematics
 purpose: adds mass dependence to IA, with a linear equation
 url: ''
@@ -17,6 +17,12 @@ explanation: |
     new Cl^ij_II = [f_r^(i) * (<M_*>^(i) / M_{*, pivot})^beta] * [f_r^(j) * (<M_*>^(j) / M_{*, pivot})^beta]  * Cl^ij_II
     new Cl^ij_GI = [f_r^(j) * (<M_*>^(j) / M_{*, pivot})^beta] * Cl^ij_GI
     new Cl^ij_IG = [f_r^(i) * (<M_*>^(i) / M_{*, pivot})^beta] * Cl^ij_IG
+
+    Version 1.1 fixes a bug in which the auto-bin (i == j) GI spectra were
+    multiplied by the scaling factor twice when the outputs were written
+    in-place (i.e. when new_suffix is the same as suffix, including the
+    default case where both are empty). Thanks to David Gebauer for
+    finding this bug.
 
 params: 
         suffix:
