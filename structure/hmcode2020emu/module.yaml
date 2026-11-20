@@ -1,0 +1,130 @@
+name: hmcode2020emu
+version: '1.0'
+category: Emulators
+purpose: Emulate the non-linear, baryonified, matter power spectrum with HMcode2020Emu
+url: https://github.com/MariaTsedrik/HMcode2020Emu
+interface: hmcode2020emu_interface.py
+attribution: ["Felipe Andrade-Oliveira", "Maria Tsedrik (HMcode2020Emu)"]
+rules: Please cite the HMcode2020Emu papers if you use this module
+cite: []
+assumptions:
+-   Emulator trained with a single massive neutrino species
+-   Valid for z < 3 and 1e-4 < k < 50 h/Mpc
+-   w0waCDM cosmology with baryonic feedback parameterized by log10(T_AGN)
+
+explanation: |
+    This module wraps the HMcode2020Emu emulator, model_v2 (June 2024), which
+    emulates the HMcode 2020 linear and non-linear matter power spectra including
+    baryonic feedback. It needs the python package HMcode2020Emu, which can be
+    installed from the fork at https://github.com/felipeaoli/HMcode2020Emu.
+
+    The non-linear power is only emulated above k = 0.01 h/Mpc; below that the linear power is used.
+
+    The module also saves sigma_8(z) and f*sigma_8(z). The sigma_12 parameter is not computed.
+    The module does not extrapolate to higher k; use an extrapolation module afterwards if needed.
+
+params:
+    zmin:
+        meaning: Minimum redshift of the output grid
+        type: real
+        default: 0.0
+    zmax:
+        meaning: Maximum redshift of the output grid. Points with z >= 3 are removed since they are outside the emulator range.
+        type: real
+        default: 3.01
+    nz:
+        meaning: Number of redshift points in the grid, before removing those with z >= 3
+        type: int
+        default: 150
+    kmin:
+        meaning: Minimum k in h/Mpc
+        type: real
+        default: 1.0e-4
+    kmax:
+        meaning: Maximum k in h/Mpc
+        type: real
+        default: 49.99999
+    nk:
+        meaning: Number of log-spaced k points
+        type: int
+        default: 701
+
+inputs:
+    cosmological_parameters:
+        omega_c:
+            meaning: Cold dark matter density fraction
+            type: real
+            default:
+        omega_b:
+            meaning: Baryon density fraction
+            type: real
+            default:
+        omega_m:
+            meaning: Total matter density fraction, used to compute S_8
+            type: real
+            default:
+        h0:
+            meaning: Dimensionless Hubble parameter
+            type: real
+            default:
+        a_s:
+            meaning: Primordial amplitude A_s
+            type: real
+            default:
+        n_s:
+            meaning: Scalar spectral index
+            type: real
+            default:
+        mnu:
+            meaning: Sum of neutrino masses in eV
+            type: real
+            default:
+        w:
+            meaning: Dark energy equation of state at z=0
+            type: real
+            default:
+        wa:
+            meaning: Dark energy equation of state evolution
+            type: real
+            default: 0.0
+    halo_model_parameters:
+        logt_agn:
+            meaning: log10 of the AGN heating temperature, the baryonic feedback parameter
+            type: real
+            default:
+
+outputs:
+    matter_power_lin:
+        z:
+            meaning: Redshifts of the power spectra
+            type: real 1d
+        k_h:
+            meaning: Wavenumbers in h/Mpc
+            type: real 1d
+        P_k:
+            meaning: Linear matter power spectrum
+            type: real 2d
+    matter_power_nl:
+        z:
+            meaning: Redshifts of the power spectra
+            type: real 1d
+        k_h:
+            meaning: Wavenumbers in h/Mpc
+            type: real 1d
+        P_k:
+            meaning: Non-linear matter power spectrum with baryonic effects
+            type: real 2d
+    growth_parameters:
+        sigma_8:
+            meaning: sigma_8(z) at each redshift in the grid
+            type: real 1d
+        fsigma_8:
+            meaning: f*sigma_8(z) at each redshift in the grid
+            type: real 1d
+    cosmological_parameters:
+        sigma_8:
+            meaning: sigma_8 at z=0
+            type: real
+        S_8:
+            meaning: sigma_8 * sqrt(omega_m / 0.3)
+            type: real
