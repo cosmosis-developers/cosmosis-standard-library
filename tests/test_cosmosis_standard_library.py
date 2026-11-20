@@ -191,7 +191,7 @@ def test_spk_example(capfd):
     except ImportError:
         pytest.skip("pyspk not installed")
 
-    run_cosmosis("examples/cmb/spk.ini")
+    run_cosmosis("examples/other/spk.ini")
     assert os.path.exists("output/spk/matter_power_nl/p_k.txt")
     assert os.path.exists("output/spk/spk_suppression/s_k.txt")
     check_no_camb_warnings(capfd)
