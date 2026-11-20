@@ -173,6 +173,10 @@ def test_des_y3_6x2pt(capfd):
     run_cosmosis("examples/des-y3-6x2pt.ini")
     check_no_camb_warnings(capfd)
 
+def test_des_y6_3x2pt(capfd):
+    run_cosmosis("examples/desy6/desy6-3x2pt.ini")
+    check_likelihood("test_des_y6_3x2pt", capfd, "7198.88", "7198.87", "7198.89")
+
 def test_euclid_emulator(capfd):
     run_cosmosis("examples/euclid-emulator.ini")
     assert os.path.exists("output/euclid-emulator/matter_power_nl/p_k.txt")
