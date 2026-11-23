@@ -118,6 +118,12 @@ def exact_integral(ells, kernel1_interp, kernel2_interp,
             lower/upper ends"""%(chi_pad_lower,chi_pad_upper))
     log_chimin_padded, log_chimax_padded = log_chimin-chi_pad_lower, log_chimax+chi_pad_upper
     nchi_orig = np.ceil((log_chimax-log_chimin)/dlogchi).astype(int)
+    if nchi_orig < 4:
+        raise ValueError(
+            "The exact projection window has fewer than four chi samples: "
+            f"nchi_orig={nchi_orig}, chimin={chimin}, chimax={chimax}, "
+            f"dlogchi={dlogchi}"
+        )
     nchi = nearest_power_of_2(nchi_orig) #use nchi that is a power of 2 for fast fft.
     log_chi_vals = np.linspace(log_chimin_padded, log_chimax_padded, nchi)
     chi_vals = np.exp(log_chi_vals)
