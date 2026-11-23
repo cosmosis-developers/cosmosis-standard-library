@@ -156,6 +156,12 @@ int copy_metadata(int status, c_datablock * block, const char* output_section,
     if (s == 0) s |= c_datablock_put_bool(block, output_section, "is_auto", is_auto);
     status |= s;
 
+    //auto_only
+    bool auto_only;
+    s = c_datablock_get_bool(block, input_section, "auto_only", &auto_only);
+    if (s == 0) s |= c_datablock_put_bool(block, output_section, "auto_only", auto_only);
+    status |= s;
+
     //sample names
     char * sample_a;
     s = c_datablock_get_string(block, input_section, "sample_a", &sample_a);

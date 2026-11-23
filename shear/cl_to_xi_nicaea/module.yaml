@@ -68,6 +68,14 @@ inputs:
                 modes 0 and 1.
             type: real 1d
             default:
+        is_auto:
+            meaning: Whether this is an autocorrelation (True) or cross-correlation (False)
+            type: bool
+            default:
+        auto_only:
+            meaning: Whether this is an auto-correlation (True) or inter-bin correlation (False).
+            type: bool
+            default:
 outputs:
     output_section_name:
         theta:
@@ -89,3 +97,9 @@ outputs:
         nbin_b:
             meaning: Number of j tomographic bins
             type: int
+        is_auto:
+            meaning: Whether this is an autocorrelation (True) or cross-correlation (False)
+            type: bool
+        auto_only:
+            meaning: Whether this is an auto-correlation (True) or inter-bin correlation (False).
+            type: bool

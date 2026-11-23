@@ -39,7 +39,7 @@ params:
         default: ""
     angle_range_{dataset}_{i}_{j}:
         meaning: Pair of real numbers. If set, for the given data set and pair of
-            bins, cut down the data used to this angular range  (min and max)
+            bins, cut down the data used to this angular range  (min and max).
         type: str
         default:
     cut_{dataset}:
@@ -95,11 +95,39 @@ inputs:
                 the file. It might be galaxy_cl or shear_cl, for example.
             type: real 1d
             default:
-        bin_{i}_{j}:
-            meaning: For various i,j depending what is found in the file, the theory
-                predictions for this value. For example, C_ell.
+        theta:
+            meaning: If a real-space measurement is used, the angle of
+                the predicted theory curves. The name of the section here depends on the data type used from
+                the file. It might be galaxy_xi or shear_xi, for example.
             type: real 1d
             default:
+        unit:
+            meaning: If a real-space measurement is used, the unit of the angle of
+                the predicted theory curves.
+            type: str
+            default: arcmin
+        n:
+            meaning: If COSEBIs measurement is used, the mode values of
+                the predicted theory curves. The name of the section here depends on the data type used from
+                the file. It might be cosebis or psi_stats, for example.
+            type: real 1d
+            default:
+        bin_{i}_{j}:
+            meaning: For various i,j depending what is found in the file, the theory
+                predictions for this value. For example, C_ell, correlation functions, E_n or B_n.
+            type: real 1d
+            default:
+    one_point:
+        obs_{i}:
+            meaning: The value of observable, for the observable-redshift bin {i},
+                either mass or luminosity, for stellar mass function and luminosity function, respectively.
+            type: real 1d
+            default:
+        bin_{i}:
+            meaning: The value of observable function, for the observable-redshift bin {i}.
+            type: real 1d
+            default:
+
 outputs:
     likelihoods:
         2pt_like:
@@ -108,13 +136,13 @@ outputs:
             type: real
     data_vector:
         2pt_data:
-            meaning: The full vector of data points used in the likelihood
+            meaning: The full vector of data points used in the likelihood.
             type: real 1d
         2pt_theory:
-            meaning: The full vector of theory points used in the likelihood
+            meaning: The full vector of theory points used in the likelihood.
             type: real 1d
         2pt_covariance:
-            meaning: The covariance matrix used
+            meaning: The covariance matrix used.
             type: real 2d
         2pt_inverse_covariance:
             meaning: The inverse covariance matrix (precision matrix) used.
@@ -126,8 +154,8 @@ outputs:
             meaning: The angular scale used for each data point.
             type: real 1d
         2pt_bin1:
-            meaning: The first bin index used for each data point
+            meaning: The first bin index used for each data point.
             type: int 1d
         2pt_bin2:
-            meaning: The second bin index used for each data point
+            meaning: The second bin index used for each data point.
             type: int 1d
