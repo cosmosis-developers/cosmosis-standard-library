@@ -14,7 +14,7 @@ import os
 import twopoint
 from twopoint_cosmosis import type_table
 import gaussian_covariance
-from spec_tools import TheorySpectrum, real_space_cov, real_space_cov_contributions, perarcmin2_to_perrad2, ClCov, arcmin_to_rad, convert_angle
+from spec_tools import TheorySpectrum, real_space_cov, real_space_cov_contributions, perarcmin2_to_perrad2, ClCov, arcmin_to_rad, convert_angle, cl_filters_from_spectra
 
 
 def get_scales( x_min, x_max, nbins, logspaced=True, integer_lims=False, two_thirds_midpoint=False):
@@ -163,6 +163,13 @@ def setup(options):
         if config['make_covariance']:
             config["cl_sections"] = read_list("cl_sections")
             config["cl_to_xi_types"] = read_list("cl_to_xi_types")
+            # If T, each cl_sections entry is a FILTERED copy (e.g. beam x ell cut written to a
+            # separate section) of the spectrum that type_table points to. The Gaussian covariance
+            # is then computed from the unfiltered type_table spectra and the filter
+            # f = C_filtered / C_unfiltered is applied to the transform (covariance of the
+            # filtered observable). Default F: identical to the previous behaviour.
+            config["cov_filter_from_cl_sections"] = options.get_bool(
+                option_section, "cov_filter_from_cl_sections", False)
     else:
         # The Fourier-space variant of the same thing.
         if not options.has_value(option_section, "ell_min"):
@@ -459,6 +466,32 @@ def execute(block, config):
 
         cl_cov = ClCov(cl_specs, fsky=config['fsky'])
 
+        cov_filters = None
+        if real_space and config.get('cov_filter_from_cl_sections', False):
+            cov_filters = []
+            spec_types = [s.types for s in cl_specs]
+            for i_spec, filt_spec in enumerate(cl_theory_spec_list):
+                filt_section = config['cl_sections'][i_spec]
+                type_1, type_2 = filt_spec.types
+                try:
+                    unfilt_section = type_table[(type_1.name, type_2.name)][0]
+                except KeyError:
+                    unfilt_section = type_table[(type_2.name, type_1.name)][0]
+                if filt_section == unfilt_section:
+                    raise ValueError(
+                        "cov_filter_from_cl_sections=T but cl_sections entry %s is the type_table "
+                        "section itself, so its unfiltered version is not available. Write the "
+                        "filtered spectrum to a separate section." % filt_section)
+                if filt_spec.types in spec_types:
+                    unfilt_spec = cl_specs[spec_types.index(filt_spec.types)]
+                else:
+                    unfilt_spec = cl_specs[spec_types.index((type_2, type_1))]
+                filters_i, info = cl_filters_from_spectra(filt_spec, unfilt_spec, config['ell_max'])
+                print("Covariance filter %s / %s: f>0.5 for %d <= ell <= %d, f(1000)=%.4f, "
+                      "max spread across bin pairs %.2e" % (filt_section, unfilt_section,
+                      info['ell_half_min'], info['ell_half_max'], info['f_at_1000'], info['max_spread']))
+                cov_filters.append(filters_i)
+
         # If saving real-space data we have to convert he Fourier C_ell covariance
         # to the real-space version.  There are various ways to do this; the one
         # here should be accurate enough.
@@ -476,7 +509,7 @@ def execute(block, config):
                 cl_theory_spec_list, config['cl_to_xi_types'],
                 config['ell_max'], config['angle_lims'],
                 upsample=config['upsample_cov'],
-                high_l_filter = config['high_l_filter'] )
+                high_l_filter = config['high_l_filter'], filters=cov_filters )
             covmat_info = twopoint.CovarianceMatrixInfo( 'COVMAT', [s.name for s in spec_meas_list],
                                                          xi_lengths, covmat )
 
@@ -486,7 +519,7 @@ def execute(block, config):
                     cl_cov, cl_theory_spec_list, config['cl_to_xi_types'],
                     config['ell_max'], config['angle_lims'],
                     upsample=config['upsample_cov'],
-                    high_l_filter=config['high_l_filter'])
+                    high_l_filter=config['high_l_filter'], filters=cov_filters)
                 out_dir = config['cov_contributions_dir'] or os.path.dirname(os.path.abspath(filename))
                 base = os.path.splitext(os.path.basename(filename))[0]
                 for label, cov_contrib in contributions.items():

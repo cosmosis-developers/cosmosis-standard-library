@@ -572,12 +572,75 @@ class ClCov( object ):
         return covmat, cl_lengths
 
 
-def real_space_cov( cl_cov, cl_specs, cl2xi_types, ell_max, angle_lims_rad, 
-    upsample=None, high_l_filter=0.75, noise_only=False ):
+def cl_filters_from_spectra(filtered_spec, unfiltered_spec, ell_max, tol=1.e-6):
+    """
+    Per-bin-pair multiplicative filter f(ell) applied by an upstream module (e.g. a beam or an
+    ell cut) that wrote a filtered copy of a spectrum to a separate section: the filtered copy
+    is the observable, the unfiltered one (found via type_table) is what enters the Gaussian
+    C_ell covariance.
+
+    f is the ratio C_filtered / C_unfiltered taken AT THE ELL NODES of the projection grid
+    (where it is exactly the applied filter, e.g. B_ell or 0) and then interpolated linearly
+    in log(ell) onto ell = 0..ell_max (f = 0 at ell = 0). Taking the ratio of the two splines
+    instead would mix the different interpolation schemes SpectrumInterp uses for spectra with
+    and without zeros. Both sections must share the same ell grid.
+
+    Returns (filters, info) with filters = {bin_pair: f_ell} keyed by the filtered spectrum's
+    bin pairs, and info a dict of diagnostics (effective ell range, max spread across pairs).
+    """
+    ells = np.arange(ell_max + 1, dtype=float)
+    nodes_f = np.asarray(filtered_spec.angles, dtype=float)
+    nodes_u = np.asarray(unfiltered_spec.angles, dtype=float)
+    if nodes_f.shape != nodes_u.shape or not np.allclose(nodes_f, nodes_u, rtol=1.e-10):
+        raise ValueError("Filtered section %s and unfiltered section %s use different ell grids"
+                         % (filtered_spec.name, unfiltered_spec.name))
+    pos = nodes_f > 0
+    swap = tuple(filtered_spec.types) != tuple(unfiltered_spec.types)
+    filters = {}
+    for bp in filtered_spec.bin_pairs:
+        b1, b2 = bp
+        u1, u2 = (b2, b1) if swap else (b1, b2)
+        num = np.asarray(filtered_spec.spectra[(b1, b2)], dtype=float)
+        den = np.asarray(unfiltered_spec.spectra[(u1, u2)], dtype=float)
+        good = np.isfinite(num) & np.isfinite(den) & (np.abs(den) > 0)
+        f_node = np.where(good, num / np.where(good, den, 1.), 0.)
+        f = np.zeros_like(ells)
+        f[1:] = np.interp(np.log(ells[1:]), np.log(nodes_f[pos]), f_node[pos], left=0., right=0.)
+        if f.max() > 1. + tol or f.min() < -tol:
+            raise ValueError(
+                "Filter for %s bin pair %s is outside [0, 1] (min %g, max %g): the section in "
+                "cl_sections is not a filtered copy of the type_table section %s."
+                % (filtered_spec.name, bp, f.min(), f.max(), unfiltered_spec.name))
+        filters[tuple(bp)] = f
+    fs = np.array(list(filters.values()))
+    mean_f = fs.mean(axis=0)
+    on = np.where(mean_f > 0.5)[0]
+    info = dict(ell_half_min=int(on[0]) if len(on) else -1,
+                ell_half_max=int(on[-1]) if len(on) else -1,
+                max_spread=float(np.abs(fs - mean_f[None, :]).max()),
+                f_at_1000=float(mean_f[min(1000, ell_max)]))
+    return filters, info
+
+
+def real_space_cov( cl_cov, cl_specs, cl2xi_types, ell_max, angle_lims_rad,
+    upsample=None, high_l_filter=0.75, noise_only=False, filters=None ):
     """
     Compute real space covariance given cl covariance
     Add cov blocks to a dictionary with keys: spec_index_i spec_index_j binpair_index_i binpair_index_j
+
+    filters: optional list (one entry per spectrum in cl_specs) of either None or a dict
+    {bin_pair: f_ell}, with f_ell an array over ell = 0..ell_max. It describes a multiplicative
+    filter (e.g. beam x multipole cut) applied to the *observable* C_ell of that spectrum, so
+    xi = sum_ell F(theta, ell) f_ell C_ell. The Gaussian C_ell covariance is then computed from
+    the unfiltered signal + noise spectra and the transform of block (a, b) uses
+    F_a(theta, ell) f_a(ell) and F_b(theta, ell) f_b(ell) -- the covariance of a filtered map.
+    Blocks involving a filtered spectrum transform the noise numerically (the analytic
+    white-noise term assumes an unfiltered, ell -> infinity transform).
+    filters=None reproduces the unfiltered calculation exactly.
     """
+    if filters is None:
+        filters = [None] * len(cl2xi_types)
+    assert len(filters) == len(cl2xi_types)
     cov_blocks = {}
     ntheta = len(angle_lims_rad) - 1
     n_dv = 0
@@ -649,14 +712,19 @@ def real_space_cov( cl_cov, cl_specs, cl2xi_types, ell_max, angle_lims_rad,
                         # Check if either spectrum has ell-dependent noise (e.g. CMB lensing).
                         # If so, skip the analytic noise term and transform everything numerically.
                         pair_types = set(cl_spec_i.types) | set(cl_spec_j.types)
-                        use_analytic_noise = not bool(pair_types & l_dep_noise_types)
+                        filt_i = None if filters[i_xi] is None else filters[i_xi][tuple(bin_pair_i)]
+                        filt_j = None if filters[j_xi] is None else filters[j_xi][tuple(bin_pair_j)]
+                        use_analytic_noise = (not bool(pair_types & l_dep_noise_types)
+                                              and filt_i is None and filt_j is None)
                         if use_analytic_noise:
                             cl_cov_block_signal_mixed = cl_cov_block - cl_cov_noise_noise
                         else:
                             cl_cov_block_signal_mixed = cl_cov_block
-                        xi_cov_block_signal_mixed_upsampled = np.matmul( F_i_l,
-                                                              np.matmul( np.diag(cl_cov_block_signal_mixed), 
-                                                              F_j_l.T ) )
+                        F_i_use = F_i_l if filt_i is None else F_i_l * filt_i[None, :]
+                        F_j_use = F_j_l if filt_j is None else F_j_l * filt_j[None, :]
+                        xi_cov_block_signal_mixed_upsampled = np.matmul( F_i_use,
+                                                              np.matmul( np.diag(cl_cov_block_signal_mixed),
+                                                              F_j_use.T ) )
                         xi_cov_block_signal_mixed, angle_mids = downsample_block( angle_lims_rad_upsampled,
                             angle_mids_rad_upsampled, xi_cov_block_signal_mixed_upsampled, ntheta )
                         if use_analytic_noise:
@@ -703,7 +771,7 @@ def real_space_cov( cl_cov, cl_specs, cl2xi_types, ell_max, angle_lims_rad,
 
 
 def real_space_cov_contributions(cl_cov, cl_specs, cl2xi_types, ell_max, angle_lims_rad,
-                                  upsample=None, high_l_filter=0.75):
+                                  upsample=None, high_l_filter=0.75, filters=None):
     """
     Decompose the real-space covariance into contributions from individual noise sources.
 
@@ -745,7 +813,7 @@ def real_space_cov_contributions(cl_cov, cl_specs, cl2xi_types, ell_max, angle_l
         _, covmat, _, _ = real_space_cov(
             cl_cov_subset, cl_specs, cl2xi_types,
             ell_max, angle_lims_rad,
-            upsample=upsample, high_l_filter=high_l_filter)
+            upsample=upsample, high_l_filter=high_l_filter, filters=filters)
         return covmat
 
     print("Computing signal-only covariance contribution...")
