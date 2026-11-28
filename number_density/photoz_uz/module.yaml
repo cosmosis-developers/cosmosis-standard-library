@@ -1,0 +1,76 @@
+name: photoz_uz
+version: '1.0'
+category: Sample Properties
+purpose: Modify a set of loaded n(z) distributions by a set of eigenmodes and amplitudes.
+url: ''
+interface: photoz_uz.py
+attribution: ["Michael Troxel", "Gary Bernstein", "William Doumerg", "Giulia Giannini", "David Sanchez"]
+rules: You can do what you want with this file.
+cite: []
+assumptions:
+  - A numpy npz file containing the n(z) modes (and optionally degaussianization tables)
+  - The n(z) in the block has a zero prepended for z=0, so is one sample longer than the modes
+
+explanation: |
+    Photometric redshift uncertainty is represented as a set of n(z) eigenmodes with
+    amplitudes u that are sampled over. This module adds the sum of the modes, weighted by
+    the amplitudes, to each tomographic bin's n(z), and renormalizes it.
+
+    The basis_file is a numpy npz file containing:
+    - U: array of shape (n_modes, n_bins, n_z), the basis vectors
+    - perbin: whether each bin has its own modes and amplitudes, u_{bin}_{mode}, (bins and modes
+      counted from zero) or all bins share the amplitudes u_{mode}
+    - g_convention (optional): [gmax, dg], the range and spacing of a lookup table to convert the
+      unit-Gaussian sampled parameters into the true, non-Gaussian, amplitudes
+    - pctile: required if g_convention is present; the lookup table output values with shape
+      (n_modes, n_bins, n_g) if perbin and (n_modes, n_g) otherwise
+
+    If g_convention is not present the sampled amplitudes are used directly.
+
+params:
+    sample:
+        meaning: Name of sample, e.g. lens or source. The n(z) are read from nz_{sample} and the amplitudes from {sample}_photoz_u
+        type: str
+        default: ""
+    basis_file:
+        meaning: Numpy npz file containing the n(z) modes
+        type: str
+        default: ""
+    n_modes:
+        meaning: Number of modes to use. If zero or negative, use all of those in the file
+        type: int
+        default: 0
+    no_degaussbins:
+        meaning: "Lens sample only. Comma-separated list of zero-based bins for which the degaussianization is not applied"
+        type: str
+        default: ""
+
+inputs:
+    nz_{sample}:
+        nbin:
+            meaning: Number of redshift bins
+            type: int
+            default:
+        z:
+            meaning: Redshift sample points of n(z) estimates
+            type: real 1d
+            default:
+        bin_i:
+            meaning: n(z) for i=1..nbin
+            type: real 1d
+            default:
+    "{sample}_photoz_u":
+        u_j:
+            meaning: For j=0..n_modes-1. Amplitude of mode j. Used if perbin is false
+            type: real
+            default:
+        u_i_j:
+            meaning: For bins i=0..nbin-1 and modes j=0..n_modes-1. Amplitude of mode j in bin i. Used if perbin is true
+            type: real
+            default:
+
+outputs:
+    nz_{sample}:
+        bin_i:
+            meaning: Modified, renormalized, n(z) for i=1..nbin, replacing the input values
+            type: real 1d

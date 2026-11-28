@@ -1,0 +1,67 @@
+name: bias_marg
+version: '1.0'
+category: Misc & Utilities
+purpose: Convert sampled bias*sigma_8 combinations back to galaxy bias parameters
+url: ''
+interface: bias_marg.py
+attribution: ["Agnes Ferte", "DES Y6 collaboration"]
+rules: You can do what you want with this file.
+cite: []
+assumptions:
+-   Must run after a module that sets sigma_8 (e.g. CAMB)
+
+explanation: |
+    Galaxy bias and sigma_8 are strongly degenerate, so it can be more efficient to
+    sample the combinations b1*sigma_8 (and b2*sigma_8^2) and convert to the bias parameters
+    afterwards. This module does that conversion for each lens bin, stopping at the first
+    linear bias bin that is not found in the bias section.
+
+    For bias_model = linear the sampled parameters are b{i}_sig8 and the output is b{i}.
+    For bias_model = oneloop_eul_bk the sampled parameters are b1E_sig8_bin{i} and
+    b2E_sig8sq_bin{i} and the outputs are b1E_bin{i} and b2E_bin{i}.
+
+params:
+    nbins:
+        meaning: Maximum number of lens bins
+        type: int
+        default: 6
+    bias_section:
+        meaning: Name of the section holding the bias parameters
+        type: str
+        default: bias_lens
+    bias_model:
+        meaning: Bias model, either linear or oneloop_eul_bk
+        type: str
+        default: oneloop_eul_bk
+
+inputs:
+    cosmological_parameters:
+        sigma_8:
+            meaning: RMS mass fluctuation in 8 Mpc/h spheres
+            type: real
+            default:
+    bias_lens:
+        b1E_sig8_bin_i:
+            meaning: b1*sigma_8 for bin i=1..nbins. If bias_model = oneloop_eul_bk
+            type: real
+            default:
+        b2E_sig8sq_bin_i:
+            meaning: b2*sigma_8^2 for bin i=1..nbins. If bias_model = oneloop_eul_bk
+            type: real
+            default:
+        bi_sig8:
+            meaning: b_i*sigma_8 for bin i=1..nbins. If bias_model = linear
+            type: real
+            default:
+
+outputs:
+    bias_lens:
+        b1E_bin_i:
+            meaning: Linear bias in bin i, if bias_model = oneloop_eul_bk
+            type: real
+        b2E_bin_i:
+            meaning: Second-order bias in bin i, if bias_model = oneloop_eul_bk
+            type: real
+        bi:
+            meaning: Linear bias in bin i, if bias_model = linear
+            type: real

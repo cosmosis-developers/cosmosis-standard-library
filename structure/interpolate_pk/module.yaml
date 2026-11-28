@@ -1,0 +1,55 @@
+name: interpolate_pk
+version: '1.0'
+category: Misc & Utilities
+purpose: Interpolate the non-linear matter power spectrum onto the grid of the linear one
+url: ''
+interface: pk_interface.py
+attribution: ["Simon Samuroff"]
+rules: You can do what you want with this file.
+cite: []
+assumptions:
+-   Interpolation is linear in log10(k) and log10(P)
+-   Points outside the original grid take the nearest edge value
+
+explanation: |
+    Replaces matter_power_nl with a version interpolated onto the z and k_h values of
+    matter_power_lin. It is useful when the non-linear power comes from an emulator that
+    covers a smaller range of k and z than the linear power.
+
+params: {}
+
+inputs:
+    matter_power_nl:
+        z:
+            meaning: Redshifts of the non-linear power spectrum
+            type: real 1d
+            default:
+        k_h:
+            meaning: Wavenumbers in units of h/Mpc of the non-linear power spectrum
+            type: real 1d
+            default:
+        P_k:
+            meaning: Non-linear matter power spectrum, shape (nz, nk)
+            type: real 2d
+            default:
+    matter_power_lin:
+        z:
+            meaning: Redshifts to interpolate onto
+            type: real 1d
+            default:
+        k_h:
+            meaning: Wavenumbers in units of h/Mpc to interpolate onto
+            type: real 1d
+            default:
+
+outputs:
+    matter_power_nl:
+        z:
+            meaning: Redshifts, copied from matter_power_lin
+            type: real 1d
+        k_h:
+            meaning: Wavenumbers in units of h/Mpc, copied from matter_power_lin
+            type: real 1d
+        P_k:
+            meaning: Interpolated non-linear matter power spectrum
+            type: real 2d

@@ -26,7 +26,7 @@ class ShearRatioLikelihood(GaussianLikelihood):
 
         # this adds the option to save the theory shear ratio data vector
         self.save_simulated_ratios = options.get_bool("save_simulated_ratios",default=False)
-        self.output_name = options.get_string("output_file",default="hello.pkl")
+        self.output_name = options.get_string("output_file",default="simulated_shear_ratios.pkl")
 
         nbin_source = self.ratio_data['nbin_source']  # [3,4] an array of the exact source bins we have
         nbin_lens = self.ratio_data['nbin_lens'] # 2, because we don't use all the lens bins
@@ -115,7 +115,7 @@ class ShearRatioLikelihood(GaussianLikelihood):
 
         if self.save_simulated_ratios:
             # copy the format of the input SR file
-            output_data = self.ratio_data
+            output_data = dict(self.ratio_data)
 
             # overwrite the data bit - assuming we're keeping the cov mat, only measured_ratios needs to change
             output_data['measured_ratios'] = np.array(theory_ratios)
