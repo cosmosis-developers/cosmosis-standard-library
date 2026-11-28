@@ -191,7 +191,7 @@ jobs:
         shell: bash -l {0}
         run: |
           source cosmosis-configure
-          pytest -vv --durations=0 tests/test_cosmosis_standard_library.py
+          pytest -vv --showlocals --durations=0 tests/test_cosmosis_standard_library.py
 
       - name: Run Demos
         if: (matrix.os == 'ubuntu-24.04') || (matrix.pyversion == '3.13' && matrix.numpy-version == '2.5' && matrix.camb-version == '2.0.5' && matrix.scipy-version == '1.18')
