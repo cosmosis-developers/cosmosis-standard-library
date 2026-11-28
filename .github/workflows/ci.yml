@@ -198,8 +198,15 @@ jobs:
         shell: bash -l {0}
         run: |
           source cosmosis-configure
-          pytest -vv --durations=0 tests/test_demos.py
+          python .github/pytest_with_interpolation_diagnostics.py -vv --durations=0 tests/test_demos.py
 
+      - name: Preserve interpolation failure inputs
+        if: failure() && matrix.os == 'macos-latest'
+        uses: actions/upload-artifact@v4
+        with:
+          name: interpolation-diagnostics-${{ strategy.job-index }}
+          path: output/interpolation-diagnostics/
+          retention-days: 7
 
 
   apt-get-test:
