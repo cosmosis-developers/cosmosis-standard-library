@@ -166,7 +166,10 @@ def test_reuse_computation_matches_and_invalidates():
     changed_epsilon = np.max(np.abs(changed_power - reference) /
                              np.maximum(np.abs(reference), 1e-30))
 
-    assert epsilon == pytest.approx(0.0, abs=1e-14)
+    # Allow roundoff from rebuilding the output interpolator.
+    assert epsilon == pytest.approx(0.0, abs=1e-12)
+    assert module.data[1]["_reuse_hits"] == 1
+    assert module.data[1]["_reuse_misses"] == 2
     assert changed_epsilon > 1e-8
     assert np.all(np.isfinite(changed_power))
     assert np.all(changed_power > 0)
@@ -271,7 +274,10 @@ def test_reuse_computation_reuses_nonconsecutive_input():
     epsilon = np.max(np.abs(again["matter_power_lin", "p_k"] -
                             first["matter_power_lin", "p_k"]) /
                      np.maximum(np.abs(first["matter_power_lin", "p_k"]), 1e-30))
-    assert epsilon == pytest.approx(0.0, abs=1e-14)
+    # Allow roundoff from rebuilding the output interpolator.
+    assert epsilon == pytest.approx(0.0, abs=1e-12)
+    assert module.data[1]["_reuse_hits"] == 1
+    assert module.data[1]["_reuse_misses"] == 2
 
 
 @pytest.mark.parametrize("sharing", [False, True])
