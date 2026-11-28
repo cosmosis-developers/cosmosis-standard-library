@@ -72,8 +72,16 @@ def execute(block, config):
             # block[intrinsic_intrinsic, bin_ij] *= coef_i * coef_j 
             # block[shear_intrinsic, bin_ij] *= coef_j  
             # block[shear_intrinsic, bin_ji] *= coef_i
-            block[intrinsic_intrinsic_new, bin_ij] = coef_i * coef_j * block[intrinsic_intrinsic, bin_ij]
-            block[shear_intrinsic_new, bin_ij] = coef_j  * block[shear_intrinsic, bin_ij]
-            block[shear_intrinsic_new, bin_ji] = coef_i  * block[shear_intrinsic, bin_ji]
+            # Read all the inputs before writing any outputs, since if
+            # new_suffix == suffix the outputs overwrite the inputs in-place.
+            cl_ii = block[intrinsic_intrinsic, bin_ij]
+            cl_gi_ij = block[shear_intrinsic, bin_ij]
+            block[intrinsic_intrinsic_new, bin_ij] = coef_i * coef_j * cl_ii
+            block[shear_intrinsic_new, bin_ij] = coef_j * cl_gi_ij
+            # For i == j, bin_ij and bin_ji are the same key, so we must not
+            # apply the scaling a second time.
+            if i != j:
+                cl_gi_ji = block[shear_intrinsic, bin_ji]
+                block[shear_intrinsic_new, bin_ji] = coef_i * cl_gi_ji
 
     return 0
