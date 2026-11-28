@@ -176,9 +176,10 @@ class TomoNzKernel(object):
             chi_start = max(chi, nchi_spline.xmin)
             integrand = np.where(nchi_spline.x>chi, 
                 nchi_spline.y * (nchi_spline.x - chi)/nchi_spline.x, 0.)
-            integrand_spline = interp.InterpolatedUnivariateSpline(
-                nchi_spline.x, integrand)
-            w_of_chi[j] = chi * integrand_spline.integral(
+            # Keep the cubic not-a-knot interpolant while using PPoly integration.
+            integrand_spline = interp.CubicSpline(
+                nchi_spline.x, integrand, bc_type="not-a-knot")
+            w_of_chi[j] = chi * integrand_spline.integrate(
                 chi_start, nchi_spline.xmax) / a_vals[j]
         return w_of_chi
 
