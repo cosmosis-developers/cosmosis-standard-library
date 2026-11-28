@@ -501,7 +501,11 @@ def extract_camb_params(block, config, more_config):
     # if want_thermal:
     p.Reion = reion
 
-    p.set_for_lmax(**more_config["lmax_params"])
+    # In camb v2 the default lens_potential_accuracy is non-zero, and in that case
+    # set_for_lmax switches on non-linear lensing unless told otherwise, silently
+    # over-riding the user's "nonlinear" option. So we tell it explicitly.
+    nonlinear_lensing = config["NonLinear"] in ["NonLinear_both", "NonLinear_lens"]
+    p.set_for_lmax(nonlinear=nonlinear_lensing, **more_config["lmax_params"])
     p.set_accuracy(**more_config["accuracy_params"])
 
     if want_perturbations:

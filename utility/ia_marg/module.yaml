@@ -1,0 +1,51 @@
+name: ia_marg
+version: '1.0'
+category: Misc & Utilities
+purpose: Convert sampled alpha*A intrinsic alignment parameters to the redshift power-law index alpha
+url: ''
+interface: ia_marg.py
+attribution: ["Agnes Ferte", "DES Y6 collaboration"]
+rules: You can do what you want with this file.
+cite: []
+assumptions:
+-   The IA redshift dependence is a power law with index alpha, with amplitude A
+
+explanation: |
+    The IA amplitude A and its redshift power-law index alpha are correlated, so it can be
+    better to sample A and the product alphaA = alpha * A. This module computes
+    alpha = alphaA / A, for both the first-order (A1, alpha1) and second-order (A2, alpha2)
+    parameters. It raises an error if an amplitude is exactly zero.
+
+params:
+    ia_section:
+        meaning: Name of the section containing the IA parameters
+        type: str
+        default: intrinsic_alignment_parameters
+
+inputs:
+    intrinsic_alignment_parameters:
+        A1:
+            meaning: First-order IA amplitude
+            type: real
+            default:
+        A2:
+            meaning: Second-order IA amplitude
+            type: real
+            default:
+        alphaA1:
+            meaning: Product alpha1 * A1
+            type: real
+            default:
+        alphaA2:
+            meaning: Product alpha2 * A2
+            type: real
+            default:
+
+outputs:
+    intrinsic_alignment_parameters:
+        alpha1:
+            meaning: First-order IA redshift index
+            type: real
+        alpha2:
+            meaning: Second-order IA redshift index
+            type: real

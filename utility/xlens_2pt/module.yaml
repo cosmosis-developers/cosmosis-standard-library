@@ -1,0 +1,52 @@
+name: xlens_2pt
+version: '1.0'
+category: Misc & Utilities
+purpose: Multiply galaxy-galaxy lensing 2pt functions by an xlens factor
+url: ''
+interface: add_xlens_2pt.py
+attribution: ["Agnes Ferte", "DES Y6 collaboration"]
+rules: You can do what you want with this file.
+cite: []
+assumptions:
+-   The xlens factor is a single scale-independent multiplier on all lens-source bin pairs
+
+explanation: |
+    Multiplies every lens-source bin pair in the galaxy-galaxy lensing section by the
+    parameter xlens_all, which models a lens-source cross-correlation systematic.
+    The section is modified in place, so this should run after the module that computes it.
+
+params:
+    xlens:
+        meaning: Name of the section containing xlens_all
+        type: str
+        default: xlens
+    galaxy_shear_section:
+        meaning: Name of the section containing the galaxy-galaxy lensing spectra
+        type: str
+        default: galaxy_shear_xi
+
+inputs:
+    xlens:
+        xlens_all:
+            meaning: Multiplicative factor applied to all galaxy-galaxy lensing bins
+            type: real
+            default:
+    galaxy_shear_xi:
+        nbin_a:
+            meaning: Number of lens bins (or nbin if the same for both samples)
+            type: int
+            default:
+        nbin_b:
+            meaning: Number of source bins
+            type: int
+            default:
+        bin_i_j:
+            meaning: Galaxy-galaxy lensing for lens bin i and source bin j
+            type: real 1d
+            default:
+
+outputs:
+    galaxy_shear_xi:
+        bin_i_j:
+            meaning: Input values multiplied by xlens_all (replaced in place)
+            type: real 1d
